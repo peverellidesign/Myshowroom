@@ -1,0 +1,730 @@
+// myshowroom by Peverelli Design — relational data model.
+//
+// Key distinction: ProductModel (what a manufacturer offers) is separate from
+// InventoryItem (a physical piece Peverelli actually owns, in a real location).
+// Nothing is ever shown as "in stock" without an InventoryItem behind it.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users, roles, sessions ─────────────────────────────────
+
+enum RoleKey {
+  ADMIN
+  MANAGER
+  SALES
+  WAREHOUSE
+}
+
+model Role {
+  key         RoleKey @id
+  name        String
+  description String
+  users       User[]
+}
+
+model User {
+  id              String    @id @default(cuid())
+  email           String    @unique
+  name            String
+  passwordHash    String
+  roleKey         RoleKey
+  role            Role      @relation(fields: [roleKey], references: [key])
+  active          Boolean   @default(true)
+  phone           String?
+  defaultLocation Location? @relation("UserDefaultLocation", fields: [defaultLocationId], references: [id], onDelete: SetNull)
+  defaultLocationId String?
+  activeQuotationId String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  sessions          Session[]
+  clients           Client[]                 @relation("ClientConsultant")
+  visits            ShowroomVisit[]
+  quotations        Quotation[]
+  appointments      Appointment[]            @relation("AppointmentConsultant")
+  availability      ConsultantAvailability[]
+  tasksAssigned     Task[]                   @relation("TaskAssignee")
+  tasksCreated      Task[]                   @relation("TaskCreator")
+  reservations      Reservation[]
+  documentVersions  DocumentVersion[]
+  emails            EmailMessage[]
+  auditLogs         AuditLog[]
+  favorites         Favorite[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+// ─── Locations ──────────────────────────────────────────────
+
+enum LocationType {
+  SHOWROOM
+  WAREHOUSE
+}
+
+model Location {
+  id             String       @id @default(cuid())
+  name           String       @unique
+  slug           String       @unique
+  type           LocationType
+  city           String
+  country        String       @default("")
+  timezone       String       @default("Europe/Zurich")
+  address        String?
+  phone          String?
+  email          String?
+  bookingEnabled Boolean      @default(false)
+  active         Boolean      @default(true)
+  sortOrder      Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  zones          Zone[]
+  inventory      InventoryItem[]           @relation("InventoryLocation")
+  incoming       InventoryItem[]           @relation("InventoryTransferTo")
+  clients        Client[]
+  visits         ShowroomVisit[]
+  appointments   Appointment[]
+  availability   ConsultantAvailability[]
+  defaultForUsers User[]                   @relation("UserDefaultLocation")
+}
+
+model Zone {
+  id         String          @id @default(cuid())
+  name       String
+  locationId String
+  location   Location        @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  inventory  InventoryItem[]
+
+  @@unique([locationId, name])
+}
+
+// ─── Catalogue ──────────────────────────────────────────────
+
+model Brand {
+  id        String         @id @default(cuid())
+  name      String         @unique
+  website   String?
+  country   String?
+  products  ProductModel[]
+  materials Material[]
+  documents Document[]
+}
+
+model Category {
+  id       String         @id @default(cuid())
+  name     String         @unique
+  slug     String         @unique
+  products ProductModel[]
+}
+
+enum Currency {
+  EUR
+  CHF
+}
+
+model ProductModel {
+  id          String    @id @default(cuid())
+  brandId     String
+  brand       Brand     @relation(fields: [brandId], references: [id])
+  categoryId  String
+  category    Category  @relation(fields: [categoryId], references: [id])
+  name        String
+  code        String    @unique
+  designer    String?
+  year        Int?
+  description String    @default("")
+  dimensions  String?
+  widthCm     Int?
+  depthCm     Int?
+  heightCm    Int?
+  // Indicative list price ("a partire da") — optional; null means "su richiesta".
+  listPrice   Decimal?  @db.Decimal(12, 2)
+  currency    Currency  @default(EUR)
+  isDemo      Boolean   @default(false)
+  active      Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  images          ProductImage[]
+  configurations  ProductConfiguration[]
+  inventory       InventoryItem[]
+  documentLinks   ProductDocumentLink[]
+  quotationItems  QuotationItem[]
+  interests       ClientInterest[]
+  visitProducts   VisitProduct[]
+  favorites       Favorite[]
+
+  @@index([brandId])
+  @@index([categoryId])
+  @@index([name])
+}
+
+enum ImageKind {
+  FRONTALE
+  LATERALE
+  DETTAGLIO
+  AMBIENTE
+  SHOWROOM
+}
+
+model ProductImage {
+  id              String                @id @default(cuid())
+  productModelId  String
+  productModel    ProductModel          @relation(fields: [productModelId], references: [id], onDelete: Cascade)
+  configurationId String?
+  configuration   ProductConfiguration? @relation(fields: [configurationId], references: [id], onDelete: SetNull)
+  storageKey      String
+  mimeType        String
+  kind            ImageKind             @default(FRONTALE)
+  caption         String?
+  credit          String?
+  sortOrder       Int                   @default(0)
+  isMain          Boolean               @default(false)
+  createdAt       DateTime              @default(now())
+
+  @@index([productModelId])
+}
+
+model ProductConfiguration {
+  id             String       @id @default(cuid())
+  productModelId String
+  productModel   ProductModel @relation(fields: [productModelId], references: [id], onDelete: Cascade)
+  name           String
+  code           String?
+  dimensions     String?
+  widthCm        Int?
+  depthCm        Int?
+  heightCm       Int?
+  price          Decimal?     @db.Decimal(12, 2)
+  currency       Currency     @default(EUR)
+  notes          String?
+  // Source of the configuration data, e.g. "Catalogo ufficiale 2025, p. 14".
+  source         String?
+  isDemo         Boolean      @default(false)
+  sortOrder      Int          @default(0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  images         ProductImage[]
+  compatibility  ConfigurationCompatibility[]
+  inventory      InventoryItem[]
+  quotationItems QuotationItem[]
+
+  @@unique([productModelId, name])
+}
+
+model Material {
+  id          String     @id @default(cuid())
+  name        String
+  type        String     // Tessuto, Pelle, Legno, Metallo, Marmo, Vetro, Laccato…
+  brandId     String?
+  brand       Brand?     @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  finishes    Finish[]
+  compatibility ConfigurationCompatibility[]
+  inventory   InventoryItem[]
+
+  @@unique([name, brandId])
+}
+
+model Finish {
+  id         String   @id @default(cuid())
+  materialId String
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  name       String
+  code       String?
+  hexColor   String   @default("#CCCCCC")
+  compatibility ConfigurationCompatibility[]
+  inventory  InventoryItem[]
+
+  @@unique([materialId, name])
+}
+
+model ConfigurationCompatibility {
+  id              String               @id @default(cuid())
+  configurationId String
+  configuration   ProductConfiguration @relation(fields: [configurationId], references: [id], onDelete: Cascade)
+  materialId      String
+  material        Material             @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  finishId        String?
+  finish          Finish?              @relation(fields: [finishId], references: [id], onDelete: Cascade)
+  priceDelta      Decimal?             @db.Decimal(12, 2)
+
+  @@unique([configurationId, materialId, finishId])
+}
+
+model Favorite {
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productModelId String
+  productModel   ProductModel @relation(fields: [productModelId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@id([userId, productModelId])
+}
+
+// ─── Physical inventory ─────────────────────────────────────
+
+enum InventoryStatus {
+  ESPOSTO
+  DISPONIBILE
+  RISERVATO
+  VENDUTO
+  IN_TRASFERIMENTO
+  NON_DISPONIBILE
+}
+
+model InventoryItem {
+  id                   String                @id @default(cuid())
+  code                 String                @unique
+  productModelId       String
+  productModel         ProductModel          @relation(fields: [productModelId], references: [id])
+  configurationId      String?
+  configuration        ProductConfiguration? @relation(fields: [configurationId], references: [id], onDelete: SetNull)
+  composition          String?
+  materialId           String?
+  material             Material?             @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  finishId             String?
+  finish               Finish?               @relation(fields: [finishId], references: [id], onDelete: SetNull)
+  materialsDescription String?
+  dimensions           String?
+  quantity             Int                   @default(1)
+  locationId           String
+  location             Location              @relation("InventoryLocation", fields: [locationId], references: [id])
+  zoneId               String?
+  zone                 Zone?                 @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  status               InventoryStatus       @default(DISPONIBILE)
+  // Status to restore once a reservation is released (Esposto or Disponibile).
+  baseStatus           InventoryStatus       @default(DISPONIBILE)
+  transferToId         String?
+  transferTo           Location?             @relation("InventoryTransferTo", fields: [transferToId], references: [id], onDelete: SetNull)
+  price                Decimal?              @db.Decimal(12, 2)
+  currency             Currency              @default(EUR)
+  discountPct          Decimal               @default(0) @db.Decimal(5, 2)
+  notes                String?
+  isDemo               Boolean               @default(false)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+
+  images         InventoryImage[]
+  reservations   Reservation[]
+  quotationItems QuotationItem[]
+
+  @@index([productModelId])
+  @@index([locationId, status])
+}
+
+model InventoryImage {
+  id              String        @id @default(cuid())
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  storageKey      String
+  mimeType        String
+  caption         String?
+  sortOrder       Int           @default(0)
+  createdAt       DateTime      @default(now())
+}
+
+enum ReservationStatus {
+  ACTIVE
+  RELEASED
+  EXPIRED
+  CONVERTED
+}
+
+model Reservation {
+  id              String            @id @default(cuid())
+  inventoryItemId String
+  inventoryItem   InventoryItem     @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+  clientId        String
+  client          Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  quantity        Int               @default(1)
+  expiresAt       DateTime
+  notes           String?
+  status          ReservationStatus @default(ACTIVE)
+  createdById     String
+  createdBy       User              @relation(fields: [createdById], references: [id])
+  releasedAt      DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@index([inventoryItemId, status])
+  @@index([clientId])
+}
+
+// ─── Documents & catalogues ─────────────────────────────────
+
+enum DocumentCategory {
+  CATALOGO_PRODOTTO
+  CATALOGO_GENERALE
+  SCHEDA_TECNICA
+  LISTINO_PREZZI
+  MATERIALI_FINITURE
+  ISTRUZIONI_MONTAGGIO
+  ALTRO
+}
+
+enum DocumentLanguage {
+  IT
+  EN
+  DE
+  FR
+  MULTI
+}
+
+model Document {
+  id               String           @id @default(cuid())
+  title            String
+  category         DocumentCategory
+  language         DocumentLanguage
+  brandId          String?
+  brand            Brand?           @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  // Confidential documents (e.g. price lists) are visible only to managers/admins.
+  confidential     Boolean          @default(false)
+  description      String?
+  currentVersionId String?          @unique
+  currentVersion   DocumentVersion? @relation("CurrentVersion", fields: [currentVersionId], references: [id], onDelete: SetNull)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  versions DocumentVersion[]     @relation("DocumentVersions")
+  links    ProductDocumentLink[]
+}
+
+model DocumentVersion {
+  id           String    @id @default(cuid())
+  documentId   String
+  document     Document  @relation("DocumentVersions", fields: [documentId], references: [id], onDelete: Cascade)
+  version      Int
+  storageKey   String
+  fileName     String
+  mimeType     String
+  sizeBytes    Int
+  pageCount    Int?
+  checksum     String
+  note         String?
+  uploadedById String
+  uploadedBy   User      @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime  @default(now())
+  currentOf    Document? @relation("CurrentVersion")
+
+  @@unique([documentId, version])
+}
+
+model ProductDocumentLink {
+  documentId     String
+  document       Document     @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  productModelId String
+  productModel   ProductModel @relation(fields: [productModelId], references: [id], onDelete: Cascade)
+  startPage      Int?
+  createdAt      DateTime     @default(now())
+
+  @@id([documentId, productModelId])
+  @@index([productModelId])
+}
+
+// ─── CRM ────────────────────────────────────────────────────
+
+model Client {
+  id                  String    @id @default(cuid())
+  name                String
+  email               String?
+  phone               String?
+  company             String?
+  city                String?
+  preferredLocationId String?
+  preferredLocation   Location? @relation(fields: [preferredLocationId], references: [id], onDelete: SetNull)
+  consultantId        String?
+  consultant          User?     @relation("ClientConsultant", fields: [consultantId], references: [id], onDelete: SetNull)
+  notes               String?
+  isDemo              Boolean   @default(false)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  interests    ClientInterest[]
+  visits       ShowroomVisit[]
+  appointments Appointment[]
+  quotations   Quotation[]
+  reservations Reservation[]
+  tasks        Task[]
+  emails       EmailMessage[]
+
+  @@index([name])
+  @@index([email])
+}
+
+model ClientInterest {
+  clientId       String
+  client         Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  productModelId String
+  productModel   ProductModel @relation(fields: [productModelId], references: [id], onDelete: Cascade)
+  note           String?
+  createdAt      DateTime     @default(now())
+
+  @@id([clientId, productModelId])
+}
+
+model ShowroomVisit {
+  id           String         @id @default(cuid())
+  clientId     String
+  client       Client         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  date         DateTime
+  locationId   String
+  location     Location       @relation(fields: [locationId], references: [id])
+  consultantId String?
+  consultant   User?          @relation(fields: [consultantId], references: [id], onDelete: SetNull)
+  budget       String?
+  projectType  String?
+  timeline     String?
+  preferences  String?
+  notes        String?
+  nextAction   String?
+  createdAt    DateTime       @default(now())
+
+  products   VisitProduct[]
+  quotations Quotation[]
+
+  @@index([clientId])
+}
+
+model VisitProduct {
+  visitId        String
+  visit          ShowroomVisit @relation(fields: [visitId], references: [id], onDelete: Cascade)
+  productModelId String
+  productModel   ProductModel  @relation(fields: [productModelId], references: [id], onDelete: Cascade)
+
+  @@id([visitId, productModelId])
+}
+
+// ─── Quotations ─────────────────────────────────────────────
+
+enum QuotationStatus {
+  BOZZA
+  INVIATO
+  IN_TRATTATIVA
+  ACCETTATO
+  RIFIUTATO
+}
+
+model Quotation {
+  id               String          @id @default(cuid())
+  number           String          @unique
+  revision         Int             @default(0)
+  parentId         String?
+  parent           Quotation?      @relation("QuotationRevisions", fields: [parentId], references: [id], onDelete: SetNull)
+  revisions        Quotation[]     @relation("QuotationRevisions")
+  title            String?
+  clientId         String?
+  client           Client?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  visitId          String?
+  visit            ShowroomVisit?  @relation(fields: [visitId], references: [id], onDelete: SetNull)
+  status           QuotationStatus @default(BOZZA)
+  currency         Currency        @default(CHF)
+  // EUR→CHF rate frozen on the quotation when it was last priced.
+  exchangeRate     Decimal?        @db.Decimal(10, 5)
+  exchangeSource   String?
+  discountPct      Decimal         @default(0) @db.Decimal(5, 2)
+  transportCost    Decimal         @default(0) @db.Decimal(12, 2)
+  installationCost Decimal         @default(0) @db.Decimal(12, 2)
+  vatPct           Decimal         @default(0) @db.Decimal(5, 2)
+  notes            String?
+  validUntil       DateTime?
+  createdById      String
+  createdBy        User            @relation(fields: [createdById], references: [id])
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  items  QuotationItem[]
+  tasks  Task[]
+  emails EmailMessage[]
+
+  @@index([clientId])
+  @@index([status])
+}
+
+model QuotationItem {
+  id              String                @id @default(cuid())
+  quotationId     String
+  quotation       Quotation             @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  productModelId  String?
+  productModel    ProductModel?         @relation(fields: [productModelId], references: [id], onDelete: SetNull)
+  configurationId String?
+  configuration   ProductConfiguration? @relation(fields: [configurationId], references: [id], onDelete: SetNull)
+  inventoryItemId String?
+  inventoryItem   InventoryItem?        @relation(fields: [inventoryItemId], references: [id], onDelete: SetNull)
+  brandName       String
+  modelName       String
+  description     String?
+  configLabel     String?
+  materials       String?
+  dimensions      String?
+  quantity        Int                   @default(1)
+  unitPrice       Decimal               @default(0) @db.Decimal(12, 2)
+  discountPct     Decimal               @default(0) @db.Decimal(5, 2)
+  sortOrder       Int                   @default(0)
+
+  @@index([quotationId])
+}
+
+// ─── Agenda ─────────────────────────────────────────────────
+
+enum AppointmentType {
+  CONSULENZA_ARREDO
+  PROGETTO_CUCINA
+  INTERIOR_DESIGN
+  VISITA_SHOWROOM
+  PRESENTAZIONE_PREVENTIVO
+  APPUNTAMENTO_ARCHITETTO
+}
+
+enum AppointmentStatus {
+  CONFERMATO
+  ANNULLATO
+  COMPLETATO
+}
+
+enum AppointmentSource {
+  INTERNO
+  PUBBLICO
+}
+
+model Appointment {
+  id             String            @id @default(cuid())
+  clientId       String?
+  client         Client?           @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  locationId     String
+  location       Location          @relation(fields: [locationId], references: [id])
+  consultantId   String?
+  consultant     User?             @relation("AppointmentConsultant", fields: [consultantId], references: [id], onDelete: SetNull)
+  type           AppointmentType
+  startsAt       DateTime
+  endsAt         DateTime
+  status         AppointmentStatus @default(CONFERMATO)
+  source         AppointmentSource @default(INTERNO)
+  notes          String?
+  // Rescheduling history: each entry {from,to,at,by}.
+  history        Json              @default("[]")
+  reminderSentAt DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  tasks Task[]
+
+  @@index([locationId, startsAt])
+  @@index([consultantId, startsAt])
+}
+
+model ConsultantAvailability {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  locationId  String
+  location    Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  weekday     Int      // 1 = lunedì … 7 = domenica
+  startMinute Int      // minutes from midnight (local time)
+  endMinute   Int
+
+  @@index([locationId, weekday])
+}
+
+// ─── Tasks ──────────────────────────────────────────────────
+
+enum TaskPriority {
+  BASSA
+  MEDIA
+  ALTA
+}
+
+model Task {
+  id            String       @id @default(cuid())
+  title         String
+  description   String?
+  dueDate       DateTime?
+  priority      TaskPriority @default(MEDIA)
+  completed     Boolean      @default(false)
+  completedAt   DateTime?
+  assigneeId    String?
+  assignee      User?        @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdById   String
+  createdBy     User         @relation("TaskCreator", fields: [createdById], references: [id])
+  clientId      String?
+  client        Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  appointmentId String?
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  quotationId   String?
+  quotation     Quotation?   @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([assigneeId, completed])
+}
+
+// ─── Email ──────────────────────────────────────────────────
+
+enum EmailStatus {
+  BOZZA
+  INVIATA
+  ERRORE
+}
+
+model EmailMessage {
+  id            String      @id @default(cuid())
+  clientId      String?
+  client        Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  quotationId   String?
+  quotation     Quotation?  @relation(fields: [quotationId], references: [id], onDelete: SetNull)
+  template      String?
+  to            String
+  subject       String
+  body          String
+  attachPdf     Boolean     @default(false)
+  status        EmailStatus @default(BOZZA)
+  error         String?
+  providerId    String?
+  sentAt        DateTime?
+  createdById   String
+  createdBy     User        @relation(fields: [createdById], references: [id])
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([clientId])
+}
+
+// ─── System ─────────────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  entity    String
+  entityId  String?
+  summary   String
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}

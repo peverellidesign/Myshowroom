@@ -1,0 +1,11 @@
+node_modules
+.next
+out
+.env
+.env.local
+storage/
+public/pdf.worker.min.mjs
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
+storage-e2e/

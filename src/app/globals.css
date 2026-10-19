@@ -1,0 +1,83 @@
+@import "@fontsource-variable/inter";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+html,
+body {
+  background: #fafaf8;
+  color: #171717;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+}
+
+body {
+  font-feature-settings: "cv11", "ss01";
+}
+
+@layer components {
+  .eyebrow {
+    @apply text-[11px] font-medium uppercase tracking-[0.12em] text-muted;
+  }
+  .h-display {
+    @apply text-[34px] font-normal leading-[1.05] tracking-[-0.02em] text-ink sm:text-[44px];
+  }
+  .h-section {
+    @apply text-2xl font-normal tracking-[-0.015em] text-ink sm:text-[28px];
+  }
+  .card {
+    @apply rounded-2xl border border-line bg-card;
+  }
+  .field {
+    @apply w-full rounded-full border border-line bg-white px-5 py-3 text-[15px] text-ink outline-none transition placeholder:text-muted focus:border-ink/40 disabled:opacity-60;
+  }
+  textarea.field {
+    @apply rounded-2xl;
+  }
+  select.field {
+    @apply appearance-none bg-no-repeat pr-11;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23171717' stroke-width='1.5' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-size: 16px;
+    background-position: right 1.1rem center;
+  }
+  .label {
+    @apply mb-1.5 block text-[13px] text-soft;
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-line bg-white px-4 py-1.5 text-sm text-ink transition hover:border-ink/30;
+  }
+  .chip-active {
+    @apply border-[#555] bg-[#555] text-white hover:border-[#555];
+  }
+  .link-quiet {
+    @apply underline decoration-line underline-offset-4 hover:decoration-ink;
+  }
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.pb-safe {
+  padding-bottom: calc(var(--safe-bottom) + 0.5rem);
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
+
+/* Grid children never grow past their track (prevents mobile overflow from long content). */
+.grid > * {
+  min-width: 0;
+}
