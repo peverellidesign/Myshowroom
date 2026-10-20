@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
-import { LayoutGrid, List, SlidersHorizontal, X } from "lucide-react";
+import { LayoutGrid, List, Search, SlidersHorizontal, X } from "lucide-react";
 import { Modal } from "./ui/modal";
 import { cn } from "@/lib/utils";
 
@@ -54,7 +54,10 @@ export function ProductFilters({
 
   return (
     <div className={cn("space-y-4 transition-opacity", pending && "opacity-70")}>
-      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cerca modello, brand o categoria…" className="field" type="search" aria-label="Cerca prodotti" />
+      <div className="relative">
+        <Search size={18} className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 text-muted" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cerca modello, brand o categoria…" className="field pl-12 shadow-soft" type="search" aria-label="Cerca prodotti" />
+      </div>
 
       <div>
         <p className="eyebrow mb-2">Sede</p>
@@ -86,14 +89,14 @@ export function ProductFilters({
           <option value="RISERVATO">Riservato</option>
           <option value="IN_TRASFERIMENTO">In trasferimento</option>
         </select>
-        <select className="field col-span-2 lg:col-span-1" value={sp.get("ordina") ?? ""} onChange={(e) => set({ ordina: e.target.value })} aria-label="Ordina">
+        <select className="field" value={sp.get("ordina") ?? ""} onChange={(e) => set({ ordina: e.target.value })} aria-label="Ordina">
           <option value="">Ordina: nome</option>
           <option value="brand">Ordina: brand</option>
           <option value="prezzo-asc">Prezzo crescente</option>
           <option value="prezzo-desc">Prezzo decrescente</option>
           <option value="recenti">Più recenti</option>
         </select>
-        <button onClick={() => setOpen(true)} className="chip col-span-2 justify-center py-3 lg:col-span-1">
+        <button onClick={() => setOpen(true)} className="chip justify-center py-3">
           <SlidersHorizontal size={15} /> Filtri {activeAdvanced > 0 && `(${activeAdvanced})`}
         </button>
       </div>

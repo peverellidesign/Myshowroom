@@ -14,70 +14,90 @@ export function Gallery({ images, name, showKinds = true }: { images: GalleryIma
   const kinds = [...new Map(images.map((img, i) => [img.kind, { label: img.kindLabel, index: i }])).values()];
 
   if (!images.length) {
-    return (
-      <div className="card flex aspect-[4/3] items-center justify-center text-sm uppercase tracking-[0.2em] text-muted">Nessuna immagine</div>
-    );
+    return <div className="bleed flex aspect-[4/5] items-center justify-center bg-[#EFEDE8] text-sm uppercase tracking-[0.2em] text-muted lg:aspect-[4/3] lg:rounded-[24px]">Nessuna immagine</div>;
   }
 
   return (
     <div>
-      <div className="card group relative aspect-[4/3] overflow-hidden bg-[#FBFBFA]">
-        <button onClick={() => setFull(true)} className="block h-full w-full cursor-zoom-in" aria-label="Apri a schermo intero">
-          <img src={current.src} alt={`${name} — ${current.kindLabel}`} className="h-full w-full object-contain p-4 sm:p-8" />
-        </button>
-        {current.credit && <span className="absolute bottom-3 left-3 rounded-full bg-black/30 px-3 py-1 text-xs text-white">{current.credit}</span>}
-        <button onClick={() => setFull(true)} className="absolute right-3 top-3 rounded-full bg-white/90 p-2 text-ink shadow-sm" aria-label="Schermo intero">
-          <Expand size={16} />
-        </button>
+      {/* Phones & tablets: full-bleed swipeable carousel */}
+      <div className="bleed relative lg:hidden">
+        <div
+          className="flex snap-x snap-mandatory overflow-x-auto bg-[#EFEDE8] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          onScroll={(e) => {
+            const el = e.currentTarget;
+            const i = Math.round(el.scrollLeft / el.clientWidth);
+            if (i !== index) setIndex(i);
+          }}
+        >
+          {images.map((img, i) => (
+            <button key={img.id} onClick={() => (setIndex(i), setFull(true))} className="relative aspect-[4/5] w-full shrink-0 snap-center sm:aspect-[4/3]" aria-label={`Apri immagine ${i + 1}`}>
+              <img src={img.src} alt={`${name} — ${img.kindLabel}`} className="absolute inset-0 h-full w-full object-cover" loading={i === 0 ? "eager" : "lazy"} />
+            </button>
+          ))}
+        </div>
         {images.length > 1 && (
-          <>
-            <button
-              onClick={() => setIndex((i) => (i - 1 + images.length) % images.length)}
-              className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 opacity-0 shadow-sm transition group-hover:opacity-100"
-              aria-label="Precedente"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <button
-              onClick={() => setIndex((i) => (i + 1) % images.length)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 opacity-0 shadow-sm transition group-hover:opacity-100"
-              aria-label="Successiva"
-            >
-              <ChevronRight size={18} />
-            </button>
-          </>
+          <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center gap-1.5">
+            {images.map((img, i) => (
+              <span key={img.id} className={cn("h-1.5 rounded-full bg-white shadow transition-all", i === index ? "w-5" : "w-1.5 opacity-60")} />
+            ))}
+          </div>
+        )}
+        {current.credit && <span className="absolute bottom-3 right-3 rounded-full bg-black/30 px-2.5 py-1 text-[10.5px] text-white backdrop-blur">{current.credit}</span>}
+      </div>
+
+      {/* Desktop */}
+      <div className="hidden lg:block">
+        <div className="group relative aspect-[4/3] overflow-hidden rounded-[24px] bg-[#EFEDE8]">
+          <button onClick={() => setFull(true)} className="block h-full w-full cursor-zoom-in" aria-label="Apri a schermo intero">
+            <img src={current.src} alt={`${name} — ${current.kindLabel}`} className="h-full w-full object-contain" />
+          </button>
+          {current.credit && <span className="absolute bottom-3 left-3 rounded-full bg-black/30 px-3 py-1 text-xs text-white backdrop-blur">{current.credit}</span>}
+          <button onClick={() => setFull(true)} className="absolute right-3 top-3 rounded-full bg-white/90 p-2 text-ink shadow-sm" aria-label="Schermo intero">
+            <Expand size={16} />
+          </button>
+          {images.length > 1 && (
+            <>
+              <button
+                onClick={() => setIndex((i) => (i - 1 + images.length) % images.length)}
+                className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 opacity-0 shadow-sm transition group-hover:opacity-100"
+                aria-label="Precedente"
+              >
+                <ChevronLeft size={18} />
+              </button>
+              <button
+                onClick={() => setIndex((i) => (i + 1) % images.length)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-white/90 p-2 opacity-0 shadow-sm transition group-hover:opacity-100"
+                aria-label="Successiva"
+              >
+                <ChevronRight size={18} />
+              </button>
+            </>
+          )}
+        </div>
+        {showKinds && kinds.length > 1 && (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {kinds.map((k) => (
+              <button key={k.label} onClick={() => setIndex(k.index)} className={cn("chip", current.kindLabel === k.label && "chip-active")}>
+                {k.label}
+              </button>
+            ))}
+          </div>
+        )}
+        {images.length > 1 && (
+          <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto">
+            {images.map((img, i) => (
+              <button
+                key={img.id}
+                onClick={() => setIndex(i)}
+                className={cn("h-16 w-20 shrink-0 overflow-hidden rounded-xl bg-[#EFEDE8] ring-offset-2 ring-offset-canvas", i === index && "ring-1 ring-ink")}
+                aria-label={`Immagine ${i + 1}`}
+              >
+                <img src={img.src} alt="" className="h-full w-full object-cover" loading="lazy" />
+              </button>
+            ))}
+          </div>
         )}
       </div>
-      {showKinds && kinds.length > 1 && (
-        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {kinds.map((k) => (
-            <button
-              key={k.label}
-              onClick={() => setIndex(k.index)}
-              className={cn(
-                "rounded-xl border bg-white py-2.5 text-sm transition",
-                current.kindLabel === k.label ? "border-2 border-ink bg-selected" : "border-line hover:border-ink/30",
-              )}
-            >
-              {k.label}
-            </button>
-          ))}
-        </div>
-      )}
-      {images.length > 1 && (
-        <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto">
-          {images.map((img, i) => (
-            <button
-              key={img.id}
-              onClick={() => setIndex(i)}
-              className={cn("h-16 w-20 shrink-0 overflow-hidden rounded-lg border bg-white", i === index ? "border-ink" : "border-line")}
-              aria-label={`Immagine ${i + 1}`}
-            >
-              <img src={img.src} alt="" className="h-full w-full object-contain p-1" loading="lazy" />
-            </button>
-          ))}
-        </div>
-      )}
       {full && <Lightbox images={images} start={index} onClose={(i) => (setIndex(i), setFull(false))} name={name} />}
     </div>
   );

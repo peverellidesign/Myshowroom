@@ -21,8 +21,9 @@ export default {
       letterSpacing: { brand: "0.42em" },
       keyframes: {
         fadein: { from: { opacity: "0", transform: "translateY(4px)" }, to: { opacity: "1", transform: "none" } },
+        sheet: { from: { transform: "translateY(100%)" }, to: { transform: "none" } },
       },
-      animation: { fadein: "fadein .25s ease-out both" },
+      animation: { fadein: "fadein .25s ease-out backwards", sheet: "sheet .32s cubic-bezier(.2,.8,.2,1) backwards" },
     },
   },
   plugins: [],

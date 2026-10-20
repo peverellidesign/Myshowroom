@@ -8,7 +8,8 @@ export const metadata: Metadata = {
   description: "myshowroom by Peverelli Design. Your showroom. Everywhere.",
   applicationName: "myshowroom",
   appleWebApp: { capable: true, title: "myshowroom", statusBarStyle: "default" },
-  icons: { icon: "/icons/icon-192.png", apple: "/icons/apple-touch-icon.png" },
+  icons: { icon: [{ url: "/icons/favicon-32.png", sizes: "32x32" }, { url: "/icons/icon-192.png", sizes: "192x192" }], apple: "/icons/apple-touch-icon.png" },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {

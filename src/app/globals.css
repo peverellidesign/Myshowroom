@@ -14,7 +14,8 @@ body {
   color: #171717;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
-  overflow-x: hidden;
+  /* clip (not hidden): prevents sideways scroll without breaking position: sticky */
+  overflow-x: clip;
 }
 
 body {
@@ -26,16 +27,17 @@ body {
     @apply text-[11px] font-medium uppercase tracking-[0.12em] text-muted;
   }
   .h-display {
-    @apply text-[34px] font-normal leading-[1.05] tracking-[-0.02em] text-ink sm:text-[44px];
+    @apply text-[36px] font-light leading-[1.04] tracking-[-0.03em] text-ink sm:text-[48px];
   }
   .h-section {
     @apply text-2xl font-normal tracking-[-0.015em] text-ink sm:text-[28px];
   }
   .card {
-    @apply rounded-2xl border border-line bg-card;
+    @apply rounded-[20px] border border-black/[0.04] bg-card;
+    box-shadow: 0 1px 2px rgba(23, 23, 23, 0.03), 0 6px 24px rgba(23, 23, 23, 0.045);
   }
   .field {
-    @apply w-full rounded-full border border-line bg-white px-5 py-3 text-[15px] text-ink outline-none transition placeholder:text-muted focus:border-ink/40 disabled:opacity-60;
+    @apply w-full rounded-full border border-line bg-white px-5 py-3 text-[16px] text-ink sm:text-[15px] outline-none transition placeholder:text-muted focus:border-ink/40 disabled:opacity-60;
   }
   textarea.field {
     @apply rounded-2xl;
@@ -80,4 +82,92 @@ body {
 /* Grid children never grow past their track (prevents mobile overflow from long content). */
 .grid > * {
   min-width: 0;
+}
+
+/* ── App-like touch & layout helpers ─────────────────────── */
+@layer utilities {
+  .pressable {
+    transition: transform 0.18s ease, opacity 0.18s ease;
+  }
+  .pressable:active {
+    transform: scale(0.97);
+    opacity: 0.92;
+  }
+  .snap-row {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 16px;
+    padding-inline: 16px;
+    margin-inline: -16px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .snap-row::-webkit-scrollbar {
+    display: none;
+  }
+  .snap-row > * {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
+  @media (min-width: 640px) {
+    .snap-row {
+      scroll-padding-inline: 24px;
+      padding-inline: 24px;
+      margin-inline: -24px;
+    }
+  }
+  @media (min-width: 1024px) {
+    .snap-row {
+      scroll-padding-inline: 0;
+      padding-inline: 0;
+      margin-inline: 0;
+    }
+  }
+  .bleed {
+    margin-inline: -16px;
+  }
+  @media (min-width: 640px) {
+    .bleed {
+      margin-inline: -24px;
+    }
+  }
+  @media (min-width: 1024px) {
+    .bleed {
+      margin-inline: 0;
+    }
+  }
+  .pt-safe {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+  .shadow-soft {
+    box-shadow: 0 1px 2px rgba(23, 23, 23, 0.04), 0 8px 28px rgba(23, 23, 23, 0.06);
+  }
+}
+
+h1,
+h2 {
+  text-wrap: balance;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Installed web app: no rubber-band highlight, no text selection on chrome. */
+@media (display-mode: standalone) {
+  body {
+    overscroll-behavior-y: none;
+  }
+  nav,
+  header {
+    -webkit-user-select: none;
+    user-select: none;
+  }
 }

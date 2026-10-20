@@ -41,10 +41,11 @@ export function Modal({
       <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px]" onClick={onClose} />
       <div
         className={cn(
-          "relative flex max-h-[92dvh] w-full animate-fadein flex-col rounded-t-[24px] bg-canvas shadow-2xl sm:rounded-[24px]",
+          "relative flex max-h-[92dvh] w-full animate-sheet flex-col rounded-t-[28px] bg-canvas shadow-2xl sm:animate-fadein sm:rounded-[28px]",
           wide ? "sm:max-w-3xl" : "sm:max-w-lg",
         )}
       >
+        <div className="mx-auto mt-2.5 h-1 w-10 rounded-full bg-black/15 sm:hidden" aria-hidden />
         <div className="flex items-center justify-between gap-4 border-b border-line px-6 py-4">
           <h2 className="text-lg text-ink">{title}</h2>
           <button onClick={onClose} className="-mr-2 rounded-full p-2 text-soft hover:bg-selected" aria-label="Chiudi">

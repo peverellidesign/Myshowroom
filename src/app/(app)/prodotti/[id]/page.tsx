@@ -153,19 +153,22 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
 
   return (
     <div className="animate-fadein pb-28 lg:pb-0">
-      <Link href="/prodotti" className="mb-5 inline-flex items-center gap-2 text-[15px] text-ink hover:text-soft">
+      <Link href="/prodotti" className="mb-5 hidden items-center gap-2 text-[15px] text-ink hover:text-soft lg:inline-flex">
         <ArrowLeft size={17} /> Torna ai prodotti
       </Link>
 
-      <div className="grid gap-6 lg:grid-cols-12 lg:gap-10">
-        <div className="lg:col-span-7">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-10">
+        <div className="relative -mt-5 sm:-mt-7 lg:col-span-7 lg:mt-0">
           <Gallery images={galleryImages} name={product.name} />
+          <Link href="/prodotti" className="pressable absolute left-0 top-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/90 shadow-md backdrop-blur lg:hidden" aria-label="Torna ai prodotti">
+            <ArrowLeft size={18} />
+          </Link>
         </div>
         <div className="lg:col-span-5">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="eyebrow">{product.brand.name}</p>
-              <h1 className="mt-1 text-[38px] leading-tight tracking-[-0.02em] sm:text-[44px]">{product.name}</h1>
+              <h1 className="mt-1 text-[36px] font-light leading-[1.05] tracking-[-0.03em] sm:text-[46px]">{product.name}</h1>
               <p className="text-[17px] text-soft">{product.category.name}</p>
             </div>
             <div className="flex items-center gap-2 pt-1">
@@ -198,7 +201,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
             </div>
           </div>
 
-          <div className="mt-5 rounded-2xl border border-line bg-white p-4">
+          <div className="mt-5 rounded-[20px] bg-white p-4 shadow-soft">
             {inStock.length > 0 ? (
               <>
                 <p className="text-[15px] text-ink">Disponibile in stock Peverelli</p>
@@ -250,7 +253,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
       </div>
 
       {/* Tabs */}
-      <nav className="no-scrollbar sticky top-[68px] z-20 -mx-4 mt-10 flex gap-1 overflow-x-auto border-b border-line bg-canvas/95 px-4 backdrop-blur sm:-mx-6 sm:px-6 lg:top-16 lg:mx-0 lg:px-0" aria-label="Sezioni prodotto">
+      <nav className="no-scrollbar sticky top-[calc(60px+env(safe-area-inset-top))] z-20 -mx-4 mt-10 flex gap-1 overflow-x-auto border-b border-line bg-canvas/95 px-4 backdrop-blur sm:-mx-6 sm:px-6 lg:top-16 lg:mx-0 lg:px-0" aria-label="Sezioni prodotto">
         {TABS.map(([key, label]) => (
           <Link
             key={key}

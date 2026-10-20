@@ -26,7 +26,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
         subtitle="Scopri cosa abbiamo, dove si trova e come proporlo."
         actions={
           <>
-            <LinkButton href="/prodotti/confronta" variant="secondary" size="sm">
+            <LinkButton href="/prodotti/confronta" variant="secondary" size="sm" className="hidden sm:inline-flex">
               <GitCompareArrows size={15} /> Confronta
             </LinkButton>
             {can(user.role, "product:edit") && (
@@ -51,13 +51,13 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
         {products.length === 0 ? (
           <EmptyState title="Nessun prodotto trovato" text="Prova a modificare la ricerca o i filtri." />
         ) : list ? (
-          <div className="grid gap-3">
+          <div className="grid grid-cols-1 gap-2.5 md:grid-cols-2">
             {products.map((p) => (
               <ProductCard key={p.id} p={p} compact />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-7 sm:grid-cols-3 sm:gap-x-4 xl:grid-cols-4">
             {products.map((p) => (
               <ProductCard key={p.id} p={p} />
             ))}

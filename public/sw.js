@@ -1,6 +1,6 @@
 // myshowroom service worker: caches the app shell and static assets.
 // Data (API, pages) is always fetched from the network so stock is never stale.
-const CACHE = "myshowroom-v1";
+const CACHE = "myshowroom-v2";
 const OFFLINE_URL = "/offline.html";
 
 self.addEventListener("install", (event) => {

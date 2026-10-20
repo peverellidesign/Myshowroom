@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { can } from "@/lib/permissions";
 import { expireReservations } from "@/lib/inventory";
 import { INVENTORY_STATUS_LABELS, money, netPrice } from "@/lib/format";
-import { ProductImg, StatusText } from "@/components/product-card";
+import { ProductImg, StatusPill } from "@/components/product-card";
 import { DemoBadge, EmptyState, PageHeader } from "@/components/ui/misc";
 import { LinkButton } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -78,7 +78,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
           <Link
             key={l.id}
             href={qs({ sede: sp.sede === l.id ? null : l.id, tipo: null })}
-            className={cn("card min-w-[150px] p-4 transition hover:border-ink/25", sp.sede === l.id && "border-ink")}
+            className={cn("pressable min-w-[150px] rounded-[20px] bg-white p-4 shadow-soft", sp.sede === l.id && "ring-1 ring-ink")}
           >
             <div className="flex items-center justify-between text-soft">
               {l.type === "WAREHOUSE" ? <Warehouse size={18} strokeWidth={1.4} /> : <Store size={18} strokeWidth={1.4} />}
@@ -110,42 +110,40 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
       {groups.map((g) => (
         <section key={g.location.id} className="mb-10">
           <div className="mb-3 flex items-baseline justify-between">
-            <h2 className="text-2xl tracking-[-0.01em]">{g.location.name}</h2>
+            <h2 className="text-[24px] font-light tracking-[-0.02em]">{g.location.name}</h2>
             <span className="text-sm text-soft">{g.items.reduce((s, i) => s + i.quantity, 0)} pezzi</span>
           </div>
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid grid-cols-2 gap-x-3 gap-y-7 sm:grid-cols-3 sm:gap-x-4 xl:grid-cols-4">
             {g.items.map((i) => {
               const img = i.images[0]?.storageKey ?? i.productModel.images[0]?.storageKey;
               return (
-                <Link key={i.id} href={`/stock/${i.id}`} className="card group flex flex-col overflow-hidden transition hover:border-ink/25">
-                  <div className="relative aspect-[4/3] border-b border-line bg-[#F7F7F5]">
-                    <ProductImg storageKey={img} alt={i.productModel.name} className="absolute inset-0 h-full w-full p-4" />
-                    {i.isDemo && <DemoBadge className="absolute right-3 top-3 bg-white/80" />}
-                    {i.images.length > 0 && <span className="absolute left-3 top-3 rounded-full bg-white/85 px-2 py-0.5 text-[10px] uppercase tracking-wider text-soft">Foto reale</span>}
-                  </div>
-                  <div className="flex flex-1 flex-col p-4">
-                    <p className="eyebrow">{i.productModel.brand.name}</p>
-                    <p className="text-[17px] leading-tight">{i.productModel.name}</p>
-                    <p className="mt-1 line-clamp-2 text-sm text-soft">{[i.composition, i.materialsDescription].filter(Boolean).join(" · ")}</p>
-                    <p className="mt-1 text-sm">
-                      <StatusText status={i.status} />
-                      {i.status === "IN_TRASFERIMENTO" && i.transferTo && <span className="text-soft"> → {i.transferTo.name}</span>}
-                      {i.zone && <span className="text-muted"> · {i.zone.name}</span>}
-                    </p>
-                    {i.reservations[0] && <p className="text-xs text-[#7A5B24]">per {i.reservations[0].client.name}</p>}
-                    <div className="mt-auto flex items-end justify-between pt-2">
-                      <span className="text-[15px]">
-                        {can(user.role, "price:view") && i.price ? (
-                          <>
-                            {money(netPrice(i), i.currency)}
-                            {Number(i.discountPct) > 0 && <span className="ml-1.5 text-xs text-muted line-through">{money(i.price, i.currency)}</span>}
-                          </>
-                        ) : (
-                          ""
-                        )}
-                      </span>
-                      <span className="text-xs text-muted">{i.quantity > 1 ? `× ${i.quantity}` : ""}</span>
+                <Link key={i.id} href={`/stock/${i.id}`} className="pressable group flex flex-col">
+                  <div className="relative aspect-[4/5] overflow-hidden rounded-[20px] bg-[#EFEDE8]">
+                    <ProductImg storageKey={img} alt={i.productModel.name} cover className="absolute inset-0 h-full w-full transition duration-700 group-hover:scale-[1.03]" />
+                    <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2.5">
+                      <StatusPill status={i.status} />
+                      <div className="flex flex-col items-end gap-1">
+                        {i.quantity > 1 && <span className="rounded-full bg-white/90 px-2 py-1 text-[11px] font-medium shadow-sm">× {i.quantity}</span>}
+                        {i.isDemo && <DemoBadge className="bg-white/85" />}
+                      </div>
                     </div>
+                  </div>
+                  <div className="flex flex-1 flex-col px-1 pt-3">
+                    <p className="eyebrow truncate">{i.productModel.brand.name}</p>
+                    <p className="truncate text-[16px] leading-snug sm:text-[17px]">{i.productModel.name}</p>
+                    <p className="mt-0.5 line-clamp-2 text-[13px] text-soft">{[i.composition, i.materialsDescription].filter(Boolean).join(" · ")}</p>
+                    {(i.zone || (i.status === "IN_TRASFERIMENTO" && i.transferTo)) && (
+                      <p className="text-[12.5px] text-muted">
+                        {i.status === "IN_TRASFERIMENTO" && i.transferTo ? `→ ${i.transferTo.name}` : i.zone?.name}
+                      </p>
+                    )}
+                    {i.reservations[0] && <p className="text-[12.5px] text-[#7A5B24]">Riservato per {i.reservations[0].client.name}</p>}
+                    {can(user.role, "price:view") && i.price && (
+                      <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2">
+                        <span className="text-[16px]">{money(netPrice(i), i.currency)}</span>
+                        {Number(i.discountPct) > 0 && <span className="text-[12.5px] text-muted line-through">{money(i.price, i.currency)}</span>}
+                      </p>
+                    )}
                   </div>
                 </Link>
               );

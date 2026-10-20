@@ -87,7 +87,7 @@ export function toNum(v: Num): number {
 export function money(value: Num, currency: Currency | string = "EUR", decimals = 0) {
   if (value === null || value === undefined) return "Su richiesta";
   const n = toNum(value);
-  return `${currency} ${n.toLocaleString("it-IT", { minimumFractionDigits: decimals, maximumFractionDigits: 2 })}`;
+  return `${currency} ${n.toLocaleString("it-IT", { minimumFractionDigits: decimals, maximumFractionDigits: 2, useGrouping: "always" } as Intl.NumberFormatOptions)}`;
 }
 
 const TZ = "Europe/Zurich";
