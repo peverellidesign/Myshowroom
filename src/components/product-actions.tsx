@@ -84,15 +84,22 @@ export function ProductActions({
       <div className="fixed inset-x-0 bottom-[calc(66px+env(safe-area-inset-bottom))] z-30 border-t border-black/[0.06] bg-[#FAFAF8]/90 px-4 py-2.5 backdrop-blur-xl lg:static lg:z-auto lg:border-0 lg:bg-transparent lg:p-0">
         <div className="mx-auto flex max-w-xl gap-2 lg:max-w-none">
           {canQuote && (
-            <button onClick={() => setModal("quote")} className={buttonClass("primary", "lg", "min-w-0 flex-1 px-4")}>
-              <Plus size={17} className="shrink-0" /> <span className="sm:hidden">Al preventivo</span>
-              <span className="hidden sm:inline">Aggiungi al preventivo</span>
+            <button onClick={() => setModal("quote")} className={buttonClass("primary", "lg", "min-w-0 flex-1 px-4 text-[15px] sm:text-base")}>
+              <Plus size={17} className="shrink-0" />
+              <span className="truncate">Aggiungi al preventivo</span>
             </button>
           )}
           {canReserve && (
-            <button onClick={() => setModal("reserve")} className={buttonClass("secondary", "lg", "min-w-0 flex-1 px-4")} disabled={!reservable.length} title={reservable.length ? "" : "Nessun pezzo in stock"}>
-              <Bookmark size={17} className="shrink-0" /> <span className="hidden sm:inline">Riserva prodotto</span>
-              <span className="sm:hidden">Riserva</span>
+            <button
+              onClick={() => setModal("reserve")}
+              className={buttonClass("secondary", "lg", "w-[52px] shrink-0 px-0 text-[15px] min-[380px]:w-auto min-[380px]:px-5 sm:text-base lg:flex-1")}
+              disabled={!reservable.length}
+              title={reservable.length ? "Riserva prodotto" : "Nessun pezzo in stock"}
+              aria-label="Riserva prodotto"
+            >
+              <Bookmark size={17} className="shrink-0" />
+              <span className="hidden min-[380px]:inline sm:hidden">Riserva</span>
+              <span className="hidden sm:inline">Riserva prodotto</span>
             </button>
           )}
         </div>

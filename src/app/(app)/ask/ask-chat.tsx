@@ -109,8 +109,8 @@ export function AskChat({ aiEnabled, canQuote }: { aiEnabled: boolean; canQuote:
                           <div className="mt-1 flex items-center justify-between gap-2">
                             <span className="text-sm">{p.priceLabel ?? ""}</span>
                             {canQuote && (
-                              <button onClick={() => quote(p.id, p.firstStockId)} className="flex items-center gap-1 rounded-full border border-line px-2.5 py-1 text-xs hover:border-ink/30">
-                                <Plus size={12} /> Preventivo
+                              <button onClick={() => quote(p.id, p.firstStockId)} className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-line px-2.5 py-1 text-xs hover:border-ink/30">
+                                <Plus size={12} /> Aggiungi al preventivo
                               </button>
                             )}
                           </div>

@@ -109,13 +109,13 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
 
           <div className="mt-4 grid grid-cols-2 gap-2">
             {canReserve && available > 0 && (
-              <ModalButton label={<><Bookmark size={16} /> Riserva</>} title="Riserva prodotto" className={buttonClass("primary", "md")}>
+              <ModalButton label={<><Bookmark size={16} /> Riserva</>} title="Riserva prodotto" className={buttonClass("primary", "md", "col-span-2 sm:col-span-1")}>
                 <ReserveForm items={[{ id: item.id, label: `${item.location.name} — ${item.code}`, available }]} clients={clients} defaultItemId={item.id} />
               </ModalButton>
             )}
             {can(user.role, "quote:edit") && item.status !== "VENDUTO" && (
-              <ActionButton action={addToQuotation.bind(null, { productModelId: item.productModelId, inventoryItemId: item.id })} variant="secondary" size="md">
-                <Plus size={16} /> Al preventivo
+              <ActionButton action={addToQuotation.bind(null, { productModelId: item.productModelId, inventoryItemId: item.id })} variant="secondary" size="md" className="col-span-2 sm:col-span-1">
+                <Plus size={16} /> Aggiungi al preventivo
               </ActionButton>
             )}
             {canEdit && opts && (

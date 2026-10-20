@@ -96,7 +96,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
             <ActionForm action={createQuotation} redirectPattern="/preventivi/{id}">
               <input type="hidden" name="clientId" value={client.id} />
               <SubmitButton variant="secondary" size="sm">
-                <FilePlus2 size={14} /> Preventivo
+                <FilePlus2 size={14} /> Nuovo preventivo
               </SubmitButton>
             </ActionForm>
           )}
