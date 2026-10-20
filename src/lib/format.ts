@@ -117,3 +117,9 @@ export function fmtBytes(n: number) {
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
+
+/** Net price of a physical piece (list price minus its discount), or null when not priced. */
+export function netPrice(item: { price: Num; discountPct: Num }) {
+  if (item.price === null || item.price === undefined) return null;
+  return Math.round(toNum(item.price) * (1 - toNum(item.discountPct) / 100) * 100) / 100;
+}

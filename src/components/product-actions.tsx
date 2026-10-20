@@ -85,13 +85,13 @@ export function ProductActions({
         <div className="mx-auto flex max-w-xl gap-2 lg:max-w-none">
           {canQuote && (
             <button onClick={() => setModal("quote")} className={buttonClass("primary", "lg", "min-w-0 flex-1 px-4")}>
-              <Plus size={17} /> <span className="sm:hidden">Al preventivo</span>
+              <Plus size={17} className="shrink-0" /> <span className="sm:hidden">Al preventivo</span>
               <span className="hidden sm:inline">Aggiungi al preventivo</span>
             </button>
           )}
           {canReserve && (
             <button onClick={() => setModal("reserve")} className={buttonClass("secondary", "lg", "min-w-0 flex-1 px-4")} disabled={!reservable.length} title={reservable.length ? "" : "Nessun pezzo in stock"}>
-              <Bookmark size={17} /> <span className="hidden sm:inline">Riserva prodotto</span>
+              <Bookmark size={17} className="shrink-0" /> <span className="hidden sm:inline">Riserva prodotto</span>
               <span className="sm:hidden">Riserva</span>
             </button>
           )}

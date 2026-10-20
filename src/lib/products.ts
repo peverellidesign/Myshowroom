@@ -1,7 +1,8 @@
 import "server-only";
 import type { InventoryStatus, Prisma } from "@prisma/client";
 import { db } from "./db";
-import { AVAILABLE_STATUSES, toNum } from "./format";
+import { AVAILABLE_STATUSES, netPrice, toNum } from "./format";
+import { convert, getExchangeRate } from "./settings";
 
 export type ProductFilters = {
   q?: string;
@@ -126,13 +127,21 @@ export async function searchProducts(f: ProductFilters, userId?: string) {
   const orderBy: Prisma.ProductModelOrderByWithRelationInput[] =
     f.sort === "recenti" ? [{ createdAt: "desc" }] : f.sort === "brand" ? [{ brand: { name: "asc" } }, { name: "asc" }] : [{ name: "asc" }];
 
-  const rows = await db.productModel.findMany({ where, include: productInclude, orderBy, take: 300 });
+  const [rows, rate] = await Promise.all([db.productModel.findMany({ where, include: productInclude, orderBy, take: 300 }), getExchangeRate()]);
 
   let result = rows.map((p) => {
     const relevant = f.location ? p.inventory.filter((i) => i.locationId === f.location) : p.inventory;
     const available = relevant.filter((i) => AVAILABLE_STATUSES.includes(i.status));
-    const prices = available.map((i) => ({ v: toNum(i.price), c: i.currency })).filter((x) => x.v > 0);
-    const fromPrice = prices.length ? prices.sort((a, b) => a.v - b.v)[0] : p.listPrice ? { v: toNum(p.listPrice), c: p.currency } : null;
+    // Lowest net price among available pieces (compared in EUR), with its list price for strike-through.
+    const prices = available
+      .map((i) => ({ v: netPrice(i) ?? 0, list: toNum(i.price), c: i.currency }))
+      .filter((x) => x.v > 0)
+      .sort((a, b) => convert(a.v, a.c, "EUR", rate) - convert(b.v, b.c, "EUR", rate));
+    const fromPrice = prices.length
+      ? { v: prices[0].v, c: prices[0].c, list: prices[0].list > prices[0].v ? prices[0].list : null }
+      : p.listPrice
+        ? { v: toNum(p.listPrice), c: p.currency, list: null }
+        : null;
     const locations = [...new Map(relevant.map((i) => [i.location.id, i.location])).values()];
     return {
       id: p.id,
@@ -147,14 +156,16 @@ export async function searchProducts(f: ProductFilters, userId?: string) {
       statuses: [...new Set(relevant.map((i) => i.status))],
       locations: locations.map((l) => ({ id: l.id, name: l.name, type: l.type })),
       price: fromPrice,
+      materialsText: [p.description, ...relevant.map((i) => i.materialsDescription ?? "")].join(" ").toLowerCase(),
       createdAt: p.createdAt,
     };
   });
 
-  if (f.priceMin !== undefined) result = result.filter((r) => r.price && r.price.v >= f.priceMin!);
-  if (f.priceMax !== undefined) result = result.filter((r) => r.price && r.price.v <= f.priceMax!);
-  if (f.sort === "prezzo-asc") result.sort((a, b) => (a.price?.v ?? Infinity) - (b.price?.v ?? Infinity));
-  if (f.sort === "prezzo-desc") result.sort((a, b) => (b.price?.v ?? -1) - (a.price?.v ?? -1));
+  const eur = (r: (typeof result)[number]) => (r.price ? convert(r.price.v, r.price.c, "EUR", rate) : null);
+  if (f.priceMin !== undefined) result = result.filter((r) => (eur(r) ?? -1) >= f.priceMin!);
+  if (f.priceMax !== undefined) result = result.filter((r) => (eur(r) ?? Infinity) <= f.priceMax!);
+  if (f.sort === "prezzo-asc") result.sort((a, b) => (eur(a) ?? Infinity) - (eur(b) ?? Infinity));
+  if (f.sort === "prezzo-desc") result.sort((a, b) => (eur(b) ?? -1) - (eur(a) ?? -1));
   return result;
 }
 

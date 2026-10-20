@@ -11,6 +11,7 @@ import { dirname, join, resolve } from "node:path";
 import bcrypt from "bcryptjs";
 import { PrismaClient, type ImageKind, type RoleKey } from "@prisma/client";
 import { DEMO_ART, HERO_ART } from "./demo-art";
+import { hasCatalog, importCatalog } from "./import-catalog";
 
 const db = new PrismaClient();
 const STORAGE = resolve(process.env.STORAGE_DIR || "./storage");
@@ -88,6 +89,30 @@ async function main() {
         data: { userId: user.id, locationId: location.id, weekday: wd, startMinute: 10 * 60, endMinute: wd === 6 ? 17 * 60 : 18 * 60 + 30 },
       });
     }
+  }
+
+  // ── Real Peverelli catalogue (when the data folder is present) ──
+  if (hasCatalog()) {
+    const res = await importCatalog(db, {
+      storageRoot: STORAGE,
+      uploaderId: manager.id,
+      locations: { CHF: lugano.id, EUR: como.id },
+      locationNames: { CHF: "Lugano", EUR: "Como" },
+    });
+    await db.client.create({
+      data: { name: "Cliente esempio", notes: "Cliente dimostrativo per provare preventivi e prenotazioni.", preferredLocationId: lugano.id, consultantId: sales.id, isDemo: true },
+    });
+    await db.client.create({
+      data: { name: "Studio Architettura Demo", email: "studio.demo@example.com", city: "Como", notes: "Cliente dimostrativo.", preferredLocationId: como.id, consultantId: sales2.id, isDemo: true },
+    });
+    await db.task.create({ data: { title: "Verificare la sede dei pezzi importati dal PDF", priority: "ALTA", assigneeId: manager.id, createdById: admin.id } });
+    await db.setting.create({ data: { key: "site", value: { heroImageKey: res.heroKey, heroCredit: "Showroom Peverelli Design" } } });
+    await db.setting.create({ data: { key: "exchangeRate", value: { eurToChf: 0.94, source: "MANUALE", updatedAt: new Date().toISOString() } } });
+    await db.auditLog.create({ data: { userId: admin.id, action: "seed", entity: "System", summary: `Importato catalogo Peverelli: ${res.products} modelli, ${res.pieces} pezzi` } });
+    console.log(`\n✓ Catalogo Peverelli importato: ${res.brands} brand, ${res.products} modelli, ${res.pieces} pezzi in esposizione.\n`);
+    console.log(`  Amministratore: ${adminEmail}  password: ${adminPw.generated ? adminPw.value + "  (generata)" : "(da SEED_ADMIN_PASSWORD)"}`);
+    console.log(`  Utenti demo (manager@, consulente@, consulente.como@, magazzino@peverellidesign.com) password: ${demoPw.generated ? demoPw.value + "  (generata)" : "(da SEED_DEMO_PASSWORD)"}\n`);
+    return;
   }
 
   // ── Brands & categories ──────────────────────────────────

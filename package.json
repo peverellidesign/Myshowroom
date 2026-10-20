@@ -15,7 +15,8 @@
     "db:deploy": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset --force",
-    "postinstall": "node scripts/copy-pdf-worker.mjs && prisma generate"
+    "postinstall": "node scripts/copy-pdf-worker.mjs && prisma generate",
+    "start:railway": "prisma migrate deploy && tsx prisma/seed.ts && next start"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -31,11 +32,13 @@
     "nodemailer": "^10.1.7",
     "pdfjs-dist": "^4.10.38",
     "pdfkit": "^0.20.2",
+    "prisma": "^6.19.3",
     "react": "^19.1.10",
     "react-dom": "^19.1.10",
     "server-only": "^0.0.1",
     "sharp": "^0.35.5",
     "tailwind-merge": "^3.7.0",
+    "tsx": "^4.23.15",
     "zod": "^3.25.76"
   },
   "devDependencies": {
@@ -50,9 +53,10 @@
     "eslint": "^9.39.5",
     "eslint-config-next": "^15.5.28",
     "postcss": "^8.5.31",
-    "prisma": "^6.19.3",
     "tailwindcss": "^3.4.19",
-    "tsx": "^4.23.15",
     "typescript": "5.9"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

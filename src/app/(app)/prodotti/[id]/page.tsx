@@ -15,6 +15,7 @@ import {
   fmtBytes,
   fmtDate,
   money,
+  netPrice,
   toNum,
 } from "@/lib/format";
 import { Gallery } from "@/components/gallery";
@@ -115,7 +116,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
     ...inStock.map((i) => ({
       value: `stock:${i.id}`,
       label: `${i.composition ?? product.name} · ${i.location.name}`,
-      sub: `${i.materialsDescription ?? ""}${canPrices && i.price ? ` · ${money(i.price, i.currency)}` : ""}`,
+      sub: `${i.materialsDescription ?? ""}${canPrices && i.price ? ` · ${money(netPrice(i), i.currency)}` : ""}`,
       kind: "stock" as const,
     })),
     ...product.configurations.map((c) => ({
@@ -201,7 +202,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
               <>
                 <p className="text-[15px] text-ink">Disponibile in stock Peverelli</p>
                 <p className="mt-0.5 text-sm text-soft">
-                  {inStock.reduce((s, i) => s + i.quantity, 0)} pezzi · {[...new Set(inStock.map((i) => i.location.name))].join(" · ")}
+                  {(() => { const n = inStock.reduce((s, i) => s + i.quantity, 0); return `${n} ${n === 1 ? "pezzo" : "pezzi"}`; })()} · {[...new Set(inStock.map((i) => i.location.name))].join(" · ")}
                 </p>
               </>
             ) : (
@@ -213,7 +214,17 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
             {canPrices && (
               <p className="mt-3 border-t border-line pt-3 text-[17px]">
                 {inStock.some((i) => i.price)
-                  ? `da ${money(Math.min(...inStock.filter((i) => i.price).map((i) => toNum(i.price))), inStock.find((i) => i.price)!.currency)}`
+                  ? (() => {
+                      const best = inStock.filter((i) => i.price).sort((a, b) => convert(netPrice(a)!, a.currency, "EUR", rate) - convert(netPrice(b)!, b.currency, "EUR", rate))[0];
+                      const net = netPrice(best)!;
+                      return (
+                        <>
+                          {inStock.filter((i) => i.price).length > 1 ? "da " : ""}
+                          {money(net, best.currency)}
+                          {toNum(best.discountPct) > 0 && <span className="ml-2 text-[15px] text-muted line-through">{money(best.price, best.currency)}</span>}
+                        </>
+                      );
+                    })()
                   : product.listPrice
                     ? `Listino indicativo ${money(product.listPrice, product.currency)}`
                     : "Prezzo su richiesta"}
@@ -518,7 +529,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
                         ))}
                       </Link>
                       <div className="flex items-center gap-3">
-                        {canPrices && i.price && <span className="text-[15px]">{money(i.price, i.currency)}</span>}
+                        {canPrices && i.price && <span className="text-[15px]">{money(netPrice(i), i.currency)}</span>}
                         {can(user.role, "inventory:reserve") && (AVAILABLE_STATUSES.includes(i.status) || (i.status === "RISERVATO" && i.quantity > reserved)) && (
                           <ModalButton label="Riserva" title="Riserva prodotto" className={buttonClass("secondary", "sm")}>
                             <ReserveForm items={reservable} clients={clients} defaultItemId={i.id} />

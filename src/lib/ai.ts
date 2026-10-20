@@ -30,13 +30,15 @@ type SearchArgs = {
   location?: string;
   availability?: "stock" | "esposto" | "magazzino" | "ordine" | "riservato";
   colors?: string[];
+  tone?: "chiari" | "scuri";
+  materialWord?: string;
   material?: string;
   max_price_eur?: number;
   min_price_eur?: number;
 };
 
-const LIGHT = ["bianco", "latte", "avorio", "sabbia", "perla", "calacatta", "naturale", "crema", "beige", "chiaro"];
-const DARK = ["nero", "grafite", "fumé", "cognac", "noce", "bronzo", "carnico", "scuro"];
+const LIGHT = ["bianco", "latte", "avorio", "sabbia", "perla", "calacatta", "naturale", "crema", "beige", "chiaro", "chiara", "ecru", "écru", "caolino", "silver", "corda"];
+const DARK = ["nero", "nera", "grafite", "fumé", "cognac", "noce", "bronzo", "carnico", "scuro", "scura", "antracite", "ebano", "brunito", "marrone"];
 
 async function catalogVocabulary() {
   const [categories, brands, locations, materials, finishes] = await Promise.all([
@@ -73,6 +75,11 @@ async function runSearch(args: SearchArgs, rate: ExchangeRate, userId: string) {
     results = [...map.values()];
   } else {
     results = await searchProducts(filters, userId);
+  }
+  if (args.materialWord) results = results.filter((r) => r.materialsText.includes(args.materialWord!));
+  if (args.tone) {
+    const words = args.tone === "chiari" ? LIGHT : DARK;
+    results = results.filter((r) => words.some((w) => r.materialsText.includes(w)));
   }
   const eur = (p: ProductCardData) => (p.price ? convert(p.price.v, p.price.c as "EUR" | "CHF", "EUR", rate) : null);
   if (args.max_price_eur !== undefined) results = results.filter((p) => (eur(p) ?? Infinity) <= args.max_price_eur!);
@@ -148,10 +155,10 @@ export async function parseItalianQuery(text: string): Promise<{ args: SearchArg
     notes.push("disponibili in stock Peverelli");
   }
   if (/chiar/.test(t)) {
-    args.colors = vocab.finishes.filter((f) => LIGHT.some((l) => f.toLowerCase().includes(l)));
+    args.tone = "chiari";
     notes.push("toni chiari");
   } else if (/scur/.test(t)) {
-    args.colors = vocab.finishes.filter((f) => DARK.some((l) => f.toLowerCase().includes(l)));
+    args.tone = "scuri";
     notes.push("toni scuri");
   } else {
     const finish = vocab.finishes.find((f) => t.includes(f.toLowerCase()));
@@ -164,6 +171,13 @@ export async function parseItalianQuery(text: string): Promise<{ args: SearchArg
   if (mat) {
     args.material = mat.name;
     notes.push(`materiale ${mat.name}`);
+  } else {
+    // Materials written as free text on the pieces (e.g. "pelle", "marmo", "vetro").
+    const word = ["pelle", "tessuto", "marmo", "vetro", "noce", "rovere", "frassino", "ottone", "metallo", "laccato", "legno", "travertino", "pietra"].find((w) => t.includes(w));
+    if (word) {
+      args.materialWord = word;
+      notes.push(`materiale ${word}`);
+    }
   }
   const num = (s: string) => Number(s.replace(/[.'’\s]/g, "").replace(",", "."));
   const under = t.match(/(?:sotto|meno di|entro|massimo|max|fino a)\s*(?:i|ai|a)?\s*(?:€|eur|chf)?\s*([\d.'’ ]+(?:,\d+)?)\s*(k|mila)?/);
@@ -230,8 +244,10 @@ const SEARCH_TOOL: Anthropic.Beta.BetaTool = {
       brand: { type: "string" },
       location: { type: "string", description: "Sede: Como, Lugano, Milano, Dubai, Magazzino…" },
       availability: { type: "string", enum: ["stock", "esposto", "magazzino", "ordine", "riservato"], description: "stock = esposto o disponibile in una sede Peverelli; ordine = nessun pezzo fisico" },
-      colors: { type: "array", items: { type: "string" }, description: "Nomi di finiture/colori (es. Bianco latte, Sabbia)" },
+      colors: { type: "array", items: { type: "string" }, description: "Nomi di finiture/colori registrate (es. Bianco latte, Sabbia)" },
+      tone: { type: "string", enum: ["chiari", "scuri"], description: "Filtra per toni chiari o scuri cercando nei materiali" },
       material: { type: "string" },
+      materialWord: { type: "string", description: "Parola da cercare nei materiali dei pezzi, es. pelle, marmo, vetro, noce" },
       max_price_eur: { type: "number" },
       min_price_eur: { type: "number" },
     },

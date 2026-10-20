@@ -42,7 +42,7 @@ export type CardProduct = {
   inStock: boolean;
   statuses: InventoryStatus[];
   locations: { id: string; name: string }[];
-  price: { v: number; c: string } | null;
+  price: { v: number; c: string; list?: number | null } | null;
 };
 
 export function ProductCard({ p, compact }: { p: CardProduct; compact?: boolean }) {
@@ -60,7 +60,10 @@ export function ProductCard({ p, compact }: { p: CardProduct; compact?: boolean 
           </div>
         </div>
         <div className="hidden shrink-0 text-right sm:block">
-          <div className="text-[15px]">{p.price ? money(p.price.v, p.price.c) : "Su richiesta"}</div>
+          <div className="text-[15px]">
+            {p.price?.list && <span className="mr-2 text-sm text-muted line-through">{money(p.price.list, p.price.c)}</span>}
+            {p.price ? money(p.price.v, p.price.c) : "Su richiesta"}
+          </div>
           <div className="text-sm">{status ? <StatusText status={status} /> : <span className="text-muted">Su ordinazione</span>}</div>
         </div>
       </Link>
@@ -69,7 +72,7 @@ export function ProductCard({ p, compact }: { p: CardProduct; compact?: boolean 
   return (
     <Link href={`/prodotti/${p.id}`} className="card group flex flex-col overflow-hidden transition hover:border-ink/25">
       <div className="relative aspect-[4/3] border-b border-line bg-[#F7F7F5]">
-        <ProductImg storageKey={p.image?.storageKey} alt={p.name} className="h-full w-full p-4 transition duration-500 group-hover:scale-[1.02]" />
+        <ProductImg storageKey={p.image?.storageKey} alt={p.name} className="absolute inset-0 h-full w-full p-4 transition duration-500 group-hover:scale-[1.02]" />
         {p.isDemo && <DemoBadge className="absolute right-3 top-3 bg-white/80" />}
       </div>
       <div className="flex flex-1 flex-col p-4 sm:p-5">
@@ -80,7 +83,10 @@ export function ProductCard({ p, compact }: { p: CardProduct; compact?: boolean 
           {p.locations.length ? p.locations.map((l) => l.name).join(" · ") : "Non in stock"}
         </div>
         <div className="mt-1 text-[15px] text-soft">{status ? <StatusText status={status} /> : "Disponibile su ordinazione"}</div>
-        <div className="mt-auto pt-2 text-[17px] text-ink">{p.price ? money(p.price.v, p.price.c) : "Prezzo su richiesta"}</div>
+        <div className="mt-auto flex flex-wrap items-baseline gap-x-2 pt-2">
+          <span className="text-[17px] text-ink">{p.price ? money(p.price.v, p.price.c) : "Prezzo su richiesta"}</span>
+          {p.price?.list && <span className="text-sm text-muted line-through">{money(p.price.list, p.price.c)}</span>}
+        </div>
       </div>
     </Link>
   );

@@ -108,6 +108,36 @@ and refused by the file route. Uploads are validated by content (magic bytes), n
 the declared type. Password hashes are left out of every query by default. Login is
 throttled per account.
 
+## Deploying on Railway (public link)
+
+The repository includes `railway.json`. On every deploy Railway builds the app
+(`npm run build`) and starts it with `npm run start:railway`, which applies the
+migrations, seeds an empty database once, then starts Next.js on `$PORT`.
+
+1. railway.com → New project → Deploy from GitHub repo → this repository and branch.
+2. In the project: **+ New → Database → PostgreSQL**.
+3. On the app service: **Settings → Volumes → Add volume**, mount path `/data`.
+4. App service **Variables**:
+   - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}`
+   - `STORAGE_DIR` = `/data`
+   - `SEED_ADMIN_EMAIL`, `SEED_ADMIN_PASSWORD`, `SEED_DEMO_PASSWORD`
+   - optional: `SMTP_*`, `EMAIL_FROM`, `ANTHROPIC_API_KEY`, `CRON_SECRET`
+5. **Settings → Networking → Generate domain** to get the public URL.
+
+## Real Peverelli catalogue
+
+`prisma/import-catalog.ts` imports the showroom selection transcribed from the
+Peverelli PDF ("Opportunità | Selezione showroom"): 58 physical pieces, 54 models,
+14 brands, with their photos, list and discounted prices, and the PDF itself linked
+to every product at its page. The data lives in `prisma/seed-data/` (`catalog.json`,
+`images/`, the PDF). This folder is **not committed** while the repository is
+public, because it contains commercial prices. When it is present, `npm run db:seed`
+imports the real catalogue; otherwise it creates the demonstration data below.
+
+The PDF does not say where each piece is: the import places CHF-priced pieces in
+**Lugano** and EUR-priced pieces in **Como**, and says so in each piece's notes.
+Correct the location from the piece's page (Stock → piece → Modifica / Trasferisci).
+
 ## Demo data
 
 The seed creates illustrative data for B&B Italia *Le Bambole*, Vitra *EM Table*,

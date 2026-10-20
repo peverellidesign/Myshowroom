@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { can } from "@/lib/permissions";
 import { expireReservations } from "@/lib/inventory";
-import { INVENTORY_STATUS_LABELS, money } from "@/lib/format";
+import { INVENTORY_STATUS_LABELS, money, netPrice } from "@/lib/format";
 import { ProductImg, StatusText } from "@/components/product-card";
 import { DemoBadge, EmptyState, PageHeader } from "@/components/ui/misc";
 import { LinkButton } from "@/components/ui/button";
@@ -119,7 +119,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
               return (
                 <Link key={i.id} href={`/stock/${i.id}`} className="card group flex flex-col overflow-hidden transition hover:border-ink/25">
                   <div className="relative aspect-[4/3] border-b border-line bg-[#F7F7F5]">
-                    <ProductImg storageKey={img} alt={i.productModel.name} className="h-full w-full p-4" />
+                    <ProductImg storageKey={img} alt={i.productModel.name} className="absolute inset-0 h-full w-full p-4" />
                     {i.isDemo && <DemoBadge className="absolute right-3 top-3 bg-white/80" />}
                     {i.images.length > 0 && <span className="absolute left-3 top-3 rounded-full bg-white/85 px-2 py-0.5 text-[10px] uppercase tracking-wider text-soft">Foto reale</span>}
                   </div>
@@ -134,7 +134,16 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                     </p>
                     {i.reservations[0] && <p className="text-xs text-[#7A5B24]">per {i.reservations[0].client.name}</p>}
                     <div className="mt-auto flex items-end justify-between pt-2">
-                      <span className="text-[15px]">{can(user.role, "price:view") ? (i.price ? money(i.price, i.currency) : "—") : ""}</span>
+                      <span className="text-[15px]">
+                        {can(user.role, "price:view") && i.price ? (
+                          <>
+                            {money(netPrice(i), i.currency)}
+                            {Number(i.discountPct) > 0 && <span className="ml-1.5 text-xs text-muted line-through">{money(i.price, i.currency)}</span>}
+                          </>
+                        ) : (
+                          ""
+                        )}
+                      </span>
                       <span className="text-xs text-muted">{i.quantity > 1 ? `× ${i.quantity}` : ""}</span>
                     </div>
                   </div>
