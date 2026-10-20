@@ -2,9 +2,6 @@
  * Imports the real Peverelli showroom selection (prisma/seed-data/catalog.json,
  * transcribed from the "Opportunità | Selezione showroom" PDF) with its photos
  * and the PDF itself, linked to every product at the right page.
- *
- * The data folder is not committed to the repository (it contains commercial
- * prices): copy it next to this file before running the seed.
  */
 import { createHash, randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";

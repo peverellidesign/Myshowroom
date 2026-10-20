@@ -130,9 +130,9 @@ migrations, seeds an empty database once, then starts Next.js on `$PORT`.
 Peverelli PDF ("Opportunità | Selezione showroom"): 58 physical pieces, 54 models,
 14 brands, with their photos, list and discounted prices, and the PDF itself linked
 to every product at its page. The data lives in `prisma/seed-data/` (`catalog.json`,
-`images/`, the PDF). This folder is **not committed** while the repository is
-public, because it contains commercial prices. When it is present, `npm run db:seed`
-imports the real catalogue; otherwise it creates the demonstration data below.
+`images/`, the PDF). When this folder is present, `npm run db:seed` imports the real
+catalogue (also on the first Railway deploy); otherwise it creates the demonstration
+data below.
 
 The PDF does not say where each piece is: the import places CHF-priced pieces in
 **Lugano** and EUR-priced pieces in **Como**, and says so in each piece's notes.

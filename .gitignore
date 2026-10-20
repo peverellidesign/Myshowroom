@@ -9,6 +9,5 @@ public/pdf.worker.min.mjs
 next-env.d.ts
 .DS_Store
 storage-e2e/
-prisma/seed-data/
 storage-real/
 storage-realtest/
