@@ -123,3 +123,8 @@ export function netPrice(item: { price: Num; discountPct: Num }) {
   if (item.price === null || item.price === undefined) return null;
   return Math.round(toNum(item.price) * (1 - toNum(item.discountPct) / 100) * 100) / 100;
 }
+
+/** Percentage for display: at most one decimal ("27,5%"). */
+export function pct(v: Num) {
+  return `${toNum(v).toLocaleString("it-IT", { maximumFractionDigits: 1 })}%`;
+}

@@ -166,7 +166,7 @@ export function InventoryForm({
         </label>
         <label className="block">
           <span className="label">Sconto %</span>
-          <input name="discountPct" type="number" min={0} max={100} step="0.5" defaultValue={values?.discountPct ?? 0} className="field" />
+          <input name="discountPct" type="number" min={0} max={100} step="any" defaultValue={values?.discountPct ?? 0} className="field" />
         </label>
       </div>
       {isNew && (

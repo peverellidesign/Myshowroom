@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { can } from "@/lib/permissions";
 import { lineTotal, quotationTotals } from "@/lib/quotations";
 import { getExchangeRate } from "@/lib/settings";
-import { AVAILABLE_STATUSES, QUOTATION_STATUS_LABELS, fmtDate, money, toNum } from "@/lib/format";
+import { AVAILABLE_STATUSES, QUOTATION_STATUS_LABELS, fmtDate, money, pct, toNum } from "@/lib/format";
 import { AddItemForm, ClientSelect, CopyQuote } from "@/components/quote-widgets";
 import { ProductImg } from "@/components/product-card";
 import { ModalButton } from "@/components/ui/modal";
@@ -160,7 +160,7 @@ export default async function QuotationPage({ params }: { params: Promise<{ id: 
                     {i.quantity > 1 && `${i.quantity} × ${money(i.unitPrice, q.currency)} = `}
                     {toNum(i.discountPct) > 0 && <span className="mr-2 text-muted line-through">{money(toNum(i.unitPrice) * i.quantity, q.currency)}</span>}
                     {money(lineTotal(i), q.currency)}
-                    {toNum(i.discountPct) > 0 && <span className="ml-2 text-sm text-soft">−{toNum(i.discountPct)}%</span>}
+                    {toNum(i.discountPct) > 0 && <span className="ml-2 text-sm text-soft">−{pct(i.discountPct)}</span>}
                   </p>
                 </div>
                 {editable && (
@@ -178,7 +178,7 @@ export default async function QuotationPage({ params }: { params: Promise<{ id: 
                           </label>
                           <label className="block">
                             <span className="label">Sconto %</span>
-                            <input name="discountPct" type="number" min={0} max={100} step="0.5" defaultValue={toNum(i.discountPct)} className="field" />
+                            <input name="discountPct" type="number" min={0} max={100} step="any" defaultValue={toNum(i.discountPct)} className="field" />
                           </label>
                         </div>
                         <input name="description" defaultValue={i.description ?? ""} placeholder="Descrizione" className="field" />
@@ -218,7 +218,7 @@ export default async function QuotationPage({ params }: { params: Promise<{ id: 
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                 <label className="block">
                   <span className="label">Sconto globale %</span>
-                  <input name="discountPct" type="number" min={0} max={100} step="0.5" defaultValue={toNum(q.discountPct)} className="field" />
+                  <input name="discountPct" type="number" min={0} max={100} step="any" defaultValue={toNum(q.discountPct)} className="field" />
                 </label>
                 <label className="block">
                   <span className="label">Trasporto</span>
@@ -251,7 +251,7 @@ export default async function QuotationPage({ params }: { params: Promise<{ id: 
           <div className="card p-5">
             <div className="space-y-2 text-[15px]">
               <Row label="Subtotale" value={money(t.subtotal, q.currency)} />
-              {t.discount > 0 && <Row label={`Sconto ${toNum(q.discountPct)}%`} value={`− ${money(t.discount, q.currency)}`} />}
+              {t.discount > 0 && <Row label={`Sconto ${pct(q.discountPct)}`} value={`− ${money(t.discount, q.currency)}`} />}
               {toNum(q.transportCost) > 0 && <Row label="Trasporto" value={money(q.transportCost, q.currency)} />}
               {toNum(q.installationCost) > 0 && <Row label="Montaggio" value={money(q.installationCost, q.currency)} />}
               {t.vat > 0 && <Row label={`IVA ${toNum(q.vatPct)}%`} value={money(t.vat, q.currency)} />}

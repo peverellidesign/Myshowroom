@@ -16,6 +16,7 @@ import {
   fmtDate,
   money,
   netPrice,
+  pct,
   toNum,
 } from "@/lib/format";
 import { Gallery } from "@/components/gallery";
@@ -573,7 +574,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
                         value={net}
                         currency={i.currency}
                         rate={rate}
-                        note={toNum(i.discountPct) > 0 && gross ? `Prezzo pieno ${money(gross, i.currency)} · sconto ${toNum(i.discountPct)}%` : undefined}
+                        note={toNum(i.discountPct) > 0 && gross ? `Prezzo pieno ${money(gross, i.currency)} · sconto ${pct(i.discountPct)}` : undefined}
                       />
                     );
                   })}

@@ -3,7 +3,7 @@ import PDFDocument from "pdfkit";
 import sharp from "sharp";
 import { db } from "../db";
 import { getFile } from "../storage";
-import { fmtDate, money, toNum } from "../format";
+import { fmtDate, money, pct, toNum } from "../format";
 import { lineTotal, quotationTotals } from "../quotations";
 import { AppError } from "../errors";
 
@@ -115,7 +115,7 @@ export async function renderQuotationPdf(quotationId: string): Promise<{ buffer:
     }
 
     doc.fontSize(8.5).fillColor(SOFT).text(`${item.quantity} × ${money(item.unitPrice, q.currency, 0)}`, colPrice, top + 11, { width: R - colPrice, align: "right" });
-    if (toNum(item.discountPct) > 0) doc.text(`Sconto ${toNum(item.discountPct)}%`, colPrice, doc.y + 1, { width: R - colPrice, align: "right" });
+    if (toNum(item.discountPct) > 0) doc.text(`Sconto ${pct(item.discountPct)}`, colPrice, doc.y + 1, { width: R - colPrice, align: "right" });
     doc.fontSize(11).fillColor(INK).text(money(lineTotal(item), q.currency, 0), colPrice, doc.y + 3, { width: R - colPrice, align: "right" });
 
     y = Math.max(top + imgH, ty, doc.y) + 14;
@@ -132,7 +132,7 @@ export async function renderQuotationPdf(quotationId: string): Promise<{ buffer:
     y += strong ? 20 : 15;
   };
   row("Subtotale", money(totals.subtotal, q.currency, 0));
-  if (totals.discount > 0) row(`Sconto ${toNum(q.discountPct)}%`, `− ${money(totals.discount, q.currency, 0)}`);
+  if (totals.discount > 0) row(`Sconto ${pct(q.discountPct)}`, `− ${money(totals.discount, q.currency, 0)}`);
   if (toNum(q.transportCost) > 0) row("Trasporto", money(q.transportCost, q.currency, 0));
   if (toNum(q.installationCost) > 0) row("Montaggio", money(q.installationCost, q.currency, 0));
   if (totals.vat > 0) row(`IVA ${toNum(q.vatPct)}%`, money(totals.vat, q.currency, 0));

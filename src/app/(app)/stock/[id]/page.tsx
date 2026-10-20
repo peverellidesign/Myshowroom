@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { can } from "@/lib/permissions";
 import { expireReservations } from "@/lib/inventory";
 import { inventoryFormOptions } from "@/lib/inventory-options";
-import { IMAGE_KIND_LABELS, INVENTORY_STATUS_LABELS, fmtDate, fmtDateTime, money, toNum } from "@/lib/format";
+import { IMAGE_KIND_LABELS, INVENTORY_STATUS_LABELS, fmtDate, fmtDateTime, money, pct, toNum } from "@/lib/format";
 import { Gallery } from "@/components/gallery";
 import { StatusText, fileUrl } from "@/components/product-card";
 import { InventoryForm } from "@/components/inventory-form";
@@ -206,7 +206,7 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
                 ["Quantità", item.quantity],
                 ["Sede", item.location.name],
                 ["Zona", item.zone?.name],
-                ...(canPrices ? ([["Sconto", `${toNum(item.discountPct)}%`]] as [string, string][]) : []),
+                ...(canPrices ? ([["Sconto", pct(item.discountPct)]] as [string, string][]) : []),
                 ["Modello", <Link key="m" href={`/prodotti/${item.productModelId}`} className="link-quiet">Scheda prodotto</Link>],
               ]}
             />
