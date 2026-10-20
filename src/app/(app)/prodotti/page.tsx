@@ -3,7 +3,7 @@ import { GitCompareArrows, Plus } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { can } from "@/lib/permissions";
 import { getFilterOptions, parseProductFilters, searchProducts } from "@/lib/products";
-import { ProductCard } from "@/components/product-card";
+import { ProductCard, ProductMasonry } from "@/components/product-card";
 import { ProductFilters } from "@/components/product-filters";
 import { EmptyState, PageHeader } from "@/components/ui/misc";
 import { LinkButton } from "@/components/ui/button";
@@ -57,11 +57,11 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-x-3 gap-y-7 sm:grid-cols-3 sm:gap-x-4 xl:grid-cols-4">
+          <ProductMasonry>
             {products.map((p) => (
               <ProductCard key={p.id} p={p} />
             ))}
-          </div>
+          </ProductMasonry>
         )}
       </div>
     </div>

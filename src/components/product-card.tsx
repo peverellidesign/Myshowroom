@@ -9,18 +9,30 @@ export function fileUrl(key: string) {
   return `/api/files/${key}`;
 }
 
+/**
+ * Photo that adapts to its frame: crops (cover) when the photo's proportions are close
+ * to the frame's, otherwise shows the whole photo over a soft blurred copy of itself,
+ * so wide sofas in portrait cards are never cut and nothing shows empty bands.
+ */
 export function ProductImg({
   storageKey,
   alt,
   className,
   eager,
   cover,
+  w,
+  h,
+  frame,
 }: {
   storageKey?: string | null;
   alt: string;
   className?: string;
   eager?: boolean;
   cover?: boolean;
+  w?: number | null;
+  h?: number | null;
+  /** Frame aspect ratio (width / height), e.g. 0.8 for a 4:5 card. */
+  frame?: number;
 }) {
   if (!storageKey) {
     return (
@@ -29,7 +41,45 @@ export function ProductImg({
       </div>
     );
   }
-  return <img src={fileUrl(storageKey)} alt={alt} loading={eager ? "eager" : "lazy"} decoding="async" className={cn(cover ? "object-cover" : "object-contain", className)} />;
+  return <SmartPhoto src={fileUrl(storageKey)} alt={alt} className={className} eager={eager} cover={cover} w={w} h={h} frame={frame} />;
+}
+
+export function SmartPhoto({
+  src,
+  alt,
+  className,
+  eager,
+  cover = true,
+  w,
+  h,
+  frame,
+}: {
+  src: string;
+  alt: string;
+  className?: string;
+  eager?: boolean;
+  cover?: boolean;
+  w?: number | null;
+  h?: number | null;
+  frame?: number;
+}) {
+  const fits = !frame || !w || !h || Math.abs(Math.log(w / h / frame)) <= Math.log(1.32);
+  if (!cover || fits) {
+    return <img src={src} alt={alt} loading={eager ? "eager" : "lazy"} decoding="async" className={cn(cover ? "object-cover" : "object-contain", className)} />;
+  }
+  return (
+    <span className={cn("block overflow-hidden", className)}>
+      <img src={src} alt="" aria-hidden loading={eager ? "eager" : "lazy"} decoding="async" className="absolute inset-0 h-full w-full scale-125 object-cover opacity-80 blur-2xl saturate-[0.85]" />
+      <span className="absolute inset-0 bg-white/10" />
+      <img src={src} alt={alt} loading={eager ? "eager" : "lazy"} decoding="async" className="absolute inset-0 h-full w-full object-contain drop-shadow-[0_8px_24px_rgba(0,0,0,0.12)]" />
+    </span>
+  );
+}
+
+/** Natural aspect ratio of a photo, kept within calm limits (portrait 3:4 … landscape 3:2). */
+export function photoRatio(w?: number | null, h?: number | null, fallback = 0.8) {
+  if (!w || !h) return fallback;
+  return Math.min(1.5, Math.max(0.74, w / h));
 }
 
 const STATUS_TONE: Record<InventoryStatus, string> = {
@@ -69,7 +119,7 @@ export type CardProduct = {
   brand: string;
   category: string;
   isDemo: boolean;
-  image: { storageKey: string } | null;
+  image: { storageKey: string; width?: number | null; height?: number | null } | null;
   inStock: boolean;
   statuses: InventoryStatus[];
   locations: { id: string; name: string }[];
@@ -90,7 +140,7 @@ function Price({ p, large }: { p: CardProduct; large?: boolean }) {
   );
 }
 
-export function ProductCard({ p, compact, width }: { p: CardProduct; compact?: boolean; width?: string }) {
+export function ProductCard({ p, compact, height }: { p: CardProduct; compact?: boolean; /** Fixed photo height in px (carousels): width follows the photo. */ height?: number }) {
   const status = mainStatus(p);
   if (compact) {
     return (
@@ -111,9 +161,11 @@ export function ProductCard({ p, compact, width }: { p: CardProduct; compact?: b
     );
   }
   const discount = p.price?.list ? Math.round((1 - p.price.v / p.price.list) * 100) : 0;
+  const ratio = photoRatio(p.image?.width, p.image?.height);
+  const frameStyle = height ? { height, width: Math.round(height * ratio) } : { aspectRatio: String(ratio) };
   return (
-    <Link href={`/prodotti/${p.id}`} className={cn("pressable group block", width)}>
-      <div className="relative aspect-[4/5] overflow-hidden rounded-[20px] bg-[#EFEDE8]">
+    <Link href={`/prodotti/${p.id}`} className="pressable group block break-inside-avoid" style={height ? { width: frameStyle.width } : undefined}>
+      <div className="relative overflow-hidden rounded-[20px] bg-[#EFEDE8]" style={frameStyle}>
         <ProductImg storageKey={p.image?.storageKey} alt={p.name} cover className="absolute inset-0 h-full w-full transition duration-700 group-hover:scale-[1.03]" />
         <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2.5">
           {status ? <StatusPill status={status} /> : <span className="rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium text-soft shadow-sm">Su ordinazione</span>}
@@ -136,4 +188,9 @@ export function ProductCard({ p, compact, width }: { p: CardProduct; compact?: b
       </div>
     </Link>
   );
+}
+
+/** Masonry layout: every card keeps its photo's proportions. */
+export function ProductMasonry({ children }: { children: React.ReactNode }) {
+  return <div className="columns-2 gap-3 sm:columns-3 sm:gap-4 xl:columns-4 [&>*]:mb-7">{children}</div>;
 }

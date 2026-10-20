@@ -119,7 +119,7 @@ export async function createInventoryItem(form: FormData) {
     let i = 0;
     for (const f of files) {
       const s = await storeImage(f, "inventory");
-      await db.inventoryImage.create({ data: { inventoryItemId: item.id, storageKey: s.key, mimeType: s.mime, sortOrder: i++ } });
+      await db.inventoryImage.create({ data: { inventoryItemId: item.id, storageKey: s.key, mimeType: s.mime, width: s.width, height: s.height, sortOrder: i++ } });
     }
     await audit(user.id, "inventory.create", "InventoryItem", item.id, `Nuovo pezzo ${item.code}`);
     refresh(item.id, item.productModelId);
@@ -215,7 +215,7 @@ export async function uploadInventoryImages(id: string, form: FormData) {
     let i = count;
     for (const f of files) {
       const s = await storeImage(f, "inventory");
-      await db.inventoryImage.create({ data: { inventoryItemId: id, storageKey: s.key, mimeType: s.mime, sortOrder: i++, caption: optStr(form, "caption") } });
+      await db.inventoryImage.create({ data: { inventoryItemId: id, storageKey: s.key, mimeType: s.mime, width: s.width, height: s.height, sortOrder: i++, caption: optStr(form, "caption") } });
     }
     await audit(user.id, "inventory.images", "InventoryItem", id, `Caricate ${files.length} foto reali`);
     refresh(id);

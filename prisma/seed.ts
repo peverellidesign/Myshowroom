@@ -224,7 +224,7 @@ async function main() {
     for (const kind of ["FRONTALE", "LATERALE", "DETTAGLIO", "AMBIENTE"] as ImageKind[]) {
       const key = await storeSvg("products", art[kind]);
       await db.productImage.create({
-        data: { productModelId: product.id, storageKey: key, mimeType: "image/svg+xml", kind, isMain: kind === "FRONTALE", sortOrder: order++, caption: "Illustrazione dimostrativa" },
+        data: { productModelId: product.id, storageKey: key, mimeType: "image/svg+xml", width: 1200, height: 900, kind, isMain: kind === "FRONTALE", sortOrder: order++, caption: "Illustrazione dimostrativa" },
       });
     }
     const configs: Record<string, string> = {};

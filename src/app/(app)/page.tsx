@@ -59,7 +59,10 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
   const categories = [...new Map(products.map((p) => [p.category, p])).keys()]
     .map((name) => {
       const items = products.filter((p) => p.category === name);
-      return { name, count: items.length, cover: items.find((p) => p.image)?.image?.storageKey ?? null };
+      // Prefer a portrait photo: it fills the tall tile without cropping the product.
+      const withImg = items.filter((p) => p.image);
+      const best = withImg.find((p) => p.image!.width && p.image!.height && p.image!.height >= p.image!.width * 0.9) ?? withImg[0];
+      return { name, count: items.length, cover: best?.image ?? null };
     })
     .sort((a, b) => b.count - a.count);
 
@@ -89,7 +92,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     <div className="animate-fadein">
       {/* Hero */}
       <section className="bleed relative lg:mx-0">
-        <div className="relative h-[68svh] max-h-[620px] min-h-[440px] overflow-hidden bg-[#2a2826] lg:h-auto lg:min-h-0 lg:rounded-[28px] lg:pb-[40%]">
+        <div className="relative h-[62svh] max-h-[600px] min-h-[430px] overflow-hidden bg-[#2a2826] lg:h-auto lg:min-h-0 lg:rounded-[28px] lg:pb-[40%]">
           {site.heroImageKey && <img src={`/api/files/${site.heroImageKey}`} alt="" className="absolute inset-0 h-full w-full object-cover" fetchPriority="high" />}
           <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/5 to-black/70" />
           <div className="absolute inset-x-0 bottom-0 px-5 pb-7 sm:px-8 sm:pb-9 lg:px-10 lg:pb-10">
@@ -153,7 +156,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <div className="snap-row">
             {categories.map((c) => (
               <Link key={c.name} href={`/prodotti?q=${encodeURIComponent(c.name)}`} className="pressable relative h-[180px] w-[140px] overflow-hidden rounded-[20px] bg-[#EFEDE8] sm:h-[200px] sm:w-[160px]">
-                <ProductImg storageKey={c.cover} alt="" cover className="absolute inset-0 h-full w-full" />
+                <ProductImg storageKey={c.cover?.storageKey} alt="" cover className="absolute inset-0 h-full w-full" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/5 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-3">
                   <p className="text-[15px] text-white">{c.name}</p>
@@ -171,7 +174,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <SectionTitle title="Le migliori opportunità" href="/prodotti?ordina=prezzo-asc" />
           <div className="snap-row">
             {bestDeals.map((p) => (
-              <ProductCard key={p.id} p={p} width="w-[46vw] max-w-[230px] sm:w-[220px]" />
+              <ProductCard key={p.id} p={p} height={250} />
             ))}
           </div>
         </section>
@@ -183,7 +186,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <SectionTitle title={`In esposizione a ${g.location.name}`} href={`/stock?sede=${g.location.id}`} />
           <div className="snap-row">
             {g.items.slice(0, 12).map((p) => (
-              <ProductCard key={p.id} p={p} width="w-[46vw] max-w-[230px] sm:w-[220px]" />
+              <ProductCard key={p.id} p={p} height={250} />
             ))}
           </div>
         </section>

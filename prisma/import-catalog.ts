@@ -8,6 +8,7 @@ import { existsSync } from "node:fs";
 import { copyFile, mkdir, readFile, stat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import type { PrismaClient } from "@prisma/client";
+import sharp from "sharp";
 
 export const SEED_DATA_DIR = resolve(process.env.SEED_DATA_DIR || "prisma/seed-data");
 export const hasCatalog = () => existsSync(join(SEED_DATA_DIR, "catalog.json"));
@@ -77,6 +78,14 @@ export async function importCatalog(
 ) {
   const catalog = JSON.parse(await readFile(join(SEED_DATA_DIR, "catalog.json"), "utf8")) as Catalog;
   const imgDir = join(SEED_DATA_DIR, "images");
+  // Real pixel sizes of the photos inside the PDF (written by scripts/extract-catalog-images.py).
+  const sizesPath = join(imgDir, "sizes.json");
+  const sizes: Record<string, [number, number]> = existsSync(sizesPath) ? JSON.parse(await readFile(sizesPath, "utf8")) : {};
+  const dims = async (file: string) => {
+    if (sizes[file]) return { width: sizes[file][0], height: sizes[file][1] };
+    const m = await sharp(join(imgDir, file)).metadata();
+    return { width: m.width, height: m.height };
+  };
 
   // Brands and categories
   const brandIds = new Map<string, string>();
@@ -150,8 +159,9 @@ export async function importCatalog(
       const src = join(imgDir, file);
       if (!existsSync(src)) continue;
       const stored = await storeCopy(opts.storageRoot, "products", src);
+      const meta = await dims(file);
       await db.productImage.create({
-        data: { productModelId: product.id, storageKey: stored, mimeType: "image/jpeg", kind: "SHOWROOM", caption: it.composition, credit: "Foto Peverelli Design", isMain: product.images === 0, sortOrder: product.images },
+        data: { productModelId: product.id, storageKey: stored, mimeType: "image/jpeg", width: meta.width, height: meta.height, kind: "SHOWROOM", caption: it.composition, credit: "Foto Peverelli Design", isMain: product.images === 0, sortOrder: product.images },
       });
       product.images++;
     }
@@ -187,7 +197,8 @@ export async function importCatalog(
     const real = join(imgDir, it.images[0]);
     if (existsSync(real)) {
       const stored = await storeCopy(opts.storageRoot, "inventory", real);
-      await db.inventoryImage.create({ data: { inventoryItemId: item.id, storageKey: stored, mimeType: "image/jpeg", caption: it.composition } });
+      const meta = await dims(it.images[0]);
+      await db.inventoryImage.create({ data: { inventoryItemId: item.id, storageKey: stored, mimeType: "image/jpeg", width: meta.width, height: meta.height, caption: it.composition } });
     }
     pieces++;
   }

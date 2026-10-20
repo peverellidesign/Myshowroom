@@ -74,7 +74,7 @@ export async function storeImage(file: File, prefix: string) {
     throw new AppError("SVG non consentito.");
   }
   const stored = await putFile(prefix, EXT[mime], buf);
-  return { ...stored, mime };
+  return { ...stored, mime, ...(await imageSize(buf)) };
 }
 
 /** Validates an uploaded PDF by its header. */
@@ -92,4 +92,16 @@ function countPdfPages(buf: Buffer): number | null {
   const text = buf.toString("latin1");
   const matches = text.match(/\/Type\s*\/Page[^s]/g);
   return matches ? matches.length : null;
+}
+
+/** Pixel size of an image (respecting EXIF rotation), or nulls when unreadable. */
+export async function imageSize(buf: Buffer): Promise<{ width: number | null; height: number | null }> {
+  try {
+    const sharp = (await import("sharp")).default;
+    const m = await sharp(buf).metadata();
+    const rotated = (m.orientation ?? 1) >= 5;
+    return { width: (rotated ? m.height : m.width) ?? null, height: (rotated ? m.width : m.height) ?? null };
+  } catch {
+    return { width: null, height: null };
+  }
 }

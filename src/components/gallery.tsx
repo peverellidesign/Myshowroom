@@ -4,13 +4,22 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronLeft, ChevronRight, Expand, X, ZoomIn, ZoomOut } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { photoRatio } from "./product-card";
 
-export type GalleryImage = { id: string; src: string; kind: string; kindLabel: string; caption?: string | null; credit?: string | null };
+/** Below this native width (px) a photo is displayed as a print, at most PRINT_SCALE× its size. */
+const LOW_RES = 220;
+const PRINT_SCALE = 2.6;
+
+export type GalleryImage = { id: string; src: string; kind: string; kindLabel: string; caption?: string | null; credit?: string | null; w?: number | null; h?: number | null };
 
 export function Gallery({ images, name, showKinds = true }: { images: GalleryImage[]; name: string; showKinds?: boolean }) {
   const [index, setIndex] = useState(0);
   const [full, setFull] = useState(false);
   const current = images[index];
+  // Low-resolution photos are shown as a centred "print" instead of being blown up.
+  const isPrint = (img?: GalleryImage) => !!img?.w && img.w < LOW_RES;
+  // The carousel takes the first photo's natural proportions (within calm limits).
+  const ratio = images.length ? (isPrint(images[0]) ? 1 : photoRatio(images[0].w, images[0].h)) : 0.8;
   const kinds = [...new Map(images.map((img, i) => [img.kind, { label: img.kindLabel, index: i }])).values()];
 
   if (!images.length) {
@@ -30,8 +39,26 @@ export function Gallery({ images, name, showKinds = true }: { images: GalleryIma
           }}
         >
           {images.map((img, i) => (
-            <button key={img.id} onClick={() => (setIndex(i), setFull(true))} className="relative aspect-[4/5] w-full shrink-0 snap-center sm:aspect-[4/3]" aria-label={`Apri immagine ${i + 1}`}>
-              <img src={img.src} alt={`${name} — ${img.kindLabel}`} className="absolute inset-0 h-full w-full object-cover" loading={i === 0 ? "eager" : "lazy"} />
+            <button
+              key={img.id}
+              onClick={() => (setIndex(i), setFull(true))}
+              className="relative max-h-[72svh] w-full shrink-0 snap-center"
+              style={{ aspectRatio: String(ratio) }}
+              aria-label={`Apri immagine ${i + 1}`}
+            >
+              {isPrint(img) ? (
+                <span className="absolute inset-0 flex items-center justify-center p-8">
+                  <img
+                    src={img.src}
+                    alt={`${name} — ${img.kindLabel}`}
+                    loading={i === 0 ? "eager" : "lazy"}
+                    style={{ maxWidth: img.w! * PRINT_SCALE }}
+                    className="max-h-full w-full rounded-[10px] object-contain shadow-[0_14px_40px_rgba(0,0,0,0.18)]"
+                  />
+                </span>
+              ) : (
+                <img src={img.src} alt={`${name} — ${img.kindLabel}`} loading={i === 0 ? "eager" : "lazy"} className="absolute inset-0 h-full w-full object-cover" />
+              )}
             </button>
           ))}
         </div>
@@ -47,9 +74,18 @@ export function Gallery({ images, name, showKinds = true }: { images: GalleryIma
 
       {/* Desktop */}
       <div className="hidden lg:block">
-        <div className="group relative aspect-[4/3] overflow-hidden rounded-[24px] bg-[#EFEDE8]">
+        <div
+          className="group relative max-h-[78vh] overflow-hidden rounded-[24px] bg-[#EFEDE8]"
+          style={isPrint(current) ? { aspectRatio: "4 / 3" } : { aspectRatio: String(photoRatio(current.w, current.h)), maxWidth: `calc(78vh * ${photoRatio(current.w, current.h)})`, marginInline: "auto" }}
+        >
           <button onClick={() => setFull(true)} className="block h-full w-full cursor-zoom-in" aria-label="Apri a schermo intero">
-            <img src={current.src} alt={`${name} — ${current.kindLabel}`} className="h-full w-full object-contain" />
+            {isPrint(current) ? (
+              <span className="absolute inset-0 flex items-center justify-center p-10">
+                <img src={current.src} alt={`${name} — ${current.kindLabel}`} style={{ maxWidth: current.w! * PRINT_SCALE }} className="max-h-full w-full rounded-[12px] object-contain shadow-[0_18px_50px_rgba(0,0,0,0.18)]" />
+              </span>
+            ) : (
+              <img src={current.src} alt={`${name} — ${current.kindLabel}`} className="absolute inset-0 h-full w-full object-cover" />
+            )}
           </button>
           {current.credit && <span className="absolute bottom-3 left-3 rounded-full bg-black/30 px-3 py-1 text-xs text-white backdrop-blur">{current.credit}</span>}
           <button onClick={() => setFull(true)} className="absolute right-3 top-3 rounded-full bg-white/90 p-2 text-ink shadow-sm" aria-label="Schermo intero">

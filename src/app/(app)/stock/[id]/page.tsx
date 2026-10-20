@@ -56,8 +56,8 @@ export default async function InventoryItemPage({ params }: { params: Promise<{ 
   const reserved = active.reduce((s, r) => s + r.quantity, 0);
   const available = ["ESPOSTO", "DISPONIBILE", "RISERVATO"].includes(item.status) ? item.quantity - reserved : 0;
   const images = [
-    ...item.images.map((img) => ({ id: img.id, src: fileUrl(img.storageKey), kind: "REALE", kindLabel: "Foto reale", caption: img.caption })),
-    ...item.productModel.images.map((img) => ({ id: img.id, src: fileUrl(img.storageKey), kind: img.kind, kindLabel: IMAGE_KIND_LABELS[img.kind], caption: img.caption, credit: img.credit })),
+    ...item.images.map((img) => ({ id: img.id, src: fileUrl(img.storageKey), kind: "REALE", kindLabel: "Foto reale", caption: img.caption, w: img.width, h: img.height })),
+    ...item.productModel.images.map((img) => ({ id: img.id, src: fileUrl(img.storageKey), kind: img.kind, kindLabel: IMAGE_KIND_LABELS[img.kind], caption: img.caption, credit: img.credit, w: img.width, h: img.height })),
   ];
   const net = item.price ? toNum(item.price) * (1 - toNum(item.discountPct) / 100) : null;
   const manualStatuses: InventoryStatus[] = ["ESPOSTO", "DISPONIBILE", "VENDUTO", "NON_DISPONIBILE"];

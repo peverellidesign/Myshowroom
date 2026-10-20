@@ -192,6 +192,8 @@ model ProductImage {
   configuration   ProductConfiguration? @relation(fields: [configurationId], references: [id], onDelete: SetNull)
   storageKey      String
   mimeType        String
+  width           Int?
+  height          Int?
   kind            ImageKind             @default(FRONTALE)
   caption         String?
   credit          String?
@@ -336,6 +338,8 @@ model InventoryImage {
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
   storageKey      String
   mimeType        String
+  width           Int?
+  height          Int?
   caption         String?
   sortOrder       Int           @default(0)
   createdAt       DateTime      @default(now())

@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { can } from "@/lib/permissions";
 import { expireReservations } from "@/lib/inventory";
 import { INVENTORY_STATUS_LABELS, money, netPrice } from "@/lib/format";
-import { ProductImg, StatusPill } from "@/components/product-card";
+import { ProductImg, StatusPill, photoRatio } from "@/components/product-card";
 import { DemoBadge, EmptyState, PageHeader } from "@/components/ui/misc";
 import { LinkButton } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -113,13 +113,13 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
             <h2 className="text-[24px] font-light tracking-[-0.02em]">{g.location.name}</h2>
             <span className="text-sm text-soft">{g.items.reduce((s, i) => s + i.quantity, 0)} pezzi</span>
           </div>
-          <div className="grid grid-cols-2 gap-x-3 gap-y-7 sm:grid-cols-3 sm:gap-x-4 xl:grid-cols-4">
+          <div className="columns-2 gap-3 sm:columns-3 sm:gap-4 xl:columns-4 [&>*]:mb-7">
             {g.items.map((i) => {
-              const img = i.images[0]?.storageKey ?? i.productModel.images[0]?.storageKey;
+              const img = i.images[0] ?? i.productModel.images[0];
               return (
-                <Link key={i.id} href={`/stock/${i.id}`} className="pressable group flex flex-col">
-                  <div className="relative aspect-[4/5] overflow-hidden rounded-[20px] bg-[#EFEDE8]">
-                    <ProductImg storageKey={img} alt={i.productModel.name} cover className="absolute inset-0 h-full w-full transition duration-700 group-hover:scale-[1.03]" />
+                <Link key={i.id} href={`/stock/${i.id}`} className="pressable group flex break-inside-avoid flex-col">
+                  <div className="relative overflow-hidden rounded-[20px] bg-[#EFEDE8]" style={{ aspectRatio: String(photoRatio(img?.width, img?.height)) }}>
+                    <ProductImg storageKey={img?.storageKey} alt={i.productModel.name} cover className="absolute inset-0 h-full w-full transition duration-700 group-hover:scale-[1.03]" />
                     <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2.5">
                       <StatusPill status={i.status} />
                       <div className="flex flex-col items-end gap-1">

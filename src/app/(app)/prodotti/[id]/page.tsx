@@ -138,6 +138,8 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
     kindLabel: IMAGE_KIND_LABELS[img.kind],
     caption: img.caption,
     credit: img.credit,
+    w: img.width,
+    h: img.height,
   }));
 
   // Manufacturer options: union of compatibility across configurations.
@@ -200,6 +202,26 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
               )}
             </div>
           </div>
+
+          {(() => {
+            const piece = inStock[0] ?? visibleInventory[0];
+            const facts = [
+              ["Misure", piece?.dimensions ?? product.dimensions],
+              ["Materiali", piece?.materialsDescription],
+              ["Designer", product.designer],
+            ].filter((f): f is [string, string] => !!f[1]);
+            if (!facts.length) return null;
+            return (
+              <dl className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                {facts.map(([k, v]) => (
+                  <div key={k} className="rounded-2xl bg-[#F1EFEA] px-4 py-2.5">
+                    <dt className="text-[11px] uppercase tracking-[0.12em] text-muted">{k}</dt>
+                    <dd className="mt-0.5 text-[14px] leading-snug text-ink">{v}</dd>
+                  </div>
+                ))}
+              </dl>
+            );
+          })()}
 
           <div className="mt-5 rounded-[20px] bg-white p-4 shadow-soft">
             {inStock.length > 0 ? (

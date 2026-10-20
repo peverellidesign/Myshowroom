@@ -106,7 +106,7 @@ export async function uploadProductImages(productModelId: string, form: FormData
     for (const file of files) {
       const stored = await storeImage(file, "products");
       await db.productImage.create({
-        data: { productModelId, configurationId, storageKey: stored.key, mimeType: stored.mime, kind, caption, credit, sortOrder: order++, isMain: count === 0 && order === 1 },
+        data: { productModelId, configurationId, storageKey: stored.key, mimeType: stored.mime, width: stored.width, height: stored.height, kind, caption, credit, sortOrder: order++, isMain: count === 0 && order === 1 },
       });
     }
     await audit(user.id, "product.images.upload", "ProductModel", productModelId, `Caricate ${files.length} immagini`);
