@@ -108,6 +108,15 @@ and refused by the file route. Uploads are validated by content (magic bytes), n
 the declared type. Password hashes are left out of every query by default. Login is
 throttled per account.
 
+## Deploying on Render (one click)
+
+`render.yaml` is a Render Blueprint: open
+<https://render.com/deploy?repo=https://github.com/peverellidesign/Myshowroom>,
+fill in `SEED_ADMIN_EMAIL` and `SEED_ADMIN_PASSWORD` when asked and confirm.
+Render creates the web service (Starter plan, needed for the persistent disk),
+a PostgreSQL 16 database and a 1 GB disk mounted at `/data`. The first start
+runs the migrations and imports the real catalogue.
+
 ## Deploying on Railway (public link)
 
 The repository includes `railway.json`. On every deploy Railway builds the app
