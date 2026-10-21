@@ -8,7 +8,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
   if (await getCurrentUser()) redirect("/");
   const { next } = await searchParams;
   return (
-    <main className="relative grid min-h-dvh bg-[#2a2826] lg:grid-cols-[1.15fr_1fr] lg:bg-canvas">
+    <main className="relative grid min-h-dvh bg-night lg:grid-cols-[1.15fr_1fr] lg:bg-canvas">
       {/* Photo: full screen on phones and tablets, left half on desktop */}
       <div className="absolute inset-0 lg:relative">
         <img src="/api/public/hero" alt="" className="absolute inset-0 h-full w-full object-cover" />
@@ -27,7 +27,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             <div className="text-[44px] font-medium tracking-[-0.02em] text-ink">myshowroom</div>
             <div className="mt-2 text-[12px] uppercase tracking-brand text-muted">by Peverelli Design</div>
           </div>
-          <h1 className="text-[28px] font-light tracking-[-0.02em] lg:mt-8 lg:text-[18px] lg:font-normal lg:tracking-normal lg:text-soft">
+          <h1 className="text-[28px] font-normal tracking-[-0.02em] lg:mt-8 lg:text-[18px] lg:font-normal lg:tracking-normal lg:text-soft">
             <span className="lg:hidden">Your showroom. Everywhere.</span>
             <span className="hidden lg:inline">Your showroom. Everywhere.</span>
           </h1>

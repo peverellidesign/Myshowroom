@@ -7,15 +7,15 @@ import { fmtDate, money, pct, toNum } from "../format";
 import { lineTotal, quotationTotals } from "../quotations";
 import { AppError } from "../errors";
 
-const INK = "#171717";
-const SOFT = "#777773";
-const LINE = "#E8E8E4";
+const INK = "#161A1A";
+const SOFT = "#707070";
+const LINE = "#DDDDDD";
 
 async function thumb(key: string | undefined) {
   if (!key) return null;
   try {
     const raw = await getFile(key);
-    return await sharp(raw, { density: 144 }).resize(360, 270, { fit: "contain", background: "#F7F7F5" }).flatten({ background: "#F7F7F5" }).jpeg({ quality: 82 }).toBuffer();
+    return await sharp(raw, { density: 144 }).resize(360, 270, { fit: "contain", background: "#F7F7F7" }).flatten({ background: "#F7F7F7" }).jpeg({ quality: 82 }).toBuffer();
   } catch {
     return null;
   }
@@ -97,7 +97,7 @@ export async function renderQuotationPdf(quotationId: string): Promise<{ buffer:
     const top = y;
     const img = images[idx];
     if (img) doc.image(img, L, top, { fit: [imgW, imgH], align: "center", valign: "center" });
-    else doc.rect(L, top, imgW, imgH).fillColor("#F4F3F0").fill();
+    else doc.rect(L, top, imgW, imgH).fillColor("#F7F7F7").fill();
 
     doc.fontSize(7.5).fillColor(SOFT).text(item.brandName.toUpperCase(), colText, top, { width: colPrice - colText - 10, characterSpacing: 0.8 });
     doc.fontSize(12).fillColor(INK).text(item.modelName, colText, top + 11, { width: colPrice - colText - 10 });

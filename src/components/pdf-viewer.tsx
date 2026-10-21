@@ -116,7 +116,7 @@ export function PdfViewer({ src, downloadHref, initialPage = 1, title }: { src: 
   const setZoomStep = (dir: 1 | -1) => setZoom(Math.min(4, Math.max(0.3, Math.round((effectiveScale + dir * 0.25) * 100) / 100)));
 
   return (
-    <div ref={containerRef} className={cn("flex flex-col overflow-hidden rounded-2xl border border-line bg-[#EDEDEA]", full && "fixed inset-0 z-[95] rounded-none border-0")}>
+    <div ref={containerRef} className={cn("flex flex-col overflow-hidden rounded-2xl border border-line bg-mist", full && "fixed inset-0 z-[95] rounded-none border-0")}>
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line bg-white px-3 py-2">
         <div className="flex items-center gap-1">
           <button onClick={() => go(-1)} disabled={page <= 1} className="rounded-full p-2 hover:bg-selected disabled:opacity-30" aria-label="Pagina precedente">

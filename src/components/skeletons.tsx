@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 
 /** Calm placeholders shown instantly while a page loads. */
 export function Bone({ className }: { className?: string }) {
-  return <div className={cn("animate-pulse rounded-[14px] bg-[#ECEAE5]", className)} />;
+  return <div className={cn("animate-pulse rounded-[14px] bg-mist", className)} />;
 }
 
 export function CardGridSkeleton({ count = 8 }: { count?: number }) {

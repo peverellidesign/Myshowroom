@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Bookmark, CalendarPlus, FilePlus2, FileUp, Footprints, Search, Sofa, Store, UserPlus, Warehouse } from "lucide-react";
+import { Bookmark, CalendarPlus, FilePlus2, FileUp, Footprints, Search, Sofa, Store, UserPlus, Warehouse } from "lucide-react";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { can } from "@/lib/permissions";
@@ -19,10 +19,10 @@ function greeting() {
 function SectionTitle({ title, href, cta = "Vedi tutto" }: { title: string; href?: string; cta?: string }) {
   return (
     <div className="mb-3 flex items-end justify-between gap-3">
-      <h2 className="text-[22px] font-light tracking-[-0.02em] text-ink sm:text-[26px]">{title}</h2>
+      <h2 className="text-[22px] font-normal tracking-[-0.02em] text-ink sm:text-[26px]">{title}</h2>
       {href && (
-        <Link href={href} className="flex shrink-0 items-center gap-1 text-[13px] text-soft hover:text-ink">
-          {cta} <ArrowRight size={14} />
+        <Link href={href} className="link-line pb-1.5">
+          {cta}
         </Link>
       )}
     </div>
@@ -92,12 +92,12 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
     <div className="animate-fadein">
       {/* Hero */}
       <section className="bleed relative lg:mx-0">
-        <div className="relative h-[62svh] max-h-[600px] min-h-[430px] overflow-hidden bg-[#2a2826] lg:h-auto lg:min-h-0 lg:rounded-[28px] lg:pb-[40%]">
+        <div className="relative h-[62svh] max-h-[600px] min-h-[430px] overflow-hidden bg-night lg:h-auto lg:min-h-0 lg:rounded-[28px] lg:pb-[40%]">
           {site.heroImageKey && <img src={`/api/files/${site.heroImageKey}`} alt="" className="absolute inset-0 h-full w-full object-cover" fetchPriority="high" />}
           <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/5 to-black/70" />
           <div className="absolute inset-x-0 bottom-0 px-5 pb-7 sm:px-8 sm:pb-9 lg:px-10 lg:pb-10">
             <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-white/75">Your showroom, everywhere.</p>
-            <h1 className="mt-2 max-w-xl text-[40px] font-light leading-[1.02] tracking-[-0.03em] text-white sm:text-[54px]">Tutto a portata di mano.</h1>
+            <h1 className="mt-2 max-w-xl text-[40px] font-normal leading-[1.02] tracking-[-0.03em] text-white sm:text-[54px]">Tutto a portata di mano.</h1>
             <p className="mt-2 max-w-md text-[16px] text-white/80 sm:text-[17px]">Prodotti, disponibilità e persone. In un unico spazio.</p>
             <form action="/prodotti" className="mt-5 flex max-w-xl items-center gap-2 rounded-full bg-white/95 p-1.5 pl-5 shadow-2xl backdrop-blur">
               <Search size={18} className="shrink-0 text-soft" />
@@ -114,7 +114,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
       <section className="mt-7 flex items-end justify-between gap-4">
         <div>
           <p className="text-[13px] capitalize text-muted">{today}</p>
-          <p className="text-[26px] font-light tracking-[-0.02em] sm:text-[30px]">
+          <p className="text-[26px] font-normal tracking-[-0.02em] sm:text-[30px]">
             {greeting()}, {firstName}.
           </p>
         </div>
@@ -143,7 +143,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
         ].map((s) => (
           <Link key={s.label} href={s.href} className="pressable rounded-[20px] bg-white p-4 shadow-soft">
             <s.icon size={18} strokeWidth={1.4} className="text-muted" />
-            <p className="mt-3 text-[30px] font-light leading-none tracking-tight tabular-nums sm:text-[36px]">{s.value}</p>
+            <p className="mt-3 text-[30px] font-normal leading-none tracking-tight tabular-nums sm:text-[36px]">{s.value}</p>
             <p className="mt-1 text-[12.5px] text-soft">{s.label}</p>
           </Link>
         ))}
@@ -155,7 +155,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
           <SectionTitle title="Categorie" href="/prodotti" cta="Tutti i prodotti" />
           <div className="snap-row">
             {categories.map((c) => (
-              <Link key={c.name} href={`/prodotti?q=${encodeURIComponent(c.name)}`} className="pressable relative h-[180px] w-[140px] overflow-hidden rounded-[20px] bg-[#EFEDE8] sm:h-[200px] sm:w-[160px]">
+              <Link key={c.name} href={`/prodotti?q=${encodeURIComponent(c.name)}`} className="pressable relative h-[180px] w-[140px] overflow-hidden rounded-[20px] bg-mist sm:h-[200px] sm:w-[160px]">
                 <ProductImg storageKey={c.cover?.storageKey} alt="" cover className="absolute inset-0 h-full w-full" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/5 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-3">
@@ -203,7 +203,7 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
                 <Link key={a.id} href={`/agenda?giorno=${a.startsAt.toISOString().slice(0, 10)}`} className="pressable flex items-center gap-4 rounded-[20px] bg-white p-4 shadow-soft">
                   <div className="flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl bg-selected">
                     <span className="text-[10px] uppercase tracking-wider text-muted">{fmtDate(a.startsAt, { day: undefined, year: undefined, month: "short" })}</span>
-                    <span className="text-[20px] font-light leading-none">{new Date(a.startsAt).toLocaleDateString("it-IT", { day: "numeric", timeZone: "Europe/Zurich" })}</span>
+                    <span className="text-[20px] font-normal leading-none">{new Date(a.startsAt).toLocaleDateString("it-IT", { day: "numeric", timeZone: "Europe/Zurich" })}</span>
                   </div>
                   <div className="min-w-0">
                     <p className="truncate text-[15px]">{a.client?.name ?? "Cliente"}</p>
@@ -243,10 +243,10 @@ export default async function HomePage({ searchParams }: { searchParams: Promise
               const overdue = t.dueDate && t.dueDate < new Date();
               return (
                 <Link key={t.id} href="/attivita" className="pressable flex items-start gap-3 rounded-[20px] bg-white p-4 shadow-soft">
-                  <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", t.priority === "ALTA" ? "bg-[#B5523F]" : "bg-[#C9C6BF]")} />
+                  <span className={cn("mt-1.5 h-2 w-2 shrink-0 rounded-full", t.priority === "ALTA" ? "bg-danger" : "bg-[#C4C7C7]")} />
                   <div className="min-w-0">
                     <p className="text-[15px]">{t.title}</p>
-                    <p className={cn("text-[13px]", overdue ? "text-[#8E2F2F]" : "text-soft")}>
+                    <p className={cn("text-[13px]", overdue ? "text-danger" : "text-soft")}>
                       {t.dueDate ? `Scadenza ${fmtDate(t.dueDate)}` : "Senza scadenza"}
                       {t.client && ` · ${t.client.name}`}
                     </p>

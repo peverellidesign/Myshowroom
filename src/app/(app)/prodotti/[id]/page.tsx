@@ -170,7 +170,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="eyebrow">{product.brand.name}</p>
-              <h1 className="mt-1 text-[36px] font-light leading-[1.05] tracking-[-0.03em] sm:text-[46px]">{product.name}</h1>
+              <h1 className="mt-1 text-[36px] font-normal leading-[1.05] tracking-[-0.03em] sm:text-[46px]">{product.name}</h1>
               <p className="text-[17px] text-soft">{product.category.name}</p>
             </div>
             <div className="flex items-center gap-2 pt-1">
@@ -214,7 +214,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
             return (
               <dl className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                 {facts.map(([k, v]) => (
-                  <div key={k} className="rounded-2xl bg-[#F1EFEA] px-4 py-2.5">
+                  <div key={k} className="rounded-2xl bg-surface px-4 py-2.5">
                     <dt className="text-[11px] uppercase tracking-[0.12em] text-muted">{k}</dt>
                     <dd className="mt-0.5 text-[14px] leading-snug text-ink">{v}</dd>
                   </div>
@@ -333,7 +333,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                 {product.images.map((img) => (
                   <div key={img.id} className="card overflow-hidden">
-                    <a href={fileUrl(img.storageKey)} target="_blank" className="block aspect-square bg-[#FBFBFA]">
+                    <a href={fileUrl(img.storageKey)} target="_blank" className="block aspect-square bg-surface">
                       <img src={fileUrl(img.storageKey)} alt={img.caption ?? product.name} className="h-full w-full object-contain p-3" loading="lazy" />
                     </a>
                     <div className="border-t border-line p-3">
@@ -390,7 +390,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
                   return (
                     <div key={c.id} className="card overflow-hidden">
                       {img && (
-                        <div className="aspect-[16/9] border-b border-line bg-[#FBFBFA]">
+                        <div className="aspect-[16/9] border-b border-line bg-surface">
                           <img src={fileUrl(img.storageKey)} alt={c.name} className="h-full w-full object-contain p-3" loading="lazy" />
                         </div>
                       )}
@@ -494,8 +494,8 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
               ) : (
                 <div className="card divide-y divide-line">
                   {visibleInventory.map((i) => (
-                    <Link key={i.id} href={`/stock/${i.id}`} className="flex items-center gap-4 p-4 hover:bg-[#FCFCFB]">
-                      <span className="h-11 w-11 shrink-0 rounded-full border border-black/10" style={{ background: i.finish?.hexColor ?? "#e5e5e0" }} />
+                    <Link key={i.id} href={`/stock/${i.id}`} className="flex items-center gap-4 p-4 hover:bg-surface">
+                      <span className="h-11 w-11 shrink-0 rounded-full border border-black/10" style={{ background: i.finish?.hexColor ?? "#ECEDEF" }} />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-[15px]">{i.materialsDescription ?? [i.material?.name, i.finish?.name].filter(Boolean).join(" / ")}</p>
                         <p className="text-sm text-soft">
@@ -518,12 +518,12 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="card p-5">
                 <p className="eyebrow">Disponibile in stock Peverelli</p>
-                <p className="mt-2 text-3xl font-light">{inStock.reduce((s, i) => s + i.quantity, 0)}</p>
+                <p className="mt-2 text-3xl font-normal">{inStock.reduce((s, i) => s + i.quantity, 0)}</p>
                 <p className="text-sm text-soft">pezzi fisici esposti o disponibili</p>
               </div>
               <div className="card p-5">
                 <p className="eyebrow">Disponibile su ordinazione</p>
-                <p className="mt-2 text-3xl font-light">{product.configurations.length}</p>
+                <p className="mt-2 text-3xl font-normal">{product.configurations.length}</p>
                 <p className="text-sm text-soft">composizioni ordinabili dal produttore</p>
               </div>
             </div>
@@ -549,7 +549,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
                           {i.isDemo && " · dato dimostrativo"}
                         </p>
                         {i.reservations.map((r) => (
-                          <p key={r.id} className="mt-1 text-xs text-[#7A5B24]">
+                          <p key={r.id} className="mt-1 text-xs text-warning">
                             Riservato per {r.client.name} fino al {fmtDate(r.expiresAt)}
                           </p>
                         ))}
@@ -645,7 +645,7 @@ export default async function ProductPage({ params, searchParams }: { params: Pr
                   return (
                     <div key={d.id} className="card p-5">
                       <div className="flex items-start gap-4">
-                        <div className="flex h-14 w-11 shrink-0 items-center justify-center rounded-md border border-line bg-[#FBFBFA] text-[10px] font-medium tracking-wider text-soft">PDF</div>
+                        <div className="flex h-14 w-11 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-[10px] font-medium tracking-wider text-soft">PDF</div>
                         <div className="min-w-0 flex-1">
                           <Link href={`/documenti/${d.id}${l.startPage ? `?pagina=${l.startPage}` : ""}`} className="text-[17px] leading-snug hover:underline">
                             {d.title}

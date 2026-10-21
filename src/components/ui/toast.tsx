@@ -23,7 +23,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
             key={t.id}
             className={cn(
               "pointer-events-auto flex max-w-md animate-fadein items-center gap-3 rounded-full px-5 py-3 text-sm shadow-[0_8px_30px_rgba(0,0,0,0.12)]",
-              t.error ? "bg-[#8E2F2F] text-white" : "bg-charcoal text-white",
+              t.error ? "bg-danger text-white" : "bg-charcoal text-white",
             )}
           >
             {t.error ? <X size={16} /> : <Check size={16} />}

@@ -68,7 +68,7 @@ export default async function DocumentsPage({ searchParams }: { searchParams: Pr
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {docs.map((d) => (
             <Link key={d.id} href={`/documenti/${d.id}`} className="card flex gap-4 p-5 transition hover:border-ink/25">
-              <div className="flex h-16 w-12 shrink-0 items-center justify-center rounded-md border border-line bg-[#FBFBFA] text-[10px] font-medium tracking-wider text-soft">PDF</div>
+              <div className="flex h-16 w-12 shrink-0 items-center justify-center rounded-md border border-line bg-surface text-[10px] font-medium tracking-wider text-soft">PDF</div>
               <div className="min-w-0 flex-1">
                 <p className="text-[16px] leading-snug">{d.title}</p>
                 <p className="text-sm text-soft">{d.brand?.name ?? "—"}</p>

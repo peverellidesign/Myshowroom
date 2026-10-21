@@ -23,7 +23,7 @@ export function Gallery({ images, name, showKinds = true }: { images: GalleryIma
   const kinds = [...new Map(images.map((img, i) => [img.kind, { label: img.kindLabel, index: i }])).values()];
 
   if (!images.length) {
-    return <div className="bleed flex aspect-[4/5] items-center justify-center bg-[#EFEDE8] text-sm uppercase tracking-[0.2em] text-muted lg:aspect-[4/3] lg:rounded-[24px]">Nessuna immagine</div>;
+    return <div className="bleed flex aspect-[4/5] items-center justify-center bg-mist text-sm uppercase tracking-[0.2em] text-muted lg:aspect-[4/3] lg:rounded-[24px]">Nessuna immagine</div>;
   }
 
   return (
@@ -31,7 +31,7 @@ export function Gallery({ images, name, showKinds = true }: { images: GalleryIma
       {/* Phones & tablets: full-bleed swipeable carousel */}
       <div className="bleed relative lg:hidden">
         <div
-          className="flex snap-x snap-mandatory overflow-x-auto bg-[#EFEDE8] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex snap-x snap-mandatory overflow-x-auto bg-mist [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
           onScroll={(e) => {
             const el = e.currentTarget;
             const i = Math.round(el.scrollLeft / el.clientWidth);
@@ -75,7 +75,7 @@ export function Gallery({ images, name, showKinds = true }: { images: GalleryIma
       {/* Desktop */}
       <div className="hidden lg:block">
         <div
-          className="group relative max-h-[78vh] overflow-hidden rounded-[24px] bg-[#EFEDE8]"
+          className="group relative max-h-[78vh] overflow-hidden rounded-[24px] bg-mist"
           style={isPrint(current) ? { aspectRatio: "4 / 3" } : { aspectRatio: String(photoRatio(current.w, current.h)), maxWidth: `calc(78vh * ${photoRatio(current.w, current.h)})`, marginInline: "auto" }}
         >
           <button onClick={() => setFull(true)} className="block h-full w-full cursor-zoom-in" aria-label="Apri a schermo intero">
@@ -125,7 +125,7 @@ export function Gallery({ images, name, showKinds = true }: { images: GalleryIma
               <button
                 key={img.id}
                 onClick={() => setIndex(i)}
-                className={cn("h-16 w-20 shrink-0 overflow-hidden rounded-xl bg-[#EFEDE8] ring-offset-2 ring-offset-canvas", i === index && "ring-1 ring-ink")}
+                className={cn("h-16 w-20 shrink-0 overflow-hidden rounded-xl bg-mist ring-offset-2 ring-offset-canvas", i === index && "ring-1 ring-ink")}
                 aria-label={`Immagine ${i + 1}`}
               >
                 <img src={img.src} alt="" className="h-full w-full object-cover" loading="lazy" />
@@ -163,7 +163,7 @@ function Lightbox({ images, start, onClose, name }: { images: GalleryImage[]; st
   });
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex flex-col bg-[#FAFAF8]" role="dialog" aria-label="Galleria a schermo intero">
+    <div className="fixed inset-0 z-[100] flex flex-col bg-surface" role="dialog" aria-label="Galleria a schermo intero">
       <div className="flex items-center justify-between px-4 py-3">
         <span className="text-sm text-soft">
           {name} · {images[i].kindLabel} · {i + 1}/{images.length}

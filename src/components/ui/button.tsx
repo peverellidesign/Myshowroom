@@ -6,11 +6,11 @@ type Variant = "primary" | "secondary" | "ghost" | "danger" | "subtle";
 type Size = "sm" | "md" | "lg" | "icon";
 
 const variants: Record<Variant, string> = {
-  primary: "bg-charcoal text-white hover:bg-black disabled:bg-[#bdbdb8]",
+  primary: "bg-charcoal text-white hover:bg-black disabled:bg-[#B9BCBC]",
   secondary: "border border-line bg-white text-ink hover:border-ink/30",
   ghost: "text-ink hover:bg-selected",
-  subtle: "bg-selected text-ink hover:bg-[#e7e7e3]",
-  danger: "border border-[#e9cfcf] bg-white text-[#9b2c2c] hover:bg-[#fbf3f3]",
+  subtle: "bg-selected text-ink hover:bg-[#E2E3E5]",
+  danger: "border border-danger-line bg-white text-danger hover:bg-danger-bg",
 };
 
 const sizes: Record<Size, string> = {

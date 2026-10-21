@@ -5,14 +5,22 @@ export default {
   theme: {
     extend: {
       colors: {
-        canvas: "#FAFAF8",
+        // Peverelli palette (peverellicode.com): pure white, cool greys, deep anthracite.
+        canvas: "#FFFFFF",
         card: "#FFFFFF",
-        ink: "#171717",
-        soft: "#777773",
-        muted: "#888882",
-        line: "#E8E8E4",
-        selected: "#F0F0ED",
-        charcoal: "#222222",
+        surface: "#F7F7F7",
+        mist: "#ECEDEF",
+        ink: "#161A1A",
+        soft: "#5F6363",
+        muted: "#707070",
+        line: "#DDDDDD",
+        selected: "#ECEDEF",
+        charcoal: "#292E2E",
+        night: "#161A1A",
+        danger: { DEFAULT: "#B42318", bg: "#FCEEEE", line: "#F2CFCC" },
+        success: { DEFAULT: "#2E6B47", bg: "#ECF4EF" },
+        warning: { DEFAULT: "#8A5A0F", bg: "#F8F1E4" },
+        info: { DEFAULT: "#3B5B8C" },
       },
       fontFamily: {
         sans: ['"Inter Variable"', '"Helvetica Neue"', "Helvetica", "Arial", "sans-serif"],

@@ -31,7 +31,7 @@ export default async function PublicBookingPage({ params }: { params: Promise<{ 
 
   return (
     <main className="min-h-dvh">
-      <div className="relative h-[34vh] min-h-[220px] overflow-hidden bg-[#E9E6E0]">
+      <div className="relative h-[34vh] min-h-[220px] overflow-hidden bg-mist">
         <img src="/api/public/hero" alt="" className="absolute inset-0 h-full w-full object-cover" />
       </div>
       <div className="mx-auto -mt-10 max-w-2xl px-4 pb-16">

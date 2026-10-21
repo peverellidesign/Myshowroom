@@ -60,7 +60,7 @@ export default async function QuotationsPage({ searchParams }: { searchParams: P
       ) : (
         <div className="card divide-y divide-line">
           {quotations.map((q) => (
-            <Link key={q.id} href={`/preventivi/${q.id}`} className="flex items-center gap-4 p-4 hover:bg-[#FCFCFB] sm:p-5">
+            <Link key={q.id} href={`/preventivi/${q.id}`} className="flex items-center gap-4 p-4 hover:bg-surface sm:p-5">
               <div className="min-w-0 flex-1">
                 <p className="text-sm text-soft">
                   {q.number} {q.id === user.activeQuotationId && <Badge className="ml-1">Attivo</Badge>}

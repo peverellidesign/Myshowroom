@@ -61,7 +61,7 @@ export function EmailComposer({
       <input type="hidden" name="quotationId" value={quotation?.id ?? ""} />
       <input type="hidden" name="template" value={template} />
       {!configured && (
-        <div className="flex gap-3 rounded-2xl border border-[#eadfca] bg-[#FBF7EF] px-4 py-3 text-sm text-[#6b5320]">
+        <div className="flex gap-3 rounded-2xl border border-warning/20 bg-warning-bg px-4 py-3 text-sm text-warning">
           <AlertCircle size={18} className="mt-0.5 shrink-0" />
           <p>
             <strong className="font-medium">Invio non disponibile.</strong> Il server email (SMTP) non è ancora configurato dall&apos;amministratore. Puoi salvare la bozza nello storico del

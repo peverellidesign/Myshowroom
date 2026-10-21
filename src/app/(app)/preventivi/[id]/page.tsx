@@ -142,7 +142,7 @@ export default async function QuotationPage({ params }: { params: Promise<{ id: 
             {q.items.length === 0 && <div className="card p-8 text-center text-sm text-soft">Nessun articolo. Aggiungi prodotti dalle schede o con «Aggiungi riga».</div>}
             {q.items.map((i) => (
               <div key={i.id} className="card flex gap-4 p-4 sm:p-5">
-                <ProductImg storageKey={i.productModel?.images[0]?.storageKey} alt={i.modelName} className="hidden h-20 w-24 shrink-0 rounded-xl bg-[#F7F7F5] sm:flex" />
+                <ProductImg storageKey={i.productModel?.images[0]?.storageKey} alt={i.modelName} className="hidden h-20 w-24 shrink-0 rounded-xl bg-surface sm:flex" />
                 <div className="min-w-0 flex-1">
                   <p className="text-sm text-soft">{i.brandName}</p>
                   <p className="text-[19px] leading-tight">

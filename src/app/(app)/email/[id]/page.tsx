@@ -57,7 +57,7 @@ export default async function EmailPage({ params }: { params: Promise<{ id: stri
         </div>
       ) : (
         <>
-          {msg.error && <p className="mb-4 rounded-2xl bg-[#F6ECEC] px-4 py-3 text-sm text-[#8E2F2F]">Ultimo tentativo: {msg.error}</p>}
+          {msg.error && <p className="mb-4 rounded-2xl bg-danger-bg px-4 py-3 text-sm text-danger">Ultimo tentativo: {msg.error}</p>}
           <div className="card p-5 sm:p-7">
             <EmailComposer
               configured={emailConfigured()}

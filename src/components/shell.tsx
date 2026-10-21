@@ -112,7 +112,7 @@ export function Shell({
       <header
         className={cn(
           "pt-safe sticky top-0 z-30 transition-colors duration-300",
-          home && !scrolled ? "border-b border-transparent bg-transparent lg:border-line lg:bg-white/90" : "border-b border-line bg-[#FAFAF8]/85 backdrop-blur-xl",
+          home && !scrolled ? "border-b border-transparent bg-transparent lg:border-line lg:bg-white/90" : "border-b border-line bg-white/85 backdrop-blur-xl",
           home && "max-lg:-mb-[60px]",
         )}
       >
@@ -151,7 +151,7 @@ export function Shell({
             const active = isActive(n.href);
             return (
               <Link key={n.href} href={n.href} className="pressable flex min-w-0 flex-1 flex-col items-center gap-0.5 py-1" aria-current={active ? "page" : undefined}>
-                <span className={cn("flex h-8 w-14 items-center justify-center rounded-full transition-colors", active ? "bg-charcoal text-white" : "text-[#6f6f6a]")}>
+                <span className={cn("flex h-8 w-14 items-center justify-center rounded-full transition-colors", active ? "bg-charcoal text-white" : "text-muted")}>
                   <n.icon size={20} strokeWidth={active ? 1.9 : 1.5} />
                 </span>
                 <span className={cn("text-[10.5px] tracking-[0.01em]", active ? "font-medium text-ink" : "text-muted")}>{n.short ?? n.label}</span>
@@ -162,7 +162,7 @@ export function Shell({
             <span
               className={cn(
                 "flex h-8 w-14 items-center justify-center rounded-full transition-colors",
-                secondaryMobile.some((n) => isActive(n.href)) ? "bg-charcoal text-white" : "text-[#6f6f6a]",
+                secondaryMobile.some((n) => isActive(n.href)) ? "bg-charcoal text-white" : "text-muted",
               )}
             >
               <LayoutGrid size={20} strokeWidth={1.5} />
@@ -217,7 +217,7 @@ function Avatar({ name, large }: { name: string; large?: boolean }) {
     .map((w) => w[0]?.toUpperCase())
     .join("");
   return (
-    <span className={cn("flex shrink-0 items-center justify-center rounded-full bg-[#EDEBE6] font-medium text-[#555]", large ? "h-12 w-12 text-base" : "h-9 w-9 text-xs")}>
+    <span className={cn("flex shrink-0 items-center justify-center rounded-full bg-mist font-medium text-charcoal", large ? "h-12 w-12 text-base" : "h-9 w-9 text-xs")}>
       {initials || <CircleUserRound size={18} />}
     </span>
   );

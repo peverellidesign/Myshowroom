@@ -94,7 +94,7 @@ export function AskChat({ aiEnabled, canQuote }: { aiEnabled: boolean; canQuote:
                     const status = p.statuses.includes("ESPOSTO") ? "ESPOSTO" : p.statuses.includes("DISPONIBILE") ? "DISPONIBILE" : p.statuses[0];
                     return (
                       <div key={p.id} className="card flex gap-3 p-3">
-                        <Link href={`/prodotti/${p.id}`} className="h-20 w-24 shrink-0 overflow-hidden rounded-xl bg-[#F7F7F5]">
+                        <Link href={`/prodotti/${p.id}`} className="h-20 w-24 shrink-0 overflow-hidden rounded-xl bg-surface">
                           {p.image && <img src={`/api/files/${p.image.storageKey}`} alt={p.name} className="h-full w-full object-contain p-1.5" />}
                         </Link>
                         <div className="min-w-0 flex-1">

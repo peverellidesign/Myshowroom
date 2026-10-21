@@ -45,7 +45,7 @@ export default async function AdminHome() {
           {status.map(([k, v, ok]) => (
             <div key={k} className="flex items-center justify-between gap-4 p-4 text-[15px]">
               <span>{k}</span>
-              <span className={ok ? "text-soft" : "text-[#7A5B24]"}>{v}</span>
+              <span className={ok ? "text-soft" : "text-warning"}>{v}</span>
             </div>
           ))}
         </div>

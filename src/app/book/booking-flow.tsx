@@ -130,7 +130,7 @@ export function BookingFlow({ slug, locationName, types, days }: { slug: string;
             <input type="checkbox" name="privacy" value="1" required className="mt-0.5 h-5 w-5 accent-[#222]" />
             Acconsento al trattamento dei dati personali per la gestione dell&apos;appuntamento.
           </label>
-          {error && <p className="px-1 text-sm text-[#8E2F2F]">{error}</p>}
+          {error && <p className="px-1 text-sm text-danger">{error}</p>}
           <button type="submit" disabled={pending} className={buttonClass("primary", "lg", "w-full")}>
             {pending && <Loader2 size={16} className="animate-spin" />}
             Conferma appuntamento a {locationName}

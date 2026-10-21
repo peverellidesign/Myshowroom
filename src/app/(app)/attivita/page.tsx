@@ -65,7 +65,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
             return (
               <div key={t.id} className="card flex items-start gap-4 p-4 sm:p-5">
                 <ActionButton action={toggleTask.bind(null, t.id)} variant="ghost" size="icon" className="-m-1.5 shrink-0" title={t.completed ? "Segna da fare" : "Completa"}>
-                  <span className={cn("flex h-7 w-7 items-center justify-center rounded-full border", t.completed ? "border-charcoal bg-charcoal text-white" : "border-[#c8c8c2]")}>
+                  <span className={cn("flex h-7 w-7 items-center justify-center rounded-full border", t.completed ? "border-charcoal bg-charcoal text-white" : "border-[#C4C7C7]")}>
                     {t.completed && <Check size={15} />}
                   </span>
                 </ActionButton>
@@ -73,7 +73,7 @@ export default async function TasksPage({ searchParams }: { searchParams: Promis
                   <p className={cn("text-[17px]", t.completed && "text-muted line-through")}>{t.title}</p>
                   {t.description && <p className="text-sm text-soft">{t.description}</p>}
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted">
-                    <span className={cn(overdue && "text-[#8E2F2F]")}>{t.dueDate ? `Scadenza ${fmtDate(t.dueDate)}` : "Senza scadenza"}</span>
+                    <span className={cn(overdue && "text-danger")}>{t.dueDate ? `Scadenza ${fmtDate(t.dueDate)}` : "Senza scadenza"}</span>
                     {t.priority === "ALTA" && <Badge tone="danger">Priorità alta</Badge>}
                     {t.priority === "BASSA" && <Badge tone="outline">{TASK_PRIORITY_LABELS.BASSA}</Badge>}
                     {t.assignee && <span>{t.assignee.name}</span>}

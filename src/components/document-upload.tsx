@@ -79,7 +79,7 @@ export function DocumentUpload({
       </button>
       <Modal open={open} onClose={() => progress === null && setOpen(false)} title="Carica documento" wide>
         <form ref={ref} onSubmit={submit} className="space-y-4">
-          <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[#cfcfc9] bg-white px-6 py-8 text-center hover:border-ink/40">
+          <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-[#C4C7C7] bg-white px-6 py-8 text-center hover:border-ink/40">
             <FileUp size={26} strokeWidth={1.3} className="text-soft" />
             {file ? (
               <span className="text-[15px]">

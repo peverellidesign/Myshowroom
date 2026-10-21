@@ -19,7 +19,7 @@ export default async function SettingsPage() {
         <h2 className="text-xl">Cambio EUR / CHF</h2>
         <p className="mt-1 text-sm text-soft">Usato per convertire i prezzi nei preventivi. La fonte è sempre indicata.</p>
         <div className="mt-4 flex items-center justify-between rounded-2xl bg-selected px-4 py-3">
-          <span className="text-2xl font-light">1 EUR = {rate.eurToChf.toFixed(4)} CHF</span>
+          <span className="text-2xl font-normal">1 EUR = {rate.eurToChf.toFixed(4)} CHF</span>
           <Badge tone={rate.source === "BCE" ? "success" : "warning"}>{rate.source === "BCE" ? "Verificato BCE" : "Manuale"}</Badge>
         </div>
         <p className="mt-2 text-xs text-muted">
@@ -42,7 +42,7 @@ export default async function SettingsPage() {
               Server SMTP configurato: <strong className="font-medium">{smtp.host}</strong> · mittente {smtp.from}
             </p>
           ) : (
-            <p className="text-[#6b5320]">
+            <p className="text-warning">
               Invio non disponibile. Configura le variabili d&apos;ambiente <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code>, <code>SMTP_PASSWORD</code> e <code>EMAIL_FROM</code> sul server (le credenziali non vengono salvate nel database).
             </p>
           )}
@@ -64,7 +64,7 @@ export default async function SettingsPage() {
         <h2 className="text-xl">Immagine di copertina</h2>
         <p className="mt-1 text-sm text-soft">Mostrata nella Home, nella pagina di accesso e nelle pagine di prenotazione.</p>
         <div className="mt-4 grid gap-4 sm:grid-cols-[280px_1fr]">
-          <div className="aspect-[16/10] overflow-hidden rounded-2xl bg-[#E9E6E0]">
+          <div className="aspect-[16/10] overflow-hidden rounded-2xl bg-mist">
             {site.heroImageKey && <img src={`/api/files/${site.heroImageKey}`} alt="" className="h-full w-full object-cover" />}
           </div>
           <ActionForm action={uploadHero} resetOnSuccess className="space-y-3">

@@ -82,7 +82,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
           >
             <div className="flex items-center justify-between text-soft">
               {l.type === "WAREHOUSE" ? <Warehouse size={18} strokeWidth={1.4} /> : <Store size={18} strokeWidth={1.4} />}
-              <span className="text-2xl font-light text-[#555]">{String(countFor(l.id)).padStart(2, "0")}</span>
+              <span className="text-2xl font-normal text-charcoal">{String(countFor(l.id)).padStart(2, "0")}</span>
             </div>
             <p className="mt-4 text-[15px]">{l.name}</p>
             <p className="text-xs text-muted">{l.type === "WAREHOUSE" ? "Magazzino" : "Showroom"} · {l.city}</p>
@@ -110,7 +110,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
       {groups.map((g) => (
         <section key={g.location.id} className="mb-10">
           <div className="mb-3 flex items-baseline justify-between">
-            <h2 className="text-[24px] font-light tracking-[-0.02em]">{g.location.name}</h2>
+            <h2 className="text-[24px] font-normal tracking-[-0.02em]">{g.location.name}</h2>
             <span className="text-sm text-soft">{g.items.reduce((s, i) => s + i.quantity, 0)} pezzi</span>
           </div>
           <div className="columns-2 gap-3 sm:columns-3 sm:gap-4 xl:columns-4 [&>*]:mb-7">
@@ -118,7 +118,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
               const img = i.images[0] ?? i.productModel.images[0];
               return (
                 <Link key={i.id} href={`/stock/${i.id}`} className="pressable group flex break-inside-avoid flex-col">
-                  <div className="relative overflow-hidden rounded-[20px] bg-[#EFEDE8]" style={{ aspectRatio: String(photoRatio(img?.width, img?.height)) }}>
+                  <div className="relative overflow-hidden rounded-[20px] bg-mist" style={{ aspectRatio: String(photoRatio(img?.width, img?.height)) }}>
                     <ProductImg storageKey={img?.storageKey} alt={i.productModel.name} cover className="absolute inset-0 h-full w-full transition duration-700 group-hover:scale-[1.03]" />
                     <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2.5">
                       <StatusPill status={i.status} />
@@ -137,7 +137,7 @@ export default async function StockPage({ searchParams }: { searchParams: Promis
                         {i.status === "IN_TRASFERIMENTO" && i.transferTo ? `→ ${i.transferTo.name}` : i.zone?.name}
                       </p>
                     )}
-                    {i.reservations[0] && <p className="text-[12.5px] text-[#7A5B24]">Riservato per {i.reservations[0].client.name}</p>}
+                    {i.reservations[0] && <p className="text-[12.5px] text-warning">Riservato per {i.reservations[0].client.name}</p>}
                     {can(user.role, "price:view") && i.price && (
                       <p className="mt-1.5 flex flex-wrap items-baseline gap-x-2">
                         <span className="text-[16px]">{money(netPrice(i), i.currency)}</span>

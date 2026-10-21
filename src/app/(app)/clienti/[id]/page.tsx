@@ -143,7 +143,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
               {client.interests.length === 0 && <p className="p-4 text-sm text-soft">Nessun prodotto.</p>}
               {client.interests.map((i) => (
                 <div key={i.productModelId} className="flex items-center gap-3 p-3">
-                  <ProductImg storageKey={i.productModel.images[0]?.storageKey} alt={i.productModel.name} className="h-12 w-14 shrink-0 rounded-lg bg-[#F7F7F5]" />
+                  <ProductImg storageKey={i.productModel.images[0]?.storageKey} alt={i.productModel.name} className="h-12 w-14 shrink-0 rounded-lg bg-surface" />
                   <Link href={`/prodotti/${i.productModelId}`} className="min-w-0 flex-1">
                     <p className="truncate text-[15px]">{i.productModel.name}</p>
                     <p className="text-xs text-muted">{i.productModel.brand.name}</p>
@@ -182,7 +182,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
                   </ActionButton>
                   <div className="min-w-0 flex-1">
                     <p className={`text-[15px] ${t.completed ? "text-muted line-through" : ""}`}>{t.title}</p>
-                    <p className={`text-xs ${!t.completed && t.dueDate && t.dueDate < now ? "text-[#8E2F2F]" : "text-muted"}`}>
+                    <p className={`text-xs ${!t.completed && t.dueDate && t.dueDate < now ? "text-danger" : "text-muted"}`}>
                       {t.dueDate ? fmtDate(t.dueDate) : "Senza scadenza"} {t.assignee && `· ${t.assignee.name}`}
                     </p>
                   </div>
@@ -230,7 +230,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
               <div className="card divide-y divide-line">
                 {client.quotations.length === 0 && <p className="p-4 text-sm text-soft">Nessun preventivo.</p>}
                 {client.quotations.map((q) => (
-                  <Link key={q.id} href={`/preventivi/${q.id}`} className="flex items-center justify-between gap-3 p-4 hover:bg-[#FCFCFB]">
+                  <Link key={q.id} href={`/preventivi/${q.id}`} className="flex items-center justify-between gap-3 p-4 hover:bg-surface">
                     <div>
                       <p className="text-[15px]">{q.number}</p>
                       <p className="text-xs text-muted">{fmtDate(q.createdAt)}</p>
@@ -269,7 +269,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
               <div className="card divide-y divide-line">
                 {client.appointments.length === 0 && <p className="p-4 text-sm text-soft">Nessun appuntamento.</p>}
                 {client.appointments.map((a) => (
-                  <Link key={a.id} href={`/agenda?giorno=${a.startsAt.toISOString().slice(0, 10)}`} className="block p-4 hover:bg-[#FCFCFB]">
+                  <Link key={a.id} href={`/agenda?giorno=${a.startsAt.toISOString().slice(0, 10)}`} className="block p-4 hover:bg-surface">
                     <p className="text-[15px]">
                       {fmtDateTime(a.startsAt)} · {a.location.name}
                     </p>
@@ -285,7 +285,7 @@ export default async function ClientPage({ params }: { params: Promise<{ id: str
               <div className="card divide-y divide-line">
                 {client.emails.length === 0 && <p className="p-4 text-sm text-soft">Nessuna email.</p>}
                 {client.emails.map((e) => (
-                  <Link key={e.id} href={`/email/${e.id}`} className="block p-4 hover:bg-[#FCFCFB]">
+                  <Link key={e.id} href={`/email/${e.id}`} className="block p-4 hover:bg-surface">
                     <div className="flex items-center justify-between gap-2">
                       <p className="truncate text-[15px]">{e.subject}</p>
                       <Badge tone={e.status === "INVIATA" ? "success" : e.status === "ERRORE" ? "danger" : "neutral"}>

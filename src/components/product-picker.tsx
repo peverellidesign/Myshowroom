@@ -38,7 +38,7 @@ export function ProductPicker({
         {filtered.map((p) => {
           const on = selected.includes(p.id);
           return (
-            <div key={p.id} className={cn("flex items-center gap-3 px-4 py-2", on && "bg-[#FAFAF8]")}>
+            <div key={p.id} className={cn("flex items-center gap-3 px-4 py-2", on && "bg-surface")}>
               <button type="button" onClick={() => toggle(p.id)} className="flex min-w-0 flex-1 items-center gap-3 text-left">
                 <span className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-md border", on ? "border-charcoal bg-charcoal text-white" : "border-line")}>
                   {on && <Check size={13} />}

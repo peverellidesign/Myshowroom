@@ -44,11 +44,11 @@ export function Card({ children, className }: { children: ReactNode; className?:
 
 const badgeTones = {
   neutral: "bg-selected text-ink",
-  dark: "bg-[#555] text-white",
+  dark: "bg-charcoal text-white",
   outline: "border border-line text-soft",
-  success: "bg-[#EEF2EC] text-[#3F5A3A]",
-  warning: "bg-[#F5EFE4] text-[#7A5B24]",
-  danger: "bg-[#F6ECEC] text-[#8E2F2F]",
+  success: "bg-success-bg text-success",
+  warning: "bg-warning-bg text-warning",
+  danger: "bg-danger-bg text-danger",
 };
 
 export function Badge({ children, tone = "neutral", className }: { children: ReactNode; tone?: keyof typeof badgeTones; className?: string }) {
@@ -81,7 +81,7 @@ export function Stat({ label, value, icon, href }: { label: string; value: React
   const inner = (
     <div className="card h-full p-5 transition hover:border-ink/20">
       <div className="mb-6 text-soft">{icon}</div>
-      <div className="text-[40px] font-light leading-none tracking-tight text-[#555]">{value}</div>
+      <div className="text-[40px] font-normal leading-none tracking-tight text-charcoal">{value}</div>
       <div className="mt-2 text-sm text-soft">{label}</div>
     </div>
   );

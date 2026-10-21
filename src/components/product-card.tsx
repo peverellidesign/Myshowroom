@@ -36,7 +36,7 @@ export function ProductImg({
 }) {
   if (!storageKey) {
     return (
-      <div className={cn("flex items-center justify-center bg-[#EFEDE8] text-[11px] uppercase tracking-[0.2em] text-muted", className)}>
+      <div className={cn("flex items-center justify-center bg-mist text-[11px] uppercase tracking-[0.2em] text-muted", className)}>
         Nessuna immagine
       </div>
     );
@@ -84,19 +84,19 @@ export function photoRatio(w?: number | null, h?: number | null, fallback = 0.8)
 
 const STATUS_TONE: Record<InventoryStatus, string> = {
   ESPOSTO: "text-ink",
-  DISPONIBILE: "text-[#3F5A3A]",
-  RISERVATO: "text-[#7A5B24]",
+  DISPONIBILE: "text-success",
+  RISERVATO: "text-warning",
   VENDUTO: "text-muted",
-  IN_TRASFERIMENTO: "text-[#4A5A7A]",
+  IN_TRASFERIMENTO: "text-info",
   NON_DISPONIBILE: "text-muted",
 };
 
 const STATUS_DOT: Record<InventoryStatus, string> = {
   ESPOSTO: "bg-ink",
-  DISPONIBILE: "bg-[#5E8A55]",
-  RISERVATO: "bg-[#C09040]",
+  DISPONIBILE: "bg-[#3E8E5E]",
+  RISERVATO: "bg-[#C08A2E]",
   VENDUTO: "bg-muted",
-  IN_TRASFERIMENTO: "bg-[#6A7FA8]",
+  IN_TRASFERIMENTO: "bg-info",
   NON_DISPONIBILE: "bg-muted",
 };
 
@@ -145,7 +145,7 @@ export function ProductCard({ p, compact, height }: { p: CardProduct; compact?: 
   if (compact) {
     return (
       <Link href={`/prodotti/${p.id}`} className="pressable flex items-center gap-4 rounded-[20px] bg-white p-2.5 pr-4 shadow-soft">
-        <ProductImg storageKey={p.image?.storageKey} alt={p.name} cover className="h-[84px] w-[84px] shrink-0 rounded-[14px] bg-[#EFEDE8]" />
+        <ProductImg storageKey={p.image?.storageKey} alt={p.name} cover className="h-[84px] w-[84px] shrink-0 rounded-[14px] bg-mist" />
         <div className="min-w-0 flex-1">
           <div className="eyebrow truncate">{p.brand}</div>
           <div className="truncate text-[16px] text-ink">{p.name}</div>
@@ -165,7 +165,7 @@ export function ProductCard({ p, compact, height }: { p: CardProduct; compact?: 
   const frameStyle = height ? { height, width: Math.round(height * ratio) } : { aspectRatio: String(ratio) };
   return (
     <Link href={`/prodotti/${p.id}`} className="pressable group block break-inside-avoid" style={height ? { width: frameStyle.width } : undefined}>
-      <div className="relative overflow-hidden rounded-[20px] bg-[#EFEDE8]" style={frameStyle}>
+      <div className="relative overflow-hidden rounded-[20px] bg-mist" style={frameStyle}>
         <ProductImg storageKey={p.image?.storageKey} alt={p.name} cover className="absolute inset-0 h-full w-full transition duration-700 group-hover:scale-[1.03]" />
         <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2.5">
           {status ? <StatusPill status={status} /> : <span className="rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium text-soft shadow-sm">Su ordinazione</span>}
