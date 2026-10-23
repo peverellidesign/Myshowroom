@@ -44,6 +44,14 @@ let catalogPdf;
 before(async () => {
   const sql = postgres(DB, { onnotice: () => {} });
   await sql.unsafe('drop schema public cascade; create schema public;');
+  if (process.env.TEST_REST === '1') {
+    // modalità Supabase via HTTPS: lo schema si crea come nel SQL Editor, poi PostgREST ricarica la cache
+    await sql.unsafe(`grant usage on schema public to anon, authenticated, service_role;
+      alter default privileges in schema public grant all on tables to anon, authenticated, service_role;`);
+    await sql.unsafe(readFileSync(path.join(root, 'server/schema.sql'), 'utf8'));
+    await sql.unsafe(`notify pgrst, 'reload schema'`);
+    await new Promise(r => setTimeout(r, 1500));
+  }
   await sql.end();
   sink = await startSmtpSink(SMTP, path.join(tmp, 'mail'));
   await startServer();

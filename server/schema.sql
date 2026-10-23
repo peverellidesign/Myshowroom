@@ -167,3 +167,24 @@ create table if not exists emails (
   created_at timestamptz not null default now()
 );
 create index if not exists emails_quote_idx on emails(quote_id);
+
+-- ── Sicurezza su Supabase ─────────────────────────────────────────────
+-- Row Level Security attiva su tutte le tabelle e nessuna policy: le chiavi pubbliche (anon)
+-- non leggono né scrivono nulla. L'app usa la chiave segreta (service_role), che bypassa RLS;
+-- il proprietario delle tabelle (connessione diretta) non è soggetto a RLS.
+do $$
+declare t text;
+begin
+  foreach t in array array['users','sessions','products','files','documents','document_products','clients','quotes','quote_items','appointments','tasks','reservations','emails'] loop
+    execute format('alter table %I enable row level security', t);
+    if exists (select 1 from pg_roles where rolname = 'anon') then
+      execute format('revoke all on table %I from anon', t);
+    end if;
+    if exists (select 1 from pg_roles where rolname = 'authenticated') then
+      execute format('revoke all on table %I from authenticated', t);
+    end if;
+    if exists (select 1 from pg_roles where rolname = 'service_role') then
+      execute format('grant all on table %I to service_role', t);
+    end if;
+  end loop;
+end $$;

@@ -41,7 +41,7 @@ async function boot() {
     }
     await store.update('products', p.id, { images });
   }
-  const app = createApp({ store, storage, mailer, llm: null, config: { publicUrl: location.origin, secureCookies: false, maxUploadMb: 25, companyName: 'Peverelli Design', demo: true, publicBooking: true } });
+  const app = createApp({ store, storage, mailer, llm: null, config: { publicUrl: location.origin, secureCookies: false, maxUploadMb: 25, companyName: 'Peverelli Design', demo: true, publicBooking: true, linkSecret: crypto.randomUUID() } });
   const realFetch = window.fetch.bind(window);
   window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url, location.href);

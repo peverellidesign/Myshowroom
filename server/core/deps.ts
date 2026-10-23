@@ -13,7 +13,9 @@ export type MailMessage = { to: string; subject: string; text: string; html?: st
 export type MailResult = { status: 'sent' | 'outbox' | 'failed'; messageId?: string; error?: string };
 
 export interface Mailer {
-  readonly mode: 'smtp' | 'outbox';
+  readonly mode: 'smtp' | 'outbox' | 'gateway';
+  /** Limiti allegati del fornitore (es. gateway GoDaddy: 10 allegati, 2 MB ciascuno). */
+  readonly limits?: { maxAttachments: number; maxAttachmentBytes: number; maxTotalBytes: number };
   send(msg: MailMessage): Promise<MailResult>;
 }
 
@@ -30,6 +32,8 @@ export type AppConfig = {
   demo: boolean;
   /** Permette la prenotazione pubblica (/book/:sede) senza login */
   publicBooking: boolean;
+  /** Segreto per firmare i link temporanei di download dei file inviati per email. */
+  linkSecret: string;
 };
 
 export type Deps = {

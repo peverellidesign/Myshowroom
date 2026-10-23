@@ -8,8 +8,11 @@ import { createApp } from '../core/app';
 import { ensureSeed } from '../core/seed';
 import type { BlobStorage, Mailer } from '../core/deps';
 import { createPgStore } from './pgStore';
+import { checkSupabaseSchema, createSupabaseStore } from './supabaseStore';
+import { createHash } from 'node:crypto';
+import type { Store } from '../core/store';
 import { DiskStorage, S3Storage } from './storage';
-import { OutboxMailer, SmtpMailer } from './mailer';
+import { GoDaddyGatewayMailer, OutboxMailer, SmtpMailer } from './mailer';
 import { ClaudeModel } from './llm';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -31,24 +34,41 @@ async function main() {
   loadDotEnv();
   const port = Number(env.PORT || 3000);
   const dbUrl = env.DATABASE_URL;
-  if (!dbUrl) { console.error('DATABASE_URL mancante (es. postgres://utente:password@host:5432/myshowroom)'); process.exit(1); }
-  if (prod && (!env.ADMIN_PASSWORD || env.ADMIN_PASSWORD.length < 10)) console.warn('[myshowroom] ADMIN_PASSWORD non impostata o troppo corta: viene usata solo alla prima installazione.');
-
-  const { store, close } = await createPgStore(dbUrl, path.join(root, 'server', 'schema.sql'));
+  const supaUrl = env.SUPABASE_URL, supaKey = env.SUPABASE_SECRET_KEY || env.SUPABASE_SERVICE_ROLE_KEY;
+  let store: Store, close: () => Promise<unknown> = async () => {};
+  if (dbUrl) {
+    // connessione diretta PostgreSQL (Render, server propri, Supabase via pooler)
+    ({ store, close } = await createPgStore(dbUrl, path.join(root, 'server', 'schema.sql')));
+  } else if (supaUrl && supaKey) {
+    // API HTTPS di Supabase: per host che permettono solo traffico web in uscita (GoDaddy Node.js Hosting)
+    const cfg = { restUrl: env.SUPABASE_REST_URL || `${supaUrl.replace(/\/$/, '')}/rest/v1`, key: supaKey };
+    const problem = await checkSupabaseSchema(cfg);
+    if (problem) { console.error(`[myshowroom] ${problem}`); process.exit(1); }
+    store = createSupabaseStore(cfg);
+  } else {
+    console.error('Database non configurato: impostare DATABASE_URL oppure SUPABASE_URL + SUPABASE_SECRET_KEY');
+    process.exit(1);
+  }
+  if (prod && (await store.count('users')) === 0 && (!env.ADMIN_EMAIL || !env.ADMIN_PASSWORD || env.ADMIN_PASSWORD.length < 10)) {
+    console.error('[myshowroom] Primo avvio: impostare ADMIN_EMAIL e ADMIN_PASSWORD (almeno 10 caratteri).');
+    process.exit(1);
+  }
 
   const storage: BlobStorage = env.STORAGE === 's3'
     ? new S3Storage({ endpoint: env.S3_ENDPOINT || `https://s3.${env.S3_REGION || 'eu-central-1'}.amazonaws.com`, region: env.S3_REGION || 'eu-central-1', bucket: env.S3_BUCKET!, accessKeyId: env.S3_ACCESS_KEY_ID!, secretAccessKey: env.S3_SECRET_ACCESS_KEY!, prefix: env.S3_PREFIX, pathStyle: bool(env.S3_PATH_STYLE, false) })
     : new DiskStorage(path.resolve(env.UPLOAD_DIR || path.join(root, 'data', 'uploads')));
   if (env.STORAGE === 's3' && (!env.S3_BUCKET || !env.S3_ACCESS_KEY_ID || !env.S3_SECRET_ACCESS_KEY)) { console.error('STORAGE=s3 richiede S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY'); process.exit(1); }
 
-  const mailer: Mailer = env.SMTP_HOST
+  const mailer: Mailer = env.MAIL_PROVIDER === 'godaddy'
+    ? new GoDaddyGatewayMailer(env.MAIL_GATEWAY_URL || undefined)
+    : env.SMTP_HOST
     ? new SmtpMailer({ host: env.SMTP_HOST, port: Number(env.SMTP_PORT || 587), secure: bool(env.SMTP_SECURE, Number(env.SMTP_PORT) === 465), user: env.SMTP_USER, pass: env.SMTP_PASS }, env.MAIL_FROM || 'Peverelli Design <showroom@example.com>')
     : new OutboxMailer();
 
   const app = createApp({
     store, storage, mailer,
     llm: env.ANTHROPIC_API_KEY ? new ClaudeModel(env.ANTHROPIC_API_KEY, env.ANTHROPIC_MODEL || 'claude-haiku-5-5') : null,
-    config: { publicUrl: env.PUBLIC_URL || `http://localhost:${port}`, secureCookies: bool(env.SECURE_COOKIES, prod), maxUploadMb: Number(env.MAX_UPLOAD_MB || 100), companyName: 'Peverelli Design', demo: false, publicBooking: bool(env.PUBLIC_BOOKING, true) },
+    config: { publicUrl: env.PUBLIC_URL || '', linkSecret: env.APP_SECRET || createHash('sha256').update('myshowroom-links:' + (dbUrl || supaKey || '')).digest('hex'), secureCookies: bool(env.SECURE_COOKIES, prod), maxUploadMb: Number(env.MAX_UPLOAD_MB || 100), companyName: 'Peverelli Design', demo: false, publicBooking: bool(env.PUBLIC_BOOKING, true) },
     fetchImage: async url => {
       const r = await fetch(url, { signal: AbortSignal.timeout(5000) });
       const mime = r.headers.get('content-type') || '';
@@ -105,7 +125,7 @@ async function main() {
     }
   });
   server.requestTimeout = 10 * 60_000; // upload cataloghi grandi
-  server.listen(port, () => console.log(`myshowroom by Peverelli Design → http://localhost:${port}  (storage: ${storage.kind}, email: ${mailer.mode})`));
+  server.listen(port, env.HOST || '0.0.0.0', () => console.log(`myshowroom by Peverelli Design → http://localhost:${port}  (database: ${dbUrl ? "postgres" : "supabase-https"}, storage: ${storage.kind}, email: ${mailer.mode})`));
   const stop = () => { server.close(); close().finally(() => process.exit(0)); };
   process.on('SIGTERM', stop); process.on('SIGINT', stop);
 }

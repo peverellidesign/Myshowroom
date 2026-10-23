@@ -29,3 +29,30 @@ export class OutboxMailer implements Mailer {
     return { status: 'outbox' };
   }
 }
+
+/**
+ * Gateway email di GoDaddy Node.js Hosting (loopback 127.0.0.1:2525): l'unico canale email consentito
+ * dalla piattaforma (niente SMTP esterno). Contratto: 10 allegati al massimo, 2 MB ciascuno.
+ * Il mittente viene scelto dal gateway (dominio dell'app o dominio verificato).
+ */
+export class GoDaddyGatewayMailer implements Mailer {
+  readonly mode = 'gateway' as const;
+  readonly limits = { maxAttachments: 10, maxAttachmentBytes: 2 * 1024 * 1024, maxTotalBytes: 18 * 1024 * 1024 };
+  constructor(private url = 'http://127.0.0.1:2525/api/email/send') {}
+  async send(m: MailMessage): Promise<MailResult> {
+    try {
+      const r = await fetch(this.url, {
+        method: 'POST', headers: { 'content-type': 'application/json' }, signal: AbortSignal.timeout(30_000),
+        body: JSON.stringify({
+          to: [m.to], subject: m.subject, text: m.text, html: m.html, replyTo: m.replyTo || undefined,
+          attachments: m.attachments.length ? m.attachments.map(a => ({ filename: a.filename.replace(/[\r\n"\\]/g, '_'), content: Buffer.from(a.content).toString('base64'), contentType: a.contentType.split(';')[0] })) : undefined,
+        }),
+      });
+      const body = await r.json().catch(() => ({ success: false, error: `HTTP ${r.status}` })) as { success?: boolean; messageId?: string; error?: string };
+      if (!r.ok || !body.success) return { status: 'failed', error: (body.error || `HTTP ${r.status}`).slice(0, 300) };
+      return { status: 'sent', messageId: body.messageId };
+    } catch (e) {
+      return { status: 'failed', error: `Servizio email non raggiungibile: ${(e as Error).message}`.slice(0, 300) };
+    }
+  }
+}

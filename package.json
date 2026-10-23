@@ -11,13 +11,15 @@
     "dev": "node scripts/dev.mjs",
     "build": "node scripts/build.mjs all",
     "build:demo": "node scripts/build.mjs demo",
-    "start": "NODE_ENV=production node build/server.mjs",
+    "start": "node scripts/start.mjs",
     "typecheck": "tsc -p .",
-    "test": "node scripts/build.mjs server && node --experimental-transform-types --no-warnings --test tests/s3-signature.test.mjs tests/api.test.mjs",
+    "test": "node scripts/build.mjs server && node --experimental-transform-types --no-warnings --test tests/s3-signature.test.mjs tests/api.test.mjs tests/gateway.test.mjs",
     "test:e2e": "node tests/e2e.cjs http://localhost:3000 screenshots",
-    "test:s3": "node scripts/build.mjs server && node tests/s3-mode.mjs"
+    "test:s3": "node scripts/build.mjs server && node tests/s3-mode.mjs",
+    "test:rest": "node scripts/build.mjs server && node tests/rest-mode.mjs"
   },
   "dependencies": {
+    "esbuild": "^0.28.0",
     "lucide-react": "^0.468.0",
     "nodemailer": "^6.9.16",
     "pdf-lib": "^1.17.1",
@@ -30,8 +32,8 @@
     "@types/nodemailer": "^6.4.17",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "esbuild": "^0.28.0",
     "typescript": "^6.0.0",
     "pdfjs-dist": "^6.2.108"
-  }
+  },
+  "main": "scripts/start.mjs"
 }

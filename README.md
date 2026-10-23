@@ -46,22 +46,43 @@ Sessioni con cookie `HttpOnly`/`SameSite=Lax` (14 giorni), password PBKDF2-SHA25
 - **Prenotazione online**: `/book/como`, `/book/lugano`, `/book/milano`, `/book/dubai` mostrano solo gli orari liberi.
 - **Senza SMTP** le email non vengono consegnate: l'app lo indica chiaramente e il PDF resta scaricabile.
 
-## Pubblicazione: Supabase (database + file) e Render (app)
+## Pubblicazione su GoDaddy Node.js Hosting con Supabase
 
-Supabase non serve pagine web (HTML convertito in testo), quindi l'app gira su un servizio Node separato; tutti i dati restano su Supabase.
+GoDaddy consente alle app solo traffico web in uscita (HTTPS) e un proprio servizio email interno: per questo l'app usa l'**API HTTPS di Supabase** (non la connessione diretta al database) e il **gateway email di GoDaddy** (non SMTP). Tutto è già previsto nel codice.
 
-**1. Supabase** (supabase.com → New project, regione europea)
-- *Connect → Session pooler*: copia la stringa di connessione → `DATABASE_URL` (con la password del database).
-- *Storage → New bucket*: nome `myshowroom`, **privato**.
-- *Storage → Settings → S3*: copia endpoint e regione, crea una *access key*.
-- Le tabelle le crea l'app al primo avvio.
+**1. Supabase**
+- *SQL Editor → New query*: incolla il contenuto di `server/schema.sql` e premi **Run** (una sola volta). Crea le tabelle con Row Level Security attiva.
+- *Project Settings → API Keys*: copia **Project URL** → `SUPABASE_URL` e la **secret key** (`sb_secret_…`, oppure la legacy `service_role`) → `SUPABASE_SECRET_KEY`. Non usare la chiave *publishable/anon*.
+- *Storage*: bucket privato `myshowroom`; in *Settings → S3* endpoint, regione e access key.
 
-**2. Render** (render.com → New → Blueprint → `peverellidesign/Myshowroom`, ramo `myshowroom-v2`)
-- `render.yaml` crea solo il servizio web (piano free: si sospende dopo 15 minuti di inattività; `starter` per tenerlo sempre attivo).
-- Compila i valori richiesti: `DATABASE_URL`, `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
-- Facoltativo, dopo: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` per l'invio email; dominio personalizzato da *Settings → Custom Domains*.
+**2. GoDaddy** (godaddy.com/nodejs → *Connect GitHub* → repository `peverellidesign/Myshowroom`, ramo `myshowroom-v2` → *I need to add secrets for my app to boot*)
 
-Le stesse variabili funzionano su qualsiasi altro host Node 22 (GoDaddy Node.js Hosting, Railway, Fly.io…): build `npm install --include=dev && npm run build`, avvio `npm start`.
+```
+SUPABASE_URL=https://<ref>.supabase.co
+SUPABASE_SECRET_KEY=sb_secret_…
+STORAGE=s3
+S3_ENDPOINT=https://<ref>.storage.supabase.co/storage/v1/s3
+S3_REGION=<regione del progetto>
+S3_BUCKET=myshowroom
+S3_PATH_STYLE=true
+S3_ACCESS_KEY_ID=…
+S3_SECRET_ACCESS_KEY=…
+MAX_UPLOAD_MB=50
+MAIL_PROVIDER=godaddy
+APP_SECRET=<stringa casuale lunga>
+ADMIN_EMAIL=…
+ADMIN_PASSWORD=…            # almeno 10 caratteri
+SEED_DEMO=true
+```
+
+**Non** impostare `DATABASE_URL` su GoDaddy: la connessione diretta al database è bloccata dalla piattaforma.
+*Import & Deploy* → prova l'anteprima → *Publish Now* → dominio da *Settings*. Dopo aver collegato il dominio aggiungi `PUBLIC_URL=https://tuodominio` (usato nei link di download inviati per email).
+
+Email su GoDaddy: il mittente è scelto dal gateway (dominio dell'app o dominio verificato); massimo 10 allegati da 2 MB ciascuno. I PDF più grandi vengono inviati come link di download firmati, validi 60 giorni.
+
+### Alternativa: Render
+
+`render.yaml` crea il servizio web; con Render si può usare la connessione diretta (`DATABASE_URL` dal *Session pooler* di Supabase) e SMTP.
 
 ## Caricare i contenuti
 

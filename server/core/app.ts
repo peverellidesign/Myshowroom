@@ -18,6 +18,7 @@ import { UniqueViolation, type Store } from './store';
 
 type C = Ctx<DbUser>;
 const now = () => new Date().toISOString();
+const LINK_DAYS = 60;
 const uid = () => crypto.randomUUID();
 
 // ───────────── validazione ─────────────
@@ -159,6 +160,24 @@ export function createApp(deps: Deps) {
     return rec;
   }
 
+  // ── link firmati per scaricare file senza login (allegati troppo grandi per l'email) ──
+  const enc = new TextEncoder();
+  async function sign(data: string) {
+    const key = await crypto.subtle.importKey('raw', enc.encode(config.linkSecret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+    return [...new Uint8Array(await crypto.subtle.sign('HMAC', key, enc.encode(data)))].map(b => b.toString(16).padStart(2, '0')).join('');
+  }
+  async function signedFileUrl(fileId: string, origin: string) {
+    const exp = Math.floor(clock().getTime() / 1000) + LINK_DAYS * 86400;
+    return `${(config.publicUrl || origin).replace(/\/$/, '')}/api/public/files/${fileId}?exp=${exp}&sig=${await sign(`${fileId}.${exp}`)}`;
+  }
+  router.get('/api/public/files/:id', async c => {
+    const exp = Number(c.url.searchParams.get('exp')), sig = c.url.searchParams.get('sig') || '';
+    if (!exp || exp * 1000 < Date.now() || sig !== await sign(`${c.params.id}.${exp}`)) throw new HttpError(403, 'Link scaduto o non valido');
+    const r = await readFile(c.params.id);
+    if (!r) throw new HttpError(404, 'File non trovato');
+    return new Response(r.data as Uint8Array<ArrayBuffer>, { headers: { 'Content-Type': r.file.mime, 'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(r.file.fileName)}`, 'Cache-Control': 'private, max-age=3600', 'X-Content-Type-Options': 'nosniff' } });
+  });
+
   // ───────────── health & auth ─────────────
   router.get('/api/health', async () => json({ ok: true, storage: storage.kind, mail: mailer.mode, time: now() }));
 
@@ -298,6 +317,7 @@ export function createApp(deps: Deps) {
     if (externalUrl && !/^https?:\/\//.test(externalUrl)) throw new HttpError(400, 'Inserisci un link valido.');
     if (fileId) { const f = await store.get<FileRecord>('files', fileId); if (!f || f.mime !== 'application/pdf') throw new HttpError(400, 'Seleziona un file PDF valido.'); }
     const productIds = strList(b.productIds, 'Prodotti', 500);
+    for (const pid of new Set(productIds)) if (!(await store.get('products', pid))) throw new HttpError(400, 'Prodotto collegato inesistente');
     const id = uid();
     await store.tx(async s => {
       await s.insert('documents', { id, name: str(b.name, 'Nome documento', { required: true, max: 160 }), type: oneOf(b.type, DOC_TYPES, 'Tipologia', 'Catalogo prodotto'), language: oneOf(b.language, DOC_LANGS, 'Lingua', 'Italiano'), fileId, externalUrl, createdBy: u.id, createdAt: now() });
@@ -457,28 +477,37 @@ export function createApp(deps: Deps) {
     if (!sent) throw new HttpError(409, 'Impossibile assegnare il numero di preventivo, riprovare');
     const q = await hydrateQuote(sent);
     const attachments: (MailAttachment & { fileId: string })[] = [];
+    const lim = mailer.limits ?? { maxAttachments: 10, maxAttachmentBytes: 20 * 1024 * 1024, maxTotalBytes: 20 * 1024 * 1024 };
+    let totalBytes = 0;
+    const skipped: string[] = [];
+    const linked: { name: string; url: string }[] = [];
+    const attachOrLink = async (fileId: string, name: string, fileName: string, data: Uint8Array) => {
+      if (attachments.length < lim.maxAttachments && data.byteLength <= lim.maxAttachmentBytes && totalBytes + data.byteLength <= lim.maxTotalBytes) {
+        totalBytes += data.byteLength;
+        attachments.push({ fileId, filename: fileName, content: data, contentType: 'application/pdf' });
+      } else {
+        skipped.push(name);
+        linked.push({ name, url: await signedFileUrl(fileId, c.url.origin) });
+      }
+    };
     if (attachPdf) {
       const pdf = await quotePdf(q, u);
       const f = await saveFile(pdf, `Proposta ${q.number} - Peverelli Design.pdf`, 'application/pdf', u.id);
       await store.update('quotes', q.id, { pdfFileId: f.id });
       q.pdfFileId = f.id;
-      attachments.push({ fileId: f.id, filename: f.fileName, content: pdf, contentType: 'application/pdf' });
+      await attachOrLink(f.id, `Proposta ${q.number}`, f.fileName, pdf);
     }
     const docs = await documentsAll();
-    let totalBytes = attachments.reduce((s, a) => s + a.content.byteLength, 0);
-    const skipped: string[] = [];
     for (const id of documentIds) {
       const d = docs.find(x => x.id === id);
       if (!d?.fileId) continue;
       const r = await readFile(d.fileId);
-      if (!r) continue;
-      if (totalBytes + r.data.byteLength > 20 * 1024 * 1024) { skipped.push(d.name); continue; }
-      totalBytes += r.data.byteLength;
-      attachments.push({ fileId: d.fileId, filename: r.file.fileName, content: r.data, contentType: 'application/pdf' });
+      if (r) await attachOrLink(d.fileId, d.name, r.file.fileName, r.data);
     }
-    const links = docs.filter(d => documentIds.includes(d.id) && (d.externalUrl || skipped.includes(d.name)));
+    const externals = docs.filter(d => documentIds.includes(d.id) && d.externalUrl).map(d => ({ name: d.name, url: d.externalUrl! }));
+    const links = [...linked, ...externals];
     const text = body + (items.length ? '\n\nPRODOTTI SELEZIONATI\n\n' + quoteText(q, showPrices) + (showPrices ? '\n\nTotale indicativo: ' + formatMoney(q.total, q.currency) : '') : '')
-      + (links.length ? '\n\nDOCUMENTI\n' + links.map(d => `${d.name}: ${d.externalUrl || 'disponibile su richiesta (file troppo grande per l’email)'}`).join('\n') : '');
+      + (links.length ? '\n\nDOCUMENTI\n' + links.map(d => `${d.name}: ${d.url}`).join('\n') + (linked.length ? `\n(link validi ${LINK_DAYS} giorni)` : '') : '');
     const rec = await sendAndLog(u, to, subject, text, attachments, { quoteId: q.id });
     const next = await currentDraft(u);
     return json({ quote: { ...q, emailStatus: rec.status }, email: rec, nextDraft: next, skipped });

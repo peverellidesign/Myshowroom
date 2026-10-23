@@ -70,7 +70,7 @@ export type Bootstrap = {
   user: User; users: Pick<User, 'id' | 'name' | 'role' | 'site'>[];
   products: Product[]; documents: DocumentRecord[]; clients: Client[]; quote: Quote;
   appointments: Appointment[]; tasks: Task[]; reservations: Reservation[];
-  config: { mailMode: 'smtp' | 'outbox'; storage: string; assistant: 'llm' | 'local'; maxUploadMb: number; demo: boolean };
+  config: { mailMode: 'smtp' | 'outbox' | 'gateway'; storage: string; assistant: 'llm' | 'local'; maxUploadMb: number; demo: boolean };
 };
 
 export type AssistantAnswer = { answer: string; productIds: string[]; documentIds: string[]; mode: 'llm' | 'local' };
