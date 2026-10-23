@@ -30,3 +30,5 @@
 .modal.dialog{width:min(440px,100%)}.modal.dialog p{font-size:14px;line-height:1.6;margin:0 0 14px}.modal.dialog .actionRow{margin-top:16px}
 .pdfPreview iframe{width:100%;height:min(70vh,720px);border:1px solid #e8e8e4;border-radius:9px;background:#f1f1ee;margin-top:12px}
 .pdfPages{max-height:min(70vh,720px);overflow:auto;margin-top:12px;display:flex;flex-direction:column;gap:10px;background:#f1f1ee;border:1px solid #e8e8e4;border-radius:9px;padding:10px}.pdfPages canvas{display:block;background:#fff;box-shadow:0 1px 4px #0001;border-radius:3px}
+.coverBtn{border:0;padding:0;background:none;display:block;border-radius:7px;overflow:hidden}.editThumbs .cover img{outline:2px solid #222;outline-offset:-2px}
+.modal .configRow input,.modal .taskAdd input{font-size:12px}

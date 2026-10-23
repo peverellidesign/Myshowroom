@@ -46,36 +46,28 @@ Sessioni con cookie `HttpOnly`/`SameSite=Lax` (14 giorni), password PBKDF2-SHA25
 - **Prenotazione online**: `/book/como`, `/book/lugano`, `/book/milano`, `/book/dubai` mostrano solo gli orari liberi.
 - **Senza SMTP** le email non vengono consegnate: l'app lo indica chiaramente e il PDF resta scaricabile.
 
-## Pubblicazione con Supabase (database + file) e GoDaddy (app + dominio)
+## Pubblicazione: Supabase (database + file) e Render (app)
 
-Supabase fornisce PostgreSQL e l'archivio file; l'app Node gira su GoDaddy Node.js Hosting (oppure Render, vedi `render.yaml`).
+Supabase non serve pagine web (HTML convertito in testo), quindi l'app gira su un servizio Node separato; tutti i dati restano su Supabase.
 
 **1. Supabase** (supabase.com → New project, regione europea)
-- *Project → Connect → Session pooler*: copia la stringa di connessione → `DATABASE_URL` (sostituisci la password del database).
+- *Connect → Session pooler*: copia la stringa di connessione → `DATABASE_URL` (con la password del database).
 - *Storage → New bucket*: nome `myshowroom`, **privato**.
-- *Storage → Settings → S3*: copia endpoint e regione, crea una *access key* → `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`.
-- Le tabelle vengono create dall'app al primo avvio: non serve eseguire SQL.
+- *Storage → Settings → S3*: copia endpoint e regione, crea una *access key*.
+- Le tabelle le crea l'app al primo avvio.
 
-**2. GoDaddy** (Hosting → Node.js → nuova app → collega GitHub `peverellidesign/Myshowroom`, ramo `myshowroom-v2`, regione Europa)
-- Build: `npm install --include=dev && npm run build` · Avvio: `npm start`
-- Variabili d'ambiente:
+**2. Render** (render.com → New → Blueprint → `peverellidesign/Myshowroom`, ramo `myshowroom-v2`)
+- `render.yaml` crea solo il servizio web (piano free: si sospende dopo 15 minuti di inattività; `starter` per tenerlo sempre attivo).
+- Compila i valori richiesti: `DATABASE_URL`, `S3_ENDPOINT`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
+- Facoltativo, dopo: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` per l'invio email; dominio personalizzato da *Settings → Custom Domains*.
 
-```
-DATABASE_URL=postgresql://postgres.<ref>:<password>@<host>.pooler.supabase.com:5432/postgres
-STORAGE=s3
-S3_ENDPOINT=https://<ref>.storage.supabase.co/storage/v1/s3
-S3_REGION=<regione del progetto>
-S3_BUCKET=myshowroom
-S3_PATH_STYLE=true
-S3_ACCESS_KEY_ID=…
-S3_SECRET_ACCESS_KEY=…
-MAX_UPLOAD_MB=50
-ADMIN_EMAIL=…
-ADMIN_PASSWORD=…            # almeno 10 caratteri
-SEED_DEMO=true              # false per partire con catalogo vuoto
-```
-- Facoltativo: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` per l'invio email.
-- Pubblica e collega il dominio dal pannello GoDaddy (HTTPS automatico).
+Le stesse variabili funzionano su qualsiasi altro host Node 22 (GoDaddy Node.js Hosting, Railway, Fly.io…): build `npm install --include=dev && npm run build`, avvio `npm start`.
+
+## Caricare i contenuti
+
+- **Prodotti** (amministratore / responsabile): *Prodotti → Nuovo prodotto* oppure *Modifica scheda*: dati, composizioni con prezzi, materiali, colori, più foto per volta (dal telefono anche scattandole), scelta della copertina.
+- **Cataloghi PDF** (tutti): scheda prodotto → *Cataloghi & Documenti* → carica PDF o link; *Collega un catalogo già caricato* per associarlo ad altri prodotti.
+- **Clienti, appuntamenti, attività, utenti** dalle rispettive sezioni (*Team* solo per l'amministratore).
 
 ## Test
 
