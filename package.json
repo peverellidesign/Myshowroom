@@ -14,7 +14,8 @@
     "start": "NODE_ENV=production node build/server.mjs",
     "typecheck": "tsc -p .",
     "test": "node scripts/build.mjs server && node --experimental-transform-types --no-warnings --test tests/s3-signature.test.mjs tests/api.test.mjs",
-    "test:e2e": "node tests/e2e.cjs http://localhost:3000 screenshots"
+    "test:e2e": "node tests/e2e.cjs http://localhost:3000 screenshots",
+    "test:s3": "node scripts/build.mjs server && node tests/s3-mode.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

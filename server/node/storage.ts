@@ -49,10 +49,13 @@ export type S3Config = { endpoint: string; region: string; bucket: string; acces
 export class S3Storage implements BlobStorage {
   readonly kind = 's3';
   constructor(private c: S3Config) {}
-  private url(key: string) {
+  /** URL dell'oggetto (pubblico per i test). */
+  url(key: string) {
     const k = (this.c.prefix ? this.c.prefix.replace(/\/$/, '') + '/' : '') + key;
     const ep = new URL(this.c.endpoint);
-    return this.c.pathStyle ? new URL(`${ep.origin}/${this.c.bucket}/${k}`) : new URL(`${ep.protocol}//${this.c.bucket}.${ep.host}/${k}`);
+    const base = ep.pathname.replace(/\/$/, ''); // es. Supabase: /storage/v1/s3
+    const path = k.split('/').map(encodeURIComponent).join('/');
+    return this.c.pathStyle ? new URL(`${ep.origin}${base}/${this.c.bucket}/${path}`) : new URL(`${ep.protocol}//${this.c.bucket}.${ep.host}${base}/${path}`);
   }
   private async req(method: string, key: string, body: Uint8Array = new Uint8Array(), extra: Record<string, string> = {}) {
     const url = this.url(key);

@@ -83,7 +83,12 @@ function make(sql: Sql, root: postgres.Sql): Store {
 }
 
 export async function createPgStore(url: string, schemaPath: string) {
-  const root = postgres(url, { max: Number(process.env.DB_POOL_MAX || 10), onnotice: () => {}, idle_timeout: 30, ssl: process.env.DB_SSL === 'require' ? 'require' : undefined });
+  const host = (() => { try { return new URL(url); } catch { return null; } })();
+  const managed = !!host && /supabase\.(co|com)$|neon\.tech$|render\.com$/.test(host.hostname);
+  // Supabase: il pooler in modalità "transaction" (porta 6543) non supporta i prepared statement
+  const prepare = process.env.DB_PREPARE ? process.env.DB_PREPARE !== 'false' : host?.port !== '6543';
+  const ssl = process.env.DB_SSL ? (process.env.DB_SSL === 'require' ? 'require' : undefined) : managed && !/\.internal$|^dpg-[^.]+$/.test(host!.hostname) ? 'require' : undefined;
+  const root = postgres(url, { max: Number(process.env.DB_POOL_MAX || 10), onnotice: () => {}, idle_timeout: 30, ssl, prepare });
   await root.unsafe(readFileSync(schemaPath, 'utf8'));
   return { store: make(root, root), close: () => root.end({ timeout: 5 }) };
 }

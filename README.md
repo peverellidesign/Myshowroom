@@ -46,6 +46,37 @@ Sessioni con cookie `HttpOnly`/`SameSite=Lax` (14 giorni), password PBKDF2-SHA25
 - **Prenotazione online**: `/book/como`, `/book/lugano`, `/book/milano`, `/book/dubai` mostrano solo gli orari liberi.
 - **Senza SMTP** le email non vengono consegnate: l'app lo indica chiaramente e il PDF resta scaricabile.
 
+## Pubblicazione con Supabase (database + file) e GoDaddy (app + dominio)
+
+Supabase fornisce PostgreSQL e l'archivio file; l'app Node gira su GoDaddy Node.js Hosting (oppure Render, vedi `render.yaml`).
+
+**1. Supabase** (supabase.com → New project, regione europea)
+- *Project → Connect → Session pooler*: copia la stringa di connessione → `DATABASE_URL` (sostituisci la password del database).
+- *Storage → New bucket*: nome `myshowroom`, **privato**.
+- *Storage → Settings → S3*: copia endpoint e regione, crea una *access key* → `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`.
+- Le tabelle vengono create dall'app al primo avvio: non serve eseguire SQL.
+
+**2. GoDaddy** (Hosting → Node.js → nuova app → collega GitHub `peverellidesign/Myshowroom`, ramo `myshowroom-v2`, regione Europa)
+- Build: `npm install --include=dev && npm run build` · Avvio: `npm start`
+- Variabili d'ambiente:
+
+```
+DATABASE_URL=postgresql://postgres.<ref>:<password>@<host>.pooler.supabase.com:5432/postgres
+STORAGE=s3
+S3_ENDPOINT=https://<ref>.storage.supabase.co/storage/v1/s3
+S3_REGION=<regione del progetto>
+S3_BUCKET=myshowroom
+S3_PATH_STYLE=true
+S3_ACCESS_KEY_ID=…
+S3_SECRET_ACCESS_KEY=…
+MAX_UPLOAD_MB=50
+ADMIN_EMAIL=…
+ADMIN_PASSWORD=…            # almeno 10 caratteri
+SEED_DEMO=true              # false per partire con catalogo vuoto
+```
+- Facoltativo: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM` per l'invio email.
+- Pubblica e collega il dominio dal pannello GoDaddy (HTTPS automatico).
+
 ## Test
 
 ```bash
