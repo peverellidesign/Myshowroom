@@ -1,0 +1,54 @@
+# myshowroom by Peverelli Design — Blueprint Render
+# Crea: database PostgreSQL 16, web app Node 22, disco persistente per PDF e foto.
+# Render → New → Blueprint → repository peverellidesign/Myshowroom → ramo myshowroom-v2
+databases:
+  - name: myshowroom-v2-db
+    databaseName: myshowroom
+    user: myshowroom
+    plan: basic-256mb
+    region: frankfurt
+    postgresMajorVersion: "16"
+
+services:
+  - type: web
+    name: myshowroom-v2
+    runtime: node
+    plan: starter            # il disco persistente richiede un'istanza a pagamento
+    region: frankfurt
+    branch: myshowroom-v2
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    disk:
+      name: uploads
+      mountPath: /data
+      sizeGB: 2
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: DATABASE_URL
+        fromDatabase:
+          name: myshowroom-v2-db
+          property: connectionString
+      - key: UPLOAD_DIR
+        value: /data/uploads
+      - key: SEED_DEMO
+        value: "true"
+      - key: MAX_UPLOAD_MB
+        value: "100"
+      - key: ADMIN_EMAIL           # email del primo amministratore
+        sync: false
+      - key: ADMIN_PASSWORD        # almeno 10 caratteri
+        sync: false
+      - key: ADMIN_NAME
+        value: Direzione Peverelli
+      - key: SMTP_HOST             # facoltativi: senza SMTP le email non vengono consegnate
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: MAIL_FROM
+        sync: false

@@ -1,0 +1,36 @@
+{
+  "name": "myshowroom-by-peverelli-design",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "myshowroom by Peverelli Design — web app multiutente per showroom, inventario, cataloghi, preventivi e agenda",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "build": "node scripts/build.mjs all",
+    "build:demo": "node scripts/build.mjs demo",
+    "start": "NODE_ENV=production node build/server.mjs",
+    "typecheck": "tsc -p .",
+    "test": "node scripts/build.mjs server && node --experimental-transform-types --no-warnings --test tests/s3-signature.test.mjs tests/api.test.mjs",
+    "test:e2e": "node tests/e2e.cjs http://localhost:3000 screenshots"
+  },
+  "dependencies": {
+    "lucide-react": "^0.468.0",
+    "nodemailer": "^6.9.16",
+    "pdf-lib": "^1.17.1",
+    "postgres": "^3.4.5",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/nodemailer": "^6.4.17",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "esbuild": "^0.28.0",
+    "typescript": "^6.0.0",
+    "pdfjs-dist": "^6.2.108"
+  }
+}

@@ -1,0 +1,15 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment: { POSTGRES_USER: myshowroom, POSTGRES_PASSWORD: myshowroom, POSTGRES_DB: myshowroom }
+    volumes: [pgdata:/var/lib/postgresql/data]
+  app:
+    build: .
+    depends_on: [db]
+    ports: ["3000:3000"]
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://myshowroom:myshowroom@db:5432/myshowroom
+      UPLOAD_DIR: /data/uploads
+    volumes: [uploads:/data/uploads]
+volumes: { pgdata: {}, uploads: {} }

@@ -1,0 +1,8 @@
+node_modules
+dist
+build
+demo-dist
+data
+screenshots
+.env
+*.tsbuildinfo
