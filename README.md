@@ -46,7 +46,21 @@ Sessioni con cookie `HttpOnly`/`SameSite=Lax` (14 giorni), password PBKDF2-SHA25
 - **Prenotazione online**: `/book/como`, `/book/lugano`, `/book/milano`, `/book/dubai` mostrano solo gli orari liberi.
 - **Senza SMTP** le email non vengono consegnate: l'app lo indica chiaramente e il PDF resta scaricabile.
 
-## Pubblicazione su GoDaddy Node.js Hosting con Supabase
+## Pubblicazione consigliata: Render + Supabase (3 valori)
+
+Il progetto Supabase `myshowroom` è già pronto (tabelle con Row Level Security e bucket privato `myshowroom`).
+L'app usa l'API HTTPS di Supabase sia per i dati sia per i file: basta la **secret key**.
+
+1. render.com → accedi con GitHub → **New → Blueprint** → `peverellidesign/Myshowroom`, ramo `myshowroom-v2`.
+2. Inserisci `SUPABASE_SECRET_KEY` (Supabase → Project Settings → API Keys → Secret key), `ADMIN_EMAIL`, `ADMIN_PASSWORD`.
+3. **Apply**. Dopo qualche minuto l'app è online su `https://myshowroom-….onrender.com`.
+
+Email: senza SMTP le email vengono registrate ma non consegnate; aggiungere in seguito `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `MAIL_FROM`.
+Dominio: Render → Settings → Custom Domains, poi `PUBLIC_URL=https://tuodominio`.
+
+## Altre piattaforme
+
+### GoDaddy Node.js Hosting con Supabase
 
 GoDaddy consente alle app solo traffico web in uscita (HTTPS) e un proprio servizio email interno: per questo l'app usa l'**API HTTPS di Supabase** (non la connessione diretta al database) e il **gateway email di GoDaddy** (non SMTP). Tutto è già previsto nel codice.
 
@@ -79,10 +93,6 @@ SEED_DEMO=true
 *Import & Deploy* → prova l'anteprima → *Publish Now* → dominio da *Settings*. Dopo aver collegato il dominio aggiungi `PUBLIC_URL=https://tuodominio` (usato nei link di download inviati per email).
 
 Email su GoDaddy: il mittente è scelto dal gateway (dominio dell'app o dominio verificato); massimo 10 allegati da 2 MB ciascuno. I PDF più grandi vengono inviati come link di download firmati, validi 60 giorni.
-
-### Alternativa: Render
-
-`render.yaml` crea il servizio web; con Render si può usare la connessione diretta (`DATABASE_URL` dal *Session pooler* di Supabase) e SMTP.
 
 ## Caricare i contenuti
 

@@ -1,11 +1,11 @@
-# myshowroom by Peverelli Design — Blueprint Render (solo l'app)
-# Database e file sono su Supabase: qui non si crea né database né disco.
+# myshowroom by Peverelli Design — Blueprint Render
+# Dati e file su Supabase (progetto myshowroom): servono solo 3 valori da inserire.
 # Render → New → Blueprint → peverellidesign/Myshowroom → ramo myshowroom-v2
 services:
   - type: web
     name: myshowroom
     runtime: node
-    plan: free               # "starter" per evitare la pausa dopo 15 minuti di inattività
+    plan: free               # "starter" per tenerla sempre attiva (niente pausa dopo 15 minuti)
     region: frankfurt
     branch: myshowroom-v2
     buildCommand: npm install --include=dev && npm run build
@@ -14,32 +14,19 @@ services:
     envVars:
       - key: NODE_VERSION
         value: "22"
-      # ── Supabase: database (Connect → Session pooler) ──
-      - key: DATABASE_URL
+      - key: SUPABASE_URL
+        value: https://beloxozizadllxvdxvpb.supabase.co
+      - key: SUPABASE_SECRET_KEY   # Supabase → Project Settings → API Keys → Secret key (sb_secret_…)
         sync: false
-      # ── Supabase: file (Storage → Settings → S3) ──
-      - key: STORAGE
-        value: s3
-      - key: S3_ENDPOINT
-        sync: false            # https://<ref>.storage.supabase.co/storage/v1/s3
-      - key: S3_REGION
-        sync: false            # es. eu-central-1
-      - key: S3_BUCKET
-        value: myshowroom
-      - key: S3_PATH_STYLE
-        value: "true"
-      - key: S3_ACCESS_KEY_ID
+      - key: ADMIN_EMAIL           # la tua email di accesso
         sync: false
-      - key: S3_SECRET_ACCESS_KEY
+      - key: ADMIN_PASSWORD        # almeno 10 caratteri
         sync: false
-      - key: MAX_UPLOAD_MB
-        value: "50"            # limite per file del piano Free di Supabase
-      # ── Primo accesso ──
-      - key: ADMIN_EMAIL
-        sync: false
-      - key: ADMIN_PASSWORD
-        sync: false            # almeno 10 caratteri
       - key: ADMIN_NAME
         value: Direzione Peverelli
+      - key: APP_SECRET
+        generateValue: true
+      - key: MAX_UPLOAD_MB
+        value: "50"
       - key: SEED_DEMO
-        value: "true"          # i 4 prodotti dimostrativi; eliminabili dall'app
+        value: "true"

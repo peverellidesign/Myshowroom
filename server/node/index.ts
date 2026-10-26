@@ -11,7 +11,7 @@ import { createPgStore } from './pgStore';
 import { checkSupabaseSchema, createSupabaseStore } from './supabaseStore';
 import { createHash } from 'node:crypto';
 import type { Store } from '../core/store';
-import { DiskStorage, S3Storage } from './storage';
+import { DiskStorage, S3Storage, SupabaseStorage } from './storage';
 import { GoDaddyGatewayMailer, OutboxMailer, SmtpMailer } from './mailer';
 import { ClaudeModel } from './llm';
 
@@ -54,10 +54,15 @@ async function main() {
     process.exit(1);
   }
 
-  const storage: BlobStorage = env.STORAGE === 's3'
+  // Archivio file: S3 se richiesto; altrimenti Supabase Storage quando l'app usa Supabase; altrimenti disco locale.
+  const storageKind = env.STORAGE || (supaUrl && supaKey ? 'supabase' : 'disk');
+  const storage: BlobStorage = storageKind === 'supabase'
+    ? new SupabaseStorage(env.SUPABASE_STORAGE_URL || supaUrl!, supaKey!, env.SUPABASE_BUCKET || 'myshowroom')
+    : storageKind === 's3'
     ? new S3Storage({ endpoint: env.S3_ENDPOINT || `https://s3.${env.S3_REGION || 'eu-central-1'}.amazonaws.com`, region: env.S3_REGION || 'eu-central-1', bucket: env.S3_BUCKET!, accessKeyId: env.S3_ACCESS_KEY_ID!, secretAccessKey: env.S3_SECRET_ACCESS_KEY!, prefix: env.S3_PREFIX, pathStyle: bool(env.S3_PATH_STYLE, false) })
     : new DiskStorage(path.resolve(env.UPLOAD_DIR || path.join(root, 'data', 'uploads')));
-  if (env.STORAGE === 's3' && (!env.S3_BUCKET || !env.S3_ACCESS_KEY_ID || !env.S3_SECRET_ACCESS_KEY)) { console.error('STORAGE=s3 richiede S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY'); process.exit(1); }
+  if (storageKind === 'supabase' && !(supaUrl && supaKey)) { console.error('STORAGE=supabase richiede SUPABASE_URL e SUPABASE_SECRET_KEY'); process.exit(1); }
+  if (storageKind === 's3' && (!env.S3_BUCKET || !env.S3_ACCESS_KEY_ID || !env.S3_SECRET_ACCESS_KEY)) { console.error('STORAGE=s3 richiede S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY'); process.exit(1); }
 
   const mailer: Mailer = env.MAIL_PROVIDER === 'godaddy'
     ? new GoDaddyGatewayMailer(env.MAIL_GATEWAY_URL || undefined)

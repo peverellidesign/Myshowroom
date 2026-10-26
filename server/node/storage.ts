@@ -78,3 +78,30 @@ export class S3Storage implements BlobStorage {
     if (!r.ok && r.status !== 404) throw new Error(`S3 DELETE ${r.status}`);
   }
 }
+
+/**
+ * Supabase Storage tramite API HTTPS con la chiave segreta del progetto
+ * (nessuna chiave S3 da creare). Bucket privato; i file sono serviti solo dall'app.
+ */
+export class SupabaseStorage implements BlobStorage {
+  readonly kind = 'supabase';
+  constructor(private url: string, private key: string, private bucket = 'myshowroom') {}
+  private headers(extra: Record<string, string> = {}) {
+    return { apikey: this.key, ...(this.key.startsWith('eyJ') ? { Authorization: `Bearer ${this.key}` } : {}), ...extra };
+  }
+  private obj(key: string) { return `${this.url.replace(/\/$/, '')}/storage/v1/object/${this.bucket}/${key.split('/').map(encodeURIComponent).join('/')}`; }
+  async put(key: string, data: Uint8Array, mime: string) {
+    const r = await fetch(this.obj(key), { method: 'POST', headers: this.headers({ 'Content-Type': mime, 'x-upsert': 'true', 'Cache-Control': 'max-age=3600' }), body: data as Uint8Array<ArrayBuffer>, signal: AbortSignal.timeout(120_000) });
+    if (!r.ok) throw new Error(`Supabase Storage upload ${r.status}: ${(await r.text()).slice(0, 300)}`);
+  }
+  async get(key: string) {
+    const r = await fetch(this.obj(key).replace('/object/', '/object/authenticated/'), { headers: this.headers(), signal: AbortSignal.timeout(120_000) });
+    if (r.status === 404 || r.status === 400) return null;
+    if (!r.ok) throw new Error(`Supabase Storage download ${r.status}`);
+    return new Uint8Array(await r.arrayBuffer());
+  }
+  async delete(key: string) {
+    const r = await fetch(`${this.url.replace(/\/$/, '')}/storage/v1/object/${this.bucket}`, { method: 'DELETE', headers: this.headers({ 'Content-Type': 'application/json' }), body: JSON.stringify({ prefixes: [key] }), signal: AbortSignal.timeout(30_000) });
+    if (!r.ok && r.status !== 404) throw new Error(`Supabase Storage delete ${r.status}`);
+  }
+}
