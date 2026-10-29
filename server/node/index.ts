@@ -5,7 +5,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createApp } from '../core/app';
-import { ensureSeed } from '../core/seed';
+import { ensureSeed, removeSampleClient } from '../core/seed';
 import { applyListPrices, importCatalog, type CatalogImport } from '../core/importCatalog';
 import { readdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -13,6 +13,7 @@ import type { BlobStorage, Mailer } from '../core/deps';
 import { createPgStore } from './pgStore';
 import { checkSupabaseSchema, createSupabaseStore } from './supabaseStore';
 import { createHash } from 'node:crypto';
+import { gunzipSync } from 'node:zlib';
 import type { Store } from '../core/store';
 import { DiskStorage, S3Storage, SupabaseStorage } from './storage';
 import { GoDaddyGatewayMailer, MicrosoftGraphMailer, OutboxMailer, SmtpMailer } from './mailer';
@@ -110,23 +111,34 @@ async function main() {
       const priced = await applyListPrices(store, manifest);
       if (priced) console.log(`[myshowroom] Catalogo "${dir}": prezzo di listino aggiunto a ${priced} prodotti.`);
     }
+  await removeSampleClient(store);
   setInterval(() => app.purgeSessions().catch(() => {}), 6 * 3600_000).unref();
 
   const dist = path.join(root, 'dist');
   const MIME: Record<string, string> = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json', '.json': 'application/json' };
   const SEC: Record<string, string> = {
     'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'strict-origin-when-cross-origin', 'X-Frame-Options': 'SAMEORIGIN',
-    'Content-Security-Policy': "default-src 'self'; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-src 'self' blob:; object-src 'self' blob:; base-uri 'self'; form-action 'self'",
+    'Content-Security-Policy': "default-src 'self'; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self'; connect-src 'self'; frame-src 'self' blob:; object-src 'self' blob:; base-uri 'self'; form-action 'self'",
   };
   if (prod) SEC['Strict-Transport-Security'] = 'max-age=31536000';
 
   const serveStatic = (req: IncomingMessage, res: ServerResponse) => {
     const urlPath = decodeURIComponent((req.url || '/').split('?')[0]);
     let file = path.join(dist, path.normalize(urlPath).replace(/^(\.\.[/\\])+/, ''));
-    if (!file.startsWith(dist) || !existsSync(file) || statSync(file).isDirectory()) file = path.join(dist, 'index.html');
-    if (!existsSync(file)) { res.writeHead(503); res.end('Frontend non compilato: eseguire npm run build'); return; }
+    // file precompressi (es. motore OCR): servito il .gz con Content-Encoding, o decompresso se il client non accetta gzip
+    const gz = file.startsWith(dist) && !existsSync(file) && existsSync(file + '.gz');
+    if (!gz && (!file.startsWith(dist) || !existsSync(file) || statSync(file).isDirectory())) file = path.join(dist, 'index.html');
+    if (!gz && !existsSync(file)) { res.writeHead(503); res.end('Frontend non compilato: eseguire npm run build'); return; }
     const ext = path.extname(file);
-    res.writeHead(200, { 'Content-Type': MIME[ext] || 'application/octet-stream', 'Cache-Control': ext === '.html' ? 'no-cache' : /\.[0-9A-Z]{8}\./i.test(file) ? 'public, max-age=31536000, immutable' : 'public, max-age=3600', ...SEC });
+    const cache = ext === '.html' ? 'no-cache' : /\.[0-9A-Z]{8}\./i.test(file) || urlPath.startsWith('/ocr/') ? 'public, max-age=31536000, immutable' : 'public, max-age=3600';
+    const headers: Record<string, string> = { 'Content-Type': MIME[ext] || 'application/octet-stream', 'Cache-Control': cache, ...SEC };
+    if (gz) {
+      const raw = readFileSync(file + '.gz');
+      if (/\bgzip\b/.test(String(req.headers['accept-encoding'] || ''))) { res.writeHead(200, { ...headers, 'Content-Encoding': 'gzip', Vary: 'Accept-Encoding', 'Content-Length': String(raw.byteLength) }); res.end(raw); }
+      else { const body = gunzipSync(raw); res.writeHead(200, { ...headers, Vary: 'Accept-Encoding', 'Content-Length': String(body.byteLength) }); res.end(body); }
+      return;
+    }
+    res.writeHead(200, headers);
     res.end(readFileSync(file));
   };
 

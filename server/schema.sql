@@ -81,6 +81,28 @@ create table if not exists clients (
   updated_at timestamptz not null default now()
 );
 
+alter table clients add column if not exists company text not null default '';
+alter table clients add column if not exists role text not null default '';
+alter table clients add column if not exists mobile text not null default '';
+alter table clients add column if not exists website text not null default '';
+alter table clients add column if not exists address text not null default '';
+alter table clients add column if not exists site text not null default '';
+alter table clients add column if not exists source text not null default 'manuale';
+alter table clients add column if not exists card_file_id text references files(id) on delete set null;
+alter table clients add column if not exists privacy_signed_at timestamptz;
+alter table clients add column if not exists privacy_version text;
+alter table clients add column if not exists marketing_consent boolean;
+alter table clients add column if not exists consent_file_id text references files(id) on delete set null;
+alter table clients add column if not exists consent_by text references users(id) on delete set null;
+
+-- impostazioni modificabili dall'amministratore (es. testo dell'informativa privacy)
+create table if not exists settings (
+  id text primary key,
+  value text not null,
+  updated_by text references users(id) on delete set null,
+  updated_at timestamptz not null default now()
+);
+
 create table if not exists quotes (
   id text primary key,
   number text unique,
@@ -175,7 +197,7 @@ create index if not exists emails_quote_idx on emails(quote_id);
 do $$
 declare t text;
 begin
-  foreach t in array array['users','sessions','products','files','documents','document_products','clients','quotes','quote_items','appointments','tasks','reservations','emails'] loop
+  foreach t in array array['users','sessions','products','files','documents','document_products','clients','quotes','quote_items','appointments','tasks','reservations','emails','settings'] loop
     execute format('alter table %I enable row level security', t);
     if exists (select 1 from pg_roles where rolname = 'anon') then
       execute format('revoke all on table %I from anon', t);

@@ -138,3 +138,88 @@ export async function renderQuotePdf(input: QuotePdfInput): Promise<Uint8Array> 
   footer(page, doc.getPageCount());
   return doc.save();
 }
+
+export type ConsentPdfInput = {
+  client: Pick<Client, 'name' | 'company' | 'role' | 'email' | 'phone' | 'mobile' | 'address'>;
+  privacyText: string; version: string;
+  serviceText: string; marketingText: string; marketing: boolean;
+  signature: Uint8Array; // PNG
+  signedAt: Date; site: string; collectedBy: string; timezone?: string;
+};
+
+/** Modulo privacy firmato: informativa integrale, dichiarazioni, scelta sul consenso facoltativo, firma e dati di raccolta. */
+export async function renderConsentPdf(i: ConsentPdfInput): Promise<Uint8Array> {
+  const doc = await PDFDocument.create();
+  doc.setTitle(`Informativa privacy e consensi — ${i.client.name}`);
+  doc.setAuthor('Peverelli Design'); doc.setCreator('myshowroom by Peverelli Design'); doc.setProducer('myshowroom');
+  const reg = await doc.embedFont(StandardFonts.Helvetica);
+  const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  const sig = await doc.embedPng(i.signature);
+  let page = doc.addPage([W, H]); let y = H - M;
+  const when = new Intl.DateTimeFormat('it-IT', { dateStyle: 'long', timeStyle: 'short', timeZone: i.timezone || 'Europe/Rome' }).format(i.signedAt);
+  const footer = (p: PDFPage, n: number) => {
+    p.drawLine({ start: { x: M, y: 40 }, end: { x: W - M, y: 40 }, thickness: 0.5, color: LINE });
+    p.drawText(sanitize(reg, `Modulo privacy · ${i.client.name} · informativa v. ${i.version}`), { x: M, y: 28, size: 7, font: reg, color: MUTED });
+    p.drawText(String(n), { x: W - M - 6, y: 28, size: 7, font: reg, color: MUTED });
+  };
+  const need = (h: number) => { if (y - h < 60) { footer(page, doc.getPageCount()); page = doc.addPage([W, H]); y = H - M; } };
+  const para = (s: string, size: number, font = reg, color = INK, gap = 3) => {
+    for (const l of wrap(font, s, size, W - 2 * M)) { need(size + gap); page.drawText(l, { x: M, y: y - size, size, font, color }); y -= size + gap; }
+  };
+
+  page.drawText('myshowroom', { x: M, y: y - 20, size: 20, font: reg, color: INK });
+  page.drawText('by Peverelli Design', { x: M, y: y - 34, size: 8.5, font: reg, color: MUTED });
+  page.drawText(sanitize(reg, 'INFORMATIVA PRIVACY E CONSENSI'), { x: W - M - reg.widthOfTextAtSize('INFORMATIVA PRIVACY E CONSENSI', 8), y: y - 20, size: 8, font: reg, color: MUTED });
+  y -= 64;
+
+  // dati dell'interessato
+  page.drawText('INTERESSATO', { x: M, y: y - 8, size: 7.5, font: bold, color: MUTED }); y -= 20;
+  const rows: [string, string][] = [['Nome e cognome', i.client.name], ['Azienda', [i.client.company, i.client.role].filter(Boolean).join(' · ')], ['Email', i.client.email], ['Telefono', [i.client.phone, i.client.mobile].filter(Boolean).join(' · ')], ['Indirizzo', i.client.address]];
+  for (const [k, v] of rows.filter(r => r[1])) {
+    page.drawText(k, { x: M, y: y - 9, size: 9, font: reg, color: MUTED });
+    for (const l of wrap(reg, v, 9.5, W - 2 * M - 120)) { page.drawText(l, { x: M + 120, y: y - 9, size: 9.5, font: reg, color: INK }); y -= 14; }
+  }
+  y -= 10; page.drawLine({ start: { x: M, y }, end: { x: W - M, y }, thickness: 0.5, color: LINE }); y -= 16;
+
+  // informativa integrale
+  for (const block of i.privacyText.trim().split(/\n/)) {
+    const title = /^(\d+\.\s|INFORMATIVA|ai sensi)/.test(block.trim());
+    if (!block.trim()) { y -= 4; continue; }
+    if (/^\d+\.\s/.test(block.trim())) y -= 4;
+    para(block, title ? 8.6 : 8.2, title ? bold : reg, INK, 2.6);
+  }
+
+  // dichiarazioni e consensi
+  y -= 14; need(170);
+  page.drawLine({ start: { x: M, y }, end: { x: W - M, y }, thickness: 0.5, color: LINE }); y -= 18;
+  page.drawText('DICHIARAZIONI E CONSENSI', { x: M, y: y - 8, size: 7.5, font: bold, color: MUTED }); y -= 22;
+  const box = (checked: boolean, label: string, f = reg) => {
+    need(26);
+    page.drawRectangle({ x: M, y: y - 10, width: 10, height: 10, borderColor: INK, borderWidth: 0.8 });
+    if (checked) { page.drawLine({ start: { x: M + 2, y: y - 5 }, end: { x: M + 4.5, y: y - 8 }, thickness: 1.3, color: INK }); page.drawLine({ start: { x: M + 4.5, y: y - 8 }, end: { x: M + 8.5, y: y - 1.5 }, thickness: 1.3, color: INK }); }
+    for (const l of wrap(f, label, 9, W - 2 * M - 20)) { page.drawText(l, { x: M + 18, y: y - 9, size: 9, font: f, color: INK }); y -= 13; }
+    y -= 6;
+  };
+  box(true, i.serviceText);
+  page.drawText(sanitize(reg, i.marketingText + ':'), { x: M, y: y - 9, size: 9, font: reg, color: INK }); y -= 20;
+  const half = (W - 2 * M) / 2;
+  const radio = (x: number, on: boolean, label: string) => {
+    page.drawRectangle({ x, y: y - 10, width: 10, height: 10, borderColor: INK, borderWidth: 0.8 });
+    if (on) page.drawRectangle({ x: x + 2.5, y: y - 7.5, width: 5, height: 5, color: INK });
+    page.drawText(label, { x: x + 18, y: y - 9, size: 9, font: on ? bold : reg, color: INK });
+  };
+  radio(M, i.marketing, 'Do il consenso'); radio(M + half, !i.marketing, 'Nego il consenso'); y -= 30;
+
+  // firma
+  need(130);
+  page.drawText(sanitize(reg, `Luogo e data: ${i.site} – ${when}`), { x: M, y: y - 9, size: 9, font: reg, color: INK });
+  page.drawText('Firma dell’interessato'.replace('’', "'"), { x: W - M - 200, y: y - 9, size: 8, font: reg, color: MUTED });
+  y -= 16;
+  const sw = 200, sh = Math.min(80, sw * sig.height / sig.width);
+  page.drawImage(sig, { x: W - M - sw, y: y - sh, width: sw, height: sh });
+  y -= sh + 4;
+  page.drawLine({ start: { x: W - M - sw, y }, end: { x: W - M, y }, thickness: 0.6, color: INK }); y -= 22;
+  para(`Firma raccolta su dispositivo nello showroom da ${i.collectedBy}. Documento generato da myshowroom il ${when}; informativa versione ${i.version}. Una copia è a disposizione dell'interessato.`, 7.2, reg, MUTED, 2);
+  footer(page, doc.getPageCount());
+  return doc.save();
+}

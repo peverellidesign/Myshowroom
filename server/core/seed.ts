@@ -24,11 +24,21 @@ export async function ensureSeed(store: Store, opts: SeedOptions) {
     for (const u of opts.extraUsers || [])
       await store.insert('users', { id: crypto.randomUUID(), email: u.email.toLowerCase(), name: u.name, role: u.role, site: u.site, active: true, passwordHash: await hashPassword(u.password), createdAt: now });
     if (opts.demoData) {
-      await store.insert('clients', { id: crypto.randomUUID(), name: 'Cliente esempio', email: '', phone: '', notes: 'Visita showroom', ownerId: adminId, createdAt: now, updatedAt: now });
       for (const name of ['Verificare disponibilità prodotti', 'Preparare selezione per visita showroom'])
         await store.insert('tasks', { id: crypto.randomUUID(), name, done: false, assigneeId: null, dueDate: null, createdBy: adminId, createdAt: now });
     }
   }
   if (opts.demoData && (await store.count('products')) === 0)
     for (const p of seedProducts) await store.insert('products', { ...p, description: '', createdAt: now, updatedAt: now });
+}
+
+/** Elimina il "Cliente esempio" creato dalle prime versioni (solo se non ha dati reali né preventivi inviati). */
+export async function removeSampleClient(store: Store) {
+  for (const c of await store.all<{ id: string; email: string; notes: string }>('clients', { name: 'Cliente esempio' })) {
+    if (c.email || c.notes !== 'Visita showroom' || await store.count('quotes', { clientId: c.id, status: 'sent' })) continue;
+    for (const q of await store.all<{ id: string }>('quotes', { clientId: c.id })) await store.update('quotes', q.id, { clientId: null });
+    for (const r of await store.all<{ id: string }>('reservations', { clientId: c.id })) await store.update('reservations', r.id, { clientId: null });
+    for (const a of await store.all<{ id: string }>('appointments', { clientId: c.id })) await store.update('appointments', a.id, { clientId: null });
+    await store.remove('clients', { id: c.id });
+  }
 }

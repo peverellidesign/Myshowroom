@@ -35,7 +35,17 @@ export type DocumentRecord = {
   productIds: string[]; createdBy: string | null; createdAt: string;
 };
 
-export type Client = { id: string; name: string; email: string; phone: string; notes: string; ownerId: string | null; createdAt: string; updatedAt: string };
+export type Client = {
+  id: string; name: string; email: string; phone: string; notes: string; ownerId: string | null; createdAt: string; updatedAt: string;
+  company: string; role: string; mobile: string; website: string; address: string; site: string;
+  /** Come è stato acquisito il contatto: 'manuale' | 'biglietto' */
+  source: string;
+  /** Foto del biglietto da visita */
+  cardFileId: string | null;
+  /** Modulo privacy: data firma, versione dell'informativa, consenso marketing, PDF firmato, chi l'ha raccolto */
+  privacySignedAt: string | null; privacyVersion: string | null; marketingConsent: boolean | null; consentFileId: string | null; consentBy: string | null;
+};
+export type PrivacySettings = { text: string; version: string; updatedAt: string | null; isDefault: boolean };
 
 export type QuoteItem = {
   id: string; quoteId: string; productId: string; brand: string; productName: string;

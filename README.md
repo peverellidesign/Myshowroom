@@ -109,6 +109,14 @@ L'app invia le email tramite **Microsoft Graph** (HTTPS): funziona anche dove le
 
 Il permesso applicativo `Mail.Send` vale per tutte le caselle dell'organizzazione; l'app usa solo quella dell'utente collegato. Consigliato: limitarlo alle caselle del personale showroom (Exchange Online → *RBAC for Applications*, gruppo di sicurezza abilitato alla posta). Allegati fino a 20 MB ciascuno (25 MB totali); oltre diventano link di download firmati. Gli account Outlook.com personali non sono supportati.
 
+## Contatti, biglietti da visita e privacy
+
+- **Nuovo contatto da ogni pagina**: pulsante in alto a destra (icona persona +) e accanto alla scelta del cliente nei preventivi.
+- **Scansione biglietti da visita**: *Fotografa* apre la fotocamera del telefono/iPad; il testo viene letto **sul dispositivo** (Tesseract, italiano + inglese, file in `public/ocr/`, ~5 MB scaricati una sola volta) e i campi riconosciuti (nome, azienda, ruolo, email, telefoni, sito, indirizzo) vengono evidenziati da verificare. La foto del biglietto resta allegata al contatto.
+- **Modulo privacy (GDPR)**: informativa art. 13 modificabile dall'amministratore (*Clienti → Informativa privacy*; la bozza iniziale contiene campi tra [parentesi quadre] da completare), dichiarazione di presa visione, consenso marketing facoltativo (sì/no esplicito), firma con dito o penna. Viene generato un PDF con testo integrale, scelte, firma, luogo, data e versione dell'informativa; facoltativamente inviato in copia al cliente. Si può firmare subito o più tardi (*Firma privacy* dalla scheda cliente).
+- La firma raccolta è una firma elettronica semplice: adeguata a documentare l'informativa e i consensi (art. 7 GDPR), non sostituisce una firma digitale qualificata.
+- Eliminando un contatto vengono cancellati anche la foto del biglietto e il modulo firmato.
+
 ## Caricare i contenuti
 
 - **Prodotti** (amministratore / responsabile): *Prodotti → Nuovo prodotto* oppure *Modifica scheda*: dati, composizioni con prezzi, materiali, colori, più foto per volta (dal telefono anche scattandole), scelta della copertina.

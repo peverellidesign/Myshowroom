@@ -12,7 +12,8 @@ import {
 } from './auth';
 import type { Deps, MailAttachment } from './deps';
 import { appointmentIcs } from './ics';
-import { renderQuotePdf } from './pdf';
+import { renderConsentPdf, renderQuotePdf } from './pdf';
+import { CONSENT_MARKETING, CONSENT_SERVICE, DEFAULT_PRIVACY_TEXT, privacyVersion } from '../../shared/privacy';
 import { HttpError, json, Router, type Ctx } from './router';
 import { UniqueViolation, type Store } from './store';
 
@@ -225,7 +226,7 @@ export function createApp(deps: Deps) {
     appointments.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
     const body: Bootstrap = {
       user: publicUser(u), users: users.map(x => ({ id: x.id, name: x.name, role: x.role, site: x.site })),
-      products, documents, clients, quote, appointments, tasks, reservations,
+      products, documents, clients: clients.map(clientOut), quote, appointments, tasks, reservations,
       config: { mailMode: mailer.mode, storage: storage.kind, assistant: deps.llm ? 'llm' : 'local', maxUploadMb: config.maxUploadMb, demo: config.demo },
     };
     return json(body);
@@ -365,23 +366,86 @@ export function createApp(deps: Deps) {
   });
 
   // ───────────── clienti ─────────────
-  const clientInput = (b: Record<string, unknown>, partial: boolean) => {
+  const CLIENT_DEFAULTS = { company: '', role: '', mobile: '', website: '', address: '', site: '', source: 'manuale', cardFileId: null, privacySignedAt: null, privacyVersion: null, marketingConsent: null, consentFileId: null, consentBy: null };
+  const clientOut = (c: Client): Client => ({ ...CLIENT_DEFAULTS, ...Object.fromEntries(Object.entries(c).filter(([, v]) => v !== undefined)) } as Client);
+  const clientInput = async (b: Record<string, unknown>, partial: boolean) => {
     const o: Record<string, unknown> = {};
-    if (!partial || 'name' in b) o.name = str(b.name, 'Nome e cognome', { required: true, max: 120 });
-    if (!partial || 'email' in b) o.email = email(b.email);
-    if (!partial || 'phone' in b) o.phone = str(b.phone, 'Telefono', { max: 40 });
-    if (!partial || 'notes' in b) o.notes = str(b.notes, 'Note', { max: 4000 });
+    const has = (k: string) => !partial || k in b;
+    if (has('name')) o.name = str(b.name, 'Nome e cognome', { required: true, max: 120 });
+    if (has('email')) o.email = email(b.email);
+    if (has('phone')) o.phone = str(b.phone, 'Telefono', { max: 40 });
+    if (has('mobile')) o.mobile = str(b.mobile, 'Cellulare', { max: 40 });
+    if (has('company')) o.company = str(b.company, 'Azienda', { max: 160 });
+    if (has('role')) o.role = str(b.role, 'Ruolo', { max: 120 });
+    if (has('website')) o.website = str(b.website, 'Sito web', { max: 200 });
+    if (has('address')) o.address = str(b.address, 'Indirizzo', { max: 300 });
+    if (has('site')) o.site = b.site ? oneOf(b.site, LOCATIONS, 'Sede') : '';
+    if (has('notes')) o.notes = str(b.notes, 'Note', { max: 4000 });
+    if (!partial) o.source = b.source === 'biglietto' ? 'biglietto' : 'manuale';
+    if ('cardFileId' in b) {
+      const id = b.cardFileId ? str(b.cardFileId, 'Biglietto', { max: 60 }) : null;
+      if (id) { const f = await store.get<FileRecord>('files', id); if (!f || !f.mime.startsWith('image/')) throw new HttpError(400, 'Foto del biglietto non valida'); }
+      o.cardFileId = id;
+    }
     return o;
   };
   router.post('/api/clients', async c => {
     const u = requireUser(c);
-    return json(await store.insert<Client>('clients', { id: uid(), ...clientInput(await c.json(), false), ownerId: u.id, createdAt: now(), updatedAt: now() }), 201);
+    const data = await clientInput(await c.json(), false);
+    return json(clientOut(await store.insert<Client>('clients', { id: uid(), ...CLIENT_DEFAULTS, ...data, ownerId: u.id, createdAt: now(), updatedAt: now() })), 201);
   });
   router.patch('/api/clients/:id', async c => {
     requireUser(c);
-    const cl = await store.update<Client>('clients', c.params.id, { ...clientInput(await c.json(), true), updatedAt: now() });
+    const cl = await store.update<Client>('clients', c.params.id, { ...(await clientInput(await c.json(), true)), updatedAt: now() });
     if (!cl) throw new HttpError(404, 'Cliente non trovato');
-    return json(cl);
+    return json(clientOut(cl));
+  });
+
+  // ── informativa privacy (testo modificabile dall'amministratore) ──
+  async function privacySettings() {
+    const row = await store.get<{ value: string; updatedAt: string }>('settings', 'privacy_text');
+    const text = row?.value || DEFAULT_PRIVACY_TEXT;
+    return { text, version: await privacyVersion(text), updatedAt: row?.updatedAt ?? null, isDefault: !row };
+  }
+  router.get('/api/settings/privacy', async c => { requireUser(c); return json(await privacySettings()); });
+  router.put('/api/settings/privacy', async c => {
+    const u = requireUser(c, 'admin');
+    const b = await c.json<Record<string, unknown>>();
+    const text = str(b.text, 'Informativa', { max: 30000 });
+    if (!text.trim() || b.reset) await store.remove('settings', { id: 'privacy_text' });
+    else if (await store.get('settings', 'privacy_text')) await store.update('settings', 'privacy_text', { value: text, updatedBy: u.id, updatedAt: now() });
+    else await store.insert('settings', { id: 'privacy_text', value: text, updatedBy: u.id, updatedAt: now() });
+    return json(await privacySettings());
+  });
+
+  // ── modulo privacy firmato ──
+  router.post('/api/clients/:id/consent', async c => {
+    const u = requireUser(c);
+    const cl = await store.get<Client>('clients', c.params.id);
+    if (!cl) throw new HttpError(404, 'Cliente non trovato');
+    const b = await c.json<Record<string, unknown>>();
+    if (b.readAccepted !== true) throw new HttpError(400, "Serve la dichiarazione di presa visione dell'informativa");
+    if (typeof b.marketing !== 'boolean') throw new HttpError(400, 'Indicare se il consenso marketing è dato o negato');
+    const m = /^data:image\/png;base64,([A-Za-z0-9+/=]+)$/.exec(String(b.signature || ''));
+    if (!m) throw new HttpError(400, 'Firma mancante');
+    const signature = Uint8Array.from(atob(m[1]), ch => ch.charCodeAt(0));
+    if (signature.byteLength < 200 || signature.byteLength > 2_000_000) throw new HttpError(400, 'Firma non valida');
+    const site = b.site ? oneOf(b.site, LOCATIONS, 'Sede') : (cl.site || u.site);
+    const p = await privacySettings();
+    const signedAt = clock();
+    const full = clientOut(cl);
+    const pdf = await renderConsentPdf({ client: full, privacyText: p.text, version: p.version, serviceText: CONSENT_SERVICE, marketingText: CONSENT_MARKETING, marketing: b.marketing, signature, signedAt, site, collectedBy: u.name });
+    const safe = cl.name.replace(/[^\p{L}\p{N} ._-]/gu, '').trim() || 'cliente';
+    const file = await saveFile(pdf, `Privacy ${safe} ${signedAt.toISOString().slice(0, 10)}.pdf`, 'application/pdf', u.id);
+    const old = cl.consentFileId;
+    const updated = await store.update<Client>('clients', cl.id, { privacySignedAt: signedAt.toISOString(), privacyVersion: p.version, marketingConsent: b.marketing, consentFileId: file.id, consentBy: u.id, updatedAt: now() });
+    if (old && old !== file.id) { const f = await store.get<FileRecord & { storageKey: string }>('files', old); if (f) { await storage.delete(f.storageKey).catch(() => {}); await store.remove('files', { id: old }); } }
+    let emailStatus: EmailRecord | null = null;
+    if (b.sendCopy === true && cl.email) {
+      const text = `Gentile ${cl.name},\n\nin allegato la copia dell'informativa privacy da Lei firmata oggi presso il nostro showroom di ${site}, con le scelte espresse sui consensi.\n\nPuò modificare le Sue scelte o esercitare i Suoi diritti in qualsiasi momento rispondendo a questa email.\n\nCordiali saluti,\n${u.name}\nPeverelli Design`;
+      emailStatus = await sendAndLog(await store.get<DbUser>('users', u.id), cl.email, 'Informativa privacy firmata — Peverelli Design', text, [{ filename: file.fileName, content: pdf, contentType: 'application/pdf', fileId: file.id }], {});
+    }
+    return json({ client: clientOut(updated!), email: emailStatus });
   });
   router.delete('/api/clients/:id', async c => {
     const u = requireUser(c);
@@ -393,6 +457,7 @@ export function createApp(deps: Deps) {
       for (const q of await s.all<Quote>('quotes', { clientId: cl.id, status: 'draft' })) await s.update('quotes', q.id, { clientId: null });
       for (const r of await s.all<Reservation>('reservations', { clientId: cl.id })) await s.update('reservations', r.id, { clientId: null });
       await s.remove('clients', { id: cl.id });
+      for (const fid of [cl.cardFileId, cl.consentFileId]) { if (!fid) continue; const f = await s.get<FileRecord & { storageKey: string }>('files', fid); if (f) { await storage.delete(f.storageKey).catch(() => {}); await s.remove('files', { id: fid }); } }
     });
     return json({ ok: true });
   });

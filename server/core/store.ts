@@ -18,6 +18,7 @@ export const TABLES = {
   tasks: { json: [] },
   reservations: { json: [] },
   emails: { json: ['attachments'] },
+  settings: { json: [] },
 } as const;
 export type Table = keyof typeof TABLES;
 
