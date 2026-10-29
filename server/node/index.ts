@@ -6,6 +6,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createApp } from '../core/app';
 import { ensureSeed } from '../core/seed';
+import { importCatalog, type CatalogImport } from '../core/importCatalog';
+import { readdirSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import type { BlobStorage, Mailer } from '../core/deps';
 import { createPgStore } from './pgStore';
 import { checkSupabaseSchema, createSupabaseStore } from './supabaseStore';
@@ -86,6 +89,17 @@ async function main() {
     admin: { email: env.ADMIN_EMAIL || 'admin@myshowroom.local', password: env.ADMIN_PASSWORD || 'myshowroom-admin', name: env.ADMIN_NAME || 'Amministratore' },
     demoData: bool(env.SEED_DEMO, !prod),
   });
+  // Cataloghi preparati in server/import/<chiave>/products.json (importati una sola volta)
+  const importDir = path.join(root, 'server', 'import');
+  if (existsSync(importDir) && !bool(env.SKIP_CATALOG_IMPORT, false))
+    for (const dir of readdirSync(importDir).sort()) {
+      const file = path.join(importDir, dir, 'products.json');
+      if (!existsSync(file)) continue;
+      const raw = new Uint8Array(readFileSync(file));
+      const added = await importCatalog(store, storage, JSON.parse(Buffer.from(raw).toString('utf8')) as CatalogImport, raw,
+        async name => new Uint8Array(await readFile(path.join(importDir, dir, path.basename(name)))));
+      if (added) console.log(`[myshowroom] Catalogo "${dir}": importati ${added} prodotti.`);
+    }
   setInterval(() => app.purgeSessions().catch(() => {}), 6 * 3600_000).unref();
 
   const dist = path.join(root, 'dist');

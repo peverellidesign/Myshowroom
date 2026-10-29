@@ -25,7 +25,7 @@ before(async () => {
   const sql = postgres(DB, { onnotice: () => {} }); await sql.unsafe('drop schema public cascade; create schema public;'); await sql.end();
   gw = http.createServer((q, s) => { let b = ''; q.on('data', d => b += d); q.on('end', () => { received.push(JSON.parse(b)); s.writeHead(200, { 'content-type': 'application/json' }); s.end(JSON.stringify({ success: true, messageId: 'gw-' + received.length })); }); }).listen(GW);
   await new Promise((resolve, reject) => {
-    srv = spawn(process.execPath, [path.join(root, 'build/server.mjs')], { env: { ...process.env, PORT: String(PORT), DATABASE_URL: DB, UPLOAD_DIR: mkdtempSync(path.join(tmpdir(), 'ms-gw-')), MAIL_PROVIDER: 'godaddy', MAIL_GATEWAY_URL: `http://127.0.0.1:${GW}/api/email/send`, SMTP_HOST: '', ADMIN_EMAIL: 'admin@test.local', ADMIN_PASSWORD: 'admin-password-1', SEED_DEMO: 'true', APP_SECRET: 'segreto-di-test' }, stdio: ['ignore', 'pipe', 'inherit'] });
+    srv = spawn(process.execPath, [path.join(root, 'build/server.mjs')], { env: { ...process.env, PORT: String(PORT), DATABASE_URL: DB, UPLOAD_DIR: mkdtempSync(path.join(tmpdir(), 'ms-gw-')), MAIL_PROVIDER: 'godaddy', MAIL_GATEWAY_URL: `http://127.0.0.1:${GW}/api/email/send`, SMTP_HOST: '', ADMIN_EMAIL: 'admin@test.local', ADMIN_PASSWORD: 'admin-password-1', SEED_DEMO: 'true', SKIP_CATALOG_IMPORT: 'true', APP_SECRET: 'segreto-di-test' }, stdio: ['ignore', 'pipe', 'inherit'] });
     srv.stdout.on('data', d => { if (String(d).includes('email: gateway')) resolve(); });
     srv.on('exit', c => reject(new Error('server exited ' + c)));
   });

@@ -7,7 +7,7 @@ export const ROLE_LABEL: Record<Role, string> = { admin: 'Amministratore', manag
 
 export const LOCATIONS = ['Como', 'Lugano', 'Milano', 'Dubai', 'Magazzino'] as const;
 export const SHOWROOMS = ['Como', 'Lugano', 'Milano', 'Dubai'] as const;
-export const CATEGORIES = ['Sedute', 'Tavoli', 'Contenitori', 'Tavolini', 'Letti', 'Illuminazione', 'Complementi', 'Outdoor'] as const;
+export const CATEGORIES = ['Sedute', 'Tavoli', 'Contenitori', 'Tavolini', 'Letti', 'Cucine', 'Illuminazione', 'Complementi', 'Outdoor'] as const;
 export const STATUSES = ['Esposto', 'Disponibile', 'Riservato', 'Venduto', 'In trasferimento'] as const;
 export const DOC_TYPES = ['Catalogo prodotto', 'Catalogo generale', 'Scheda tecnica', 'Listino prezzi', 'Materiali e finiture', 'Istruzioni di montaggio', 'Altro'] as const;
 export const DOC_LANGS = ['Italiano', 'Inglese', 'Tedesco', 'Francese', 'Multilingua'] as const;

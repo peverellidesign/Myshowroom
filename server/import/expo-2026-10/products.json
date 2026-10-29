@@ -1,0 +1,1790 @@
+{
+ "key": "expo-2026-10",
+ "removeDemo": [
+  "bambole",
+  "em",
+  "artemone",
+  "lithos"
+ ],
+ "products": [
+  {
+   "id": "pd-flexform-gregory-panca",
+   "brand": "Flexform",
+   "name": "Gregory · Panca",
+   "category": "Sedute",
+   "location": "Lugano",
+   "zone": "",
+   "status": "Esposto",
+   "price": 3350,
+   "currency": "CHF",
+   "dims": "L 122 × P 40 × H 45 cm",
+   "description": "Antonio Citterio, 2020. L 122 x P 40 x H 45 cm. Esemplare Peverelli: struttura brunita e seduta in pelle. La collezione si distingue per la base in metallo, le cinghie a vista rivestite in cuoio e i piedi in alluminio pressofuso.\n\nPrezzo di listino: CHF 4'395 · Prezzo Peverelli: CHF 3'350.",
+   "images": [
+    "expo-00-001-000.jpg"
+   ],
+   "materials": [
+    "Pelle",
+    "Metallo"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 122 × P 40 × H 45 cm",
+     "price": 3350
+    }
+   ],
+   "listPrice": 4395
+  },
+  {
+   "id": "pd-flexform-vesta-sedia",
+   "brand": "Flexform",
+   "name": "Vesta · Sedia",
+   "category": "Sedute",
+   "location": "Lugano",
+   "zone": "",
+   "status": "Esposto",
+   "price": 3860,
+   "currency": "CHF",
+   "dims": "Da verificare",
+   "description": "Antonio Citterio, 2023. Quattro sedie con base in frassino massello tinto noce e rivestimento in tessuto terra bruciata. Scocca ergonomica imbottita in poliuretano schiumato a freddo; rivestimento in tessuto sfoderabile.\n\nPrezzo di listino: CHF 5'516 cadauno · Prezzo Peverelli: CHF 3'860 cadauno. Disponibili 4 pezzi.",
+   "images": [
+    "expo-01-001-001.jpg"
+   ],
+   "materials": [
+    "Tessuto",
+    "Legno"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Set da 4 pezzi (prezzo cadauno)",
+     "dims": "Da verificare",
+     "price": 3860
+    }
+   ],
+   "listPrice": 5516
+  },
+  {
+   "id": "pd-flexform-crono-divanetto",
+   "brand": "Flexform",
+   "name": "Crono · Divanetto",
+   "category": "Sedute",
+   "location": "Lugano",
+   "zone": "",
+   "status": "Esposto",
+   "price": 4070,
+   "currency": "CHF",
+   "dims": "50 × 60 cm",
+   "description": "Antonio Citterio, 2015. Divanetto in noce canaletto, schienale intrecciato a mano con cordoncino di cuoio marrone, rivestimento acquamarina. Peverelli indica misure 65 x 90/109 cm per la poltrona e 50 x 60 cm per il pouf: composizione da confermare.\n\nPrezzo di listino: CHF 7'296 · Prezzo Peverelli: CHF 4'070.",
+   "images": [
+    "expo-02-001-002.jpg"
+   ],
+   "materials": [
+    "Pelle",
+    "Legno"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "50 × 60 cm",
+     "price": 4070
+    }
+   ],
+   "listPrice": 7296
+  },
+  {
+   "id": "pd-flexform-crono-poltrona",
+   "brand": "Flexform",
+   "name": "Crono · Poltrona",
+   "category": "Sedute",
+   "location": "Lugano",
+   "zone": "",
+   "status": "Esposto",
+   "price": 2645,
+   "currency": "CHF",
+   "dims": "L 69 × P 78 × H 77 cm",
+   "description": "Antonio Citterio, 2015. L 69 x P 78 x H 77 cm. Struttura in noce canaletto, schienale con cordoncino di cuoio marrone intrecciato a mano, rivestimento in tessuto acquamarina. Seduta imbottita in poliuretano e rivestimento sfoderabile.\n\nPrezzo di listino: CHF 5'285 · Prezzo Peverelli: CHF 2'645.",
+   "images": [
+    "expo-03-001-003.jpg"
+   ],
+   "materials": [
+    "Pelle",
+    "Tessuto",
+    "Legno"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 69 × P 78 × H 77 cm",
+     "price": 2645
+    }
+   ],
+   "listPrice": 5285
+  },
+  {
+   "id": "pd-flou-fiocco-divano",
+   "brand": "Flou",
+   "name": "Fiocco · Divano",
+   "category": "Sedute",
+   "location": "Lugano",
+   "zone": "",
+   "status": "Esposto",
+   "price": 9950,
+   "currency": "CHF",
+   "dims": "L 335 × P 104 cm",
+   "description": "Composizione lineare L 335 x P 104 cm, rivestita in tessuto Colin 915. Volumi morbidi e accoglienti, linea contemporanea; inclusi quattro cuscini decorativi coordinati. Configurazione e finiture secondo la scheda Peverelli.\n\nPrezzo di listino: CHF 12'750 · Prezzo Peverelli: CHF 9'950.",
+   "images": [
+    "expo-04-001-004.jpg"
+   ],
+   "materials": [
+    "Tessuto"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 335 × P 104 cm",
+     "price": 9950
+    }
+   ],
+   "listPrice": 12750
+  },
+  {
+   "id": "pd-poltrona-frau-archibald-poltrona",
+   "brand": "Poltrona Frau",
+   "name": "Archibald · Poltrona",
+   "category": "Sedute",
+   "location": "Lugano",
+   "zone": "",
+   "status": "Esposto",
+   "price": 3800,
+   "currency": "CHF",
+   "dims": "L 83 × P 80 × H 75 cm",
+   "description": "Design Jean-Marie Massaud. L 83 x P 80 x H 75 cm. Esemplare in Pelle Frau SC/IL 56 Siena con basamento canna di fucile. Seduta avvolgente, linee morbide e dettagli sartoriali tipici della famiglia Archibald.\n\nPrezzo di listino: CHF 4'875 · Prezzo Peverelli: CHF 3'800.",
+   "images": [
+    "expo-05-002-008.jpg"
+   ],
+   "materials": [
+    "Pelle"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 83 × P 80 × H 75 cm",
+     "price": 3800
+    }
+   ],
+   "listPrice": 4875
+  },
+  {
+   "id": "pd-poltrona-frau-duo-divano",
+   "brand": "Poltrona Frau",
+   "name": "DUO · Divano",
+   "category": "Sedute",
+   "location": "Lugano",
+   "zone": "",
+   "status": "Esposto",
+   "price": 13960,
+   "currency": "CHF",
+   "dims": "L 360 × P 155 × H 80 cm",
+   "description": "Roberto Lazzeroni. L 360 x P 155 x H 80 cm. Struttura in pelle SC/IL 32 Caolino, seduta e schienale in tessuto Shine Silver; piedi cilindrici in alluminio anodizzato nero. Quattro cuscini 47 x 47 cm in Gaben 5403.\n\nPrezzo di listino: CHF 19'260 · Prezzo Peverelli: CHF 13'960.",
+   "images": [
+    "expo-06-002-005.jpg"
+   ],
+   "materials": [
+    "Pelle",
+    "Tessuto",
+    "Metallo"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 360 × P 155 × H 80 cm",
+     "price": 13960
+    }
+   ],
+   "listPrice": 19260
+  },
+  {
+   "id": "pd-poltrona-frau-coup-letto",
+   "brand": "Poltrona Frau",
+   "name": "Coupé · Letto",
+   "category": "Letti",
+   "location": "Lugano",
+   "zone": "",
+   "status": "Esposto",
+   "price": 6450,
+   "currency": "CHF",
+   "dims": "L 172 × P 225 × H 117 cm",
+   "description": "Design GamFratesi. L 172 x P 225 x H 117 cm; pianale 170 x 200 cm. Rivestimento in pelle SC/IL 34 Massage e piedi in acciaio canna di fucile. Testata avvolgente e imbottita, struttura con elementi in legno e acciaio.\n\nPrezzo di listino: CHF 8'650 · Prezzo Peverelli: CHF 6'450.",
+   "images": [
+    "expo-07-002-006.jpg"
+   ],
+   "materials": [
+    "Pelle",
+    "Legno",
+    "Metallo"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 172 × P 225 × H 117 cm",
+     "price": 6450
+    }
+   ],
+   "listPrice": 8650
+  },
+  {
+   "id": "pd-rimadesio-long-island-tavolo",
+   "brand": "Rimadesio",
+   "name": "Long Island · Tavolo",
+   "category": "Tavoli",
+   "location": "Lugano",
+   "zone": "",
+   "status": "Esposto",
+   "price": 3800,
+   "currency": "CHF",
+   "dims": "130 × 130 cm",
+   "description": "Tavolo quadrato 130 x 130 cm, piano in vetro grigio trasparente e struttura cromata nera. Il piano trasparente alleggerisce visivamente il volume, mentre il telaio geometrico valorizza la zona pranzo.\n\nPrezzo di listino: CHF 5'405 · Prezzo Peverelli: CHF 3'800.",
+   "images": [
+    "expo-08-002-007.jpg"
+   ],
+   "materials": [
+    "Vetro",
+    "Metallo"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "130 × 130 cm",
+     "price": 3800
+    }
+   ],
+   "listPrice": 5405
+  },
+  {
+   "id": "pd-valcucine-formamentis-cucina-lineare",
+   "brand": "Valcucine",
+   "name": "Formamentis · Cucina lineare",
+   "category": "Cucine",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 22000,
+   "currency": "EUR",
+   "dims": "L 365 × P 80 × H 217 cm",
+   "description": "Cucina lineare.\nAnte Angel Skin Seta Basalto; pensile vetro lucido Bronzo.\nTop inclinato laminato Ardesia; gole metallo nero.\nL 365 x P 80 x H 217 cm | Colonne L 199 x P 62 x H 218 cm.\nAEG: induzione con cappa, forno, microonde, lavastoviglie.\nElectrolux: frigocongelatore 75 cm | Foster: lavello e miscelatore.\n\nPrezzo di listino: EUR 39.980 · Prezzo Peverelli: EUR 22.000.",
+   "images": [
+    "expo-09-003-009.jpg"
+   ],
+   "materials": [
+    "Vetro",
+    "Metallo",
+    "Laminato"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 365 × P 80 × H 217 cm",
+     "price": 22000
+    }
+   ],
+   "listPrice": 39980
+  },
+  {
+   "id": "pd-molteni-c-dada-engineered-intersection-acciaio-nebula-cucina-con-isola",
+   "brand": "Molteni&C",
+   "name": "Dada Engineered Intersection — Acciaio Nebula · Cucina con isola",
+   "category": "Cucine",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 40400,
+   "currency": "EUR",
+   "dims": "L 313 × P 113 × H 93 cm",
+   "description": "Cucina con isola | Design Vincent Van Duysen.\nAnte Acciaio Nebula; top e gole Travertino Titan.\nLED integrati; cassettoni con apertura elettrica.\nL 313 x P 113 x H 93 cm.\nMiele: induzione, lavastoviglie 60 cm, cappa a scomparsa.\nFoster: lavello sottotop e miscelatore.\n\nPrezzo di listino: EUR 62.300 · Prezzo Peverelli: EUR 40.400.",
+   "images": [
+    "expo-10-003-010.jpg"
+   ],
+   "materials": [
+    "Pietra",
+    "Metallo"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 313 × P 113 × H 93 cm",
+     "price": 40400
+    }
+   ],
+   "listPrice": 62300
+  },
+  {
+   "id": "pd-molteni-c-dada-engineered-intersection-hybrid-ardesia-cucina-lineare",
+   "brand": "Molteni&C",
+   "name": "Dada Engineered Intersection — Hybrid Ardesia · Cucina lineare",
+   "category": "Cucine",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 32800,
+   "currency": "EUR",
+   "dims": "L 373 × P 82 × H 218 cm",
+   "description": "Cucina lineare | Design Vincent Van Duysen.\nAnte Hybrid Ardesia; top e schienale Travertino Titan.\nGole alluminio Peltro; mensole Rovere Nero; pensile Stopsol.\nL 373 x P 82 x H 218 cm.\nMiele: induzione con cappa integrata, lavastoviglie 60 cm.\nDada Multitank completo di accessori | Foster miscelatore.\n\nPrezzo di listino: EUR 50.500 · Prezzo Peverelli: EUR 32.800.",
+   "images": [
+    "expo-11-003-011.jpg"
+   ],
+   "materials": [
+    "Pietra",
+    "Legno",
+    "Metallo"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 373 × P 82 × H 218 cm",
+     "price": 32800
+    }
+   ],
+   "listPrice": 50500
+  },
+  {
+   "id": "pd-valcucine-artematica-new-logica-system-cucina-lineare",
+   "brand": "Valcucine",
+   "name": "Artematica — New Logica System · Cucina lineare",
+   "category": "Cucine",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 25800,
+   "currency": "EUR",
+   "dims": "L 363 × P 97 × H 244 cm",
+   "description": "Cucina lineare | Vetro Blu Aviatore.\nAnte vetro lucido/opaco; top vetro opaco Blu Aviatore.\nNew Logica System attrezzato; illuminazione LED integrata.\nL 363 x P 97 x H 244 cm.\nMiele: induzione semi-filotop, lavastoviglie 60 cm.\nValcucine: cappa integrata | Blanco: lavello filotop.\n\nPrezzo di listino: EUR 51.600 · Prezzo Peverelli: EUR 25.800.",
+   "images": [
+    "expo-12-003-012.jpg"
+   ],
+   "materials": [
+    "Vetro"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 363 × P 97 × H 244 cm",
+     "price": 25800
+    }
+   ],
+   "listPrice": 51600
+  },
+  {
+   "id": "pd-valcucine-artematica-isola-cucina-con-isola",
+   "brand": "Valcucine",
+   "name": "Artematica — Isola · Cucina con isola",
+   "category": "Cucine",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 18900,
+   "currency": "EUR",
+   "dims": "L 334 × P 128 × H 101 cm",
+   "description": "Cucina con isola | Vetro Bianco Opaco.\nAnte e top vetro opaco bianco; apertura push-pull.\nLogica Theca alluminio nero; piano snack noce; LED zoccolo.\nL 334 x P 128 x H 101 cm.\nBora: induzione con cappa integrata | Miele: lavastoviglie 60 cm.\nBlanco: lavello filotop a due vasche.\n\nPrezzo di listino: EUR 37.700 · Prezzo Peverelli: EUR 18.900.",
+   "images": [
+    "expo-13-003-013.jpg"
+   ],
+   "materials": [
+    "Vetro",
+    "Legno",
+    "Metallo"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 334 × P 128 × H 101 cm",
+     "price": 18900
+    }
+   ],
+   "listPrice": 37700
+  },
+  {
+   "id": "pd-molteni-c-hi-line-cucina-lineare",
+   "brand": "Molteni&C",
+   "name": "Hi-Line · Cucina lineare",
+   "category": "Cucine",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 18000,
+   "currency": "EUR",
+   "dims": "Da verificare",
+   "description": "Cucina lineare.\nAnte in laminato; pensili in vetro.\nTop in marmo con inserto in legno massello.\nParete lineare senza colonne: L 262 cm.\nCompleta di 2 colonne dedicate a frigorifero e forno.\n\nPrezzo di listino: EUR 41.000 · Prezzo Peverelli: EUR 18.000.",
+   "images": [
+    "expo-14-003-014.jpg"
+   ],
+   "materials": [
+    "Vetro",
+    "Marmo",
+    "Legno",
+    "Laminato"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "Da verificare",
+     "price": 18000
+    }
+   ],
+   "listPrice": 41000
+  },
+  {
+   "id": "pd-giorgetti-ode-sedia",
+   "brand": "Giorgetti",
+   "name": "Ode · Sedia",
+   "category": "Sedute",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 1600,
+   "currency": "EUR",
+   "dims": "L 52 × P 51 × H 78 cm",
+   "description": "Sedia senza braccioli, rivestimento in tessuto grigio. L 52 x P 51 x H 78 cm.\n\nPrezzo di listino: EUR 2.460 · Prezzo Peverelli: EUR 1.600.",
+   "images": [
+    "expo-15-004-020.jpg"
+   ],
+   "materials": [
+    "Tessuto"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 52 × P 51 × H 78 cm",
+     "price": 1600
+    }
+   ],
+   "listPrice": 2460
+  },
+  {
+   "id": "pd-molteni-c-panna-cotta-tavolino",
+   "brand": "Molteni&C",
+   "name": "Panna Cotta · Tavolino",
+   "category": "Outdoor",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 1040,
+   "currency": "EUR",
+   "dims": "L 40 × P 40 × H 50 cm",
+   "description": "Tavolino da giardino in metallo e pietra Giallo Deserta. L 40 x P 40 x H 50 cm.\n\nPrezzo di listino: EUR 1.497 · Prezzo Peverelli: EUR 1.040.",
+   "images": [
+    "expo-16-004-021.jpg"
+   ],
+   "materials": [
+    "Pietra",
+    "Metallo"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 40 × P 40 × H 50 cm",
+     "price": 1040
+    }
+   ],
+   "listPrice": 1497
+  },
+  {
+   "id": "pd-carl-hansen-s-n-e007-embrace-sgabello",
+   "brand": "Carl Hansen & Søn",
+   "name": "E007 Embrace · Sgabello",
+   "category": "Sedute",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 1130,
+   "currency": "EUR",
+   "dims": "L 49 × P 53 × H 97 cm",
+   "description": "Struttura in legno massello; seduta e schienale in pelle. L 49 x P 53 x H 97 cm.\n\nPrezzo di listino: EUR 1.617 cadauno · Prezzo Peverelli: EUR 1.130 cadauno. Disponibili 2 pezzi.",
+   "images": [
+    "expo-17-004-022.jpg",
+    "expo-45-010-061.jpg"
+   ],
+   "materials": [
+    "Pelle",
+    "Legno"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Set da 2 pezzi (prezzo cadauno)",
+     "dims": "L 49 × P 53 × H 97 cm",
+     "price": 1130
+    }
+   ],
+   "listPrice": 1617
+  },
+  {
+   "id": "pd-rimadesio-rialto-coffee-table-tavolino",
+   "brand": "Rimadesio",
+   "name": "Rialto Coffee Table · Tavolino",
+   "category": "Tavolini",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 1080,
+   "currency": "EUR",
+   "dims": "L 44 × P 44 × H 53 cm",
+   "description": "Tavolino quadrato in vetro grigio 63 e legno tinto ebano 710. L 44 x P 44 x H 53 cm.\n\nPrezzo di listino: EUR 1.672 · Prezzo Peverelli: EUR 1.080.",
+   "images": [
+    "expo-18-004-023.jpg",
+    "expo-46-010-062.jpg"
+   ],
+   "materials": [
+    "Vetro",
+    "Legno"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 44 × P 44 × H 53 cm",
+     "price": 1080
+    }
+   ],
+   "listPrice": 1672
+  },
+  {
+   "id": "pd-molteni-c-aldgate-panca",
+   "brand": "Molteni&C",
+   "name": "Aldgate · Panca",
+   "category": "Sedute",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 2100,
+   "currency": "EUR",
+   "dims": "L 163 × P 53 × H 36 cm",
+   "description": "Metallo nichel nero; seduta in pelle nocciola. L 163 x P 53 x H 36 cm.\n\nPrezzo di listino: EUR 3.547 · Prezzo Peverelli: EUR 2.100.",
+   "images": [
+    "expo-19-004-015.jpg"
+   ],
+   "materials": [
+    "Pelle",
+    "Metallo"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 163 × P 53 × H 36 cm",
+     "price": 2100
+    }
+   ],
+   "listPrice": 3547
+  },
+  {
+   "id": "pd-b-b-italia-le-bambole-poltrona",
+   "brand": "B&B Italia",
+   "name": "Le Bambole · Poltrona",
+   "category": "Sedute",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 2350,
+   "currency": "EUR",
+   "dims": "Da verificare",
+   "description": "Tessuto Sila Blu 2823801.\n\nPrezzo di listino: EUR 4.718 · Prezzo Peverelli: EUR 2.350.",
+   "images": [
+    "expo-20-005-031.jpg"
+   ],
+   "materials": [
+    "Tessuto"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "Da verificare",
+     "price": 2350
+    }
+   ],
+   "listPrice": 4718
+  },
+  {
+   "id": "pd-maxalto-astrum-tavolo-rotondo",
+   "brand": "Maxalto",
+   "name": "Astrum · Tavolo rotondo",
+   "category": "Tavoli",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 8400,
+   "currency": "EUR",
+   "dims": "Ø 165 × H 74 cm",
+   "description": "Struttura verniciata grafite; piano marmo Nero Marquinia lucido. Ø 165 x H 74 cm.\n\nPrezzo di listino: EUR 13.934 · Prezzo Peverelli: EUR 8.400.",
+   "images": [
+    "expo-21-005-032.jpg"
+   ],
+   "materials": [
+    "Marmo"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "Ø 165 × H 74 cm",
+     "price": 8400
+    }
+   ],
+   "listPrice": 13934
+  },
+  {
+   "id": "pd-maxalto-otium-soft-divano",
+   "brand": "Maxalto",
+   "name": "Otium Soft · Divano",
+   "category": "Sedute",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 11530,
+   "currency": "EUR",
+   "dims": "L 337 × P 270 × H 90 cm",
+   "description": "Divano con chaise-longue in tessuto Lou Ecru. L 337 x P 270 x H 90 cm.\n\nPrezzo di listino: EUR 23.072 · Prezzo Peverelli: EUR 11.530.",
+   "images": [
+    "expo-22-005-033.jpg"
+   ],
+   "materials": [
+    "Tessuto"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 337 × P 270 × H 90 cm",
+     "price": 11530
+    }
+   ],
+   "listPrice": 23072
+  },
+  {
+   "id": "pd-b-b-italia-harbor-poltrona",
+   "brand": "B&B Italia",
+   "name": "Harbor · Poltrona",
+   "category": "Sedute",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 3500,
+   "currency": "EUR",
+   "dims": "L 80 × P 89 × H 104 cm",
+   "description": "Poltrona rivestita in pelle nera. L 80 x P 89 x H 104 cm.\n\nPrezzo di listino: EUR 4.988 · Prezzo Peverelli: EUR 3.500.",
+   "images": [
+    "expo-23-005-034.jpg"
+   ],
+   "materials": [
+    "Pelle"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 80 × P 89 × H 104 cm",
+     "price": 3500
+    }
+   ],
+   "listPrice": 4988
+  },
+  {
+   "id": "pd-maxalto-lithos-tavolino",
+   "brand": "Maxalto",
+   "name": "Lithos · Tavolino",
+   "category": "Tavolini",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 1010,
+   "currency": "EUR",
+   "dims": "L 45 × P 45 × H 39 cm",
+   "description": "Piano quadrato in marmo Verde Guatemala. L 45 x P 45 x H 39 cm.\n\nPrezzo di listino: EUR 1.696 · Prezzo Peverelli: EUR 1.010.",
+   "images": [
+    "expo-24-005-024.jpg"
+   ],
+   "materials": [
+    "Marmo"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 45 × P 45 × H 39 cm",
+     "price": 1010
+    }
+   ],
+   "listPrice": 1696
+  },
+  {
+   "id": "pd-molteni-c-cinnamon-poltrona",
+   "brand": "Molteni&C",
+   "name": "Cinnamon · Poltrona",
+   "category": "Sedute",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 2690,
+   "currency": "EUR",
+   "dims": "L 120 × P 91 × H 69 cm",
+   "description": "Rivestimento verde ZI342; linee avvolgenti. L 120 x P 91 x H 69 cm.\n\nPrezzo di listino: EUR 4.486 · Prezzo Peverelli: EUR 2.690.",
+   "images": [
+    "expo-25-006-042.jpg"
+   ],
+   "materials": [
+    "Da verificare"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 120 × P 91 × H 69 cm",
+     "price": 2690
+    }
+   ],
+   "listPrice": 4486
+  },
+  {
+   "id": "pd-molteni-c-gliss-master-armadio",
+   "brand": "Molteni&C",
+   "name": "Gliss Master · Armadio",
+   "category": "Contenitori",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 14906,
+   "currency": "EUR",
+   "dims": "L 249 × P 63 × H 263 cm",
+   "description": "Vetro Stopsol trasparente, laccato peltro, castagno chiaro. L 249 x P 63 x H 263 cm.\n\nPrezzo di listino: EUR 19.900 · Prezzo Peverelli: EUR 14.906.",
+   "images": [
+    "expo-26-006-043.jpg"
+   ],
+   "materials": [
+    "Vetro",
+    "Legno",
+    "Laccato"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 249 × P 63 × H 263 cm",
+     "price": 14906
+    }
+   ],
+   "listPrice": 19900
+  },
+  {
+   "id": "pd-vitra-em-table-tavolo",
+   "brand": "Vitra",
+   "name": "EM Table · Tavolo",
+   "category": "Tavoli",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 4800,
+   "currency": "EUR",
+   "dims": "Da verificare",
+   "description": "Rovere scuro massello con smalto protettivo.\n\nPrezzo di listino: EUR 6.500 · Prezzo Peverelli: EUR 4.800.",
+   "images": [
+    "expo-27-006-044.jpg"
+   ],
+   "materials": [
+    "Legno"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "Da verificare",
+     "price": 4800
+    }
+   ],
+   "listPrice": 6500
+  },
+  {
+   "id": "pd-molteni-c-chelsea-sedia",
+   "brand": "Molteni&C",
+   "name": "Chelsea · Sedia",
+   "category": "Sedute",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 1000,
+   "currency": "EUR",
+   "dims": "L 64 × P 61 × H 69 cm",
+   "description": "Pelle antracite. L 64 x P 61 x H 69 cm.\n\nPrezzo di listino: EUR 1.865 · Prezzo Peverelli: EUR 1.000.",
+   "images": [
+    "expo-28-006-045.jpg"
+   ],
+   "materials": [
+    "Pelle"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 64 × P 61 × H 69 cm",
+     "price": 1000
+    }
+   ],
+   "listPrice": 1865
+  },
+  {
+   "id": "pd-molteni-c-regent-tavolino-ovale",
+   "brand": "Molteni&C",
+   "name": "Regent · Tavolino ovale",
+   "category": "Tavolini",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 3200,
+   "currency": "EUR",
+   "dims": "L 160 × P 90 × H 35 cm",
+   "description": "Metallo brunito. L 160 x P 90 x H 35 cm.\n\nPrezzo di listino: EUR 5.347 · Prezzo Peverelli: EUR 3.200.",
+   "images": [
+    "expo-29-006-035.jpg"
+   ],
+   "materials": [
+    "Metallo"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 160 × P 90 × H 35 cm",
+     "price": 3200
+    }
+   ],
+   "listPrice": 5347
+  },
+  {
+   "id": "pd-molteni-c-paul-divano",
+   "brand": "Molteni&C",
+   "name": "Paul · Divano",
+   "category": "Sedute",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 6500,
+   "currency": "EUR",
+   "dims": "L 260 × P 100 × H 92 cm",
+   "description": "Tessuto KH122 Kiwe, struttura peltro. L 260 x P 100 x H 92 cm.\n\nPrezzo di listino: EUR 8.777 · Prezzo Peverelli: EUR 6.500.",
+   "images": [
+    "expo-30-007-046.jpg"
+   ],
+   "materials": [
+    "Tessuto"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 260 × P 100 × H 92 cm",
+     "price": 6500
+    }
+   ],
+   "listPrice": 8777
+  },
+  {
+   "id": "pd-molteni-c-arc-tavolo-rotondo",
+   "brand": "Molteni&C",
+   "name": "Arc · Tavolo rotondo",
+   "category": "Tavoli",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 2940,
+   "currency": "EUR",
+   "dims": "Ø 150 × H 73 cm",
+   "description": "Piano in vetro trasparente. Ø 150 x H 73 cm.\n\nPrezzo di listino: EUR 4.523 · Prezzo Peverelli: EUR 2.940.",
+   "images": [
+    "expo-31-007-047.jpg"
+   ],
+   "materials": [
+    "Vetro"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "Ø 150 × H 73 cm",
+     "price": 2940
+    }
+   ],
+   "listPrice": 4523
+  },
+  {
+   "id": "pd-molteni-c-porta-volta-sedia",
+   "brand": "Molteni&C",
+   "name": "Porta Volta · Sedia",
+   "category": "Sedute",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 1988,
+   "currency": "EUR",
+   "dims": "L 64 × P 54 × H 66 cm",
+   "description": "Noce canaletto. L 64 x P 54 x H 66 cm.\n\nPrezzo di listino: EUR 3.057 cadauno · Prezzo Peverelli: EUR 1.988 cadauno. Disponibili 2 pezzi.",
+   "images": [
+    "expo-32-007-048.jpg"
+   ],
+   "materials": [
+    "Legno"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Set da 2 pezzi (prezzo cadauno)",
+     "dims": "L 64 × P 54 × H 66 cm",
+     "price": 1988
+    }
+   ],
+   "listPrice": 3057
+  },
+  {
+   "id": "pd-molteni-c-picea-tavolino",
+   "brand": "Molteni&C",
+   "name": "Picea · Tavolino",
+   "category": "Tavolini",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 743,
+   "currency": "EUR",
+   "dims": "Ø 35 × H 45 cm",
+   "description": "Gres Merlot. Ø 35 x H 45 cm.\n\nPrezzo di listino: EUR 1.062 · Prezzo Peverelli: EUR 743.",
+   "images": [
+    "expo-33-007-049.jpg"
+   ],
+   "materials": [
+    "Gres"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "Ø 35 × H 45 cm",
+     "price": 743
+    }
+   ],
+   "listPrice": 1062
+  },
+  {
+   "id": "pd-molteni-c-d-154-2-poltrona",
+   "brand": "Molteni&C",
+   "name": "D.154.2 · Poltrona",
+   "category": "Sedute",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 3190,
+   "currency": "EUR",
+   "dims": "L 120 × P 81 × H 74 cm",
+   "description": "Design Gio Ponti. Rivestimento WG457 Wonder, gambe cromo nero. L 120 x P 81 x H 74 cm.\n\nPrezzo di listino: EUR 4.265 · Prezzo Peverelli: EUR 3.190.",
+   "images": [
+    "expo-34-007-050.jpg"
+   ],
+   "materials": [
+    "Metallo"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 120 × P 81 × H 74 cm",
+     "price": 3190
+    }
+   ],
+   "listPrice": 4265
+  },
+  {
+   "id": "pd-molteni-c-boboli-poltrona-outdoor",
+   "brand": "Molteni&C",
+   "name": "Boboli · Poltrona outdoor",
+   "category": "Outdoor",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 2233,
+   "currency": "EUR",
+   "dims": "L 79 × P 72 × H 72 cm",
+   "description": "Poltrona da giardino con intreccio ecru. L 79 x P 72 x H 72 cm.\n\nPrezzo di listino: EUR 3.721 cadauno · Prezzo Peverelli: EUR 2.233 cadauno. Disponibili 2 pezzi.",
+   "images": [
+    "expo-35-008-051.jpg"
+   ],
+   "materials": [
+    "Intreccio"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Set da 2 pezzi (prezzo cadauno)",
+     "dims": "L 79 × P 72 × H 72 cm",
+     "price": 2233
+    }
+   ],
+   "listPrice": 3721
+  },
+  {
+   "id": "pd-molteni-c-aster-tavolino-40",
+   "brand": "Molteni&C",
+   "name": "Aster · Tavolino Ø 40",
+   "category": "Tavolini",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 2145,
+   "currency": "EUR",
+   "dims": "Ø 40 × H 50 cm",
+   "description": "Ottone TV40. Ø 40 x H 50 cm.\n\nPrezzo di listino: EUR 3.575 · Prezzo Peverelli: EUR 2.145.",
+   "images": [
+    "expo-36-008-052.jpg"
+   ],
+   "materials": [
+    "Ottone"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "Ø 40 × H 50 cm",
+     "price": 2145
+    }
+   ],
+   "listPrice": 3575
+  },
+  {
+   "id": "pd-molteni-c-aster-tavolino-50",
+   "brand": "Molteni&C",
+   "name": "Aster · Tavolino Ø 50",
+   "category": "Tavolini",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 2240,
+   "currency": "EUR",
+   "dims": "Ø 50 × H 40 cm",
+   "description": "Ottone lucido ATV50. Ø 50 x H 40 cm.\n\nPrezzo di listino: EUR 3.732 · Prezzo Peverelli: EUR 2.240.",
+   "images": [
+    "expo-37-008-053.jpg"
+   ],
+   "materials": [
+    "Ottone"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "Ø 50 × H 40 cm",
+     "price": 2240
+    }
+   ],
+   "listPrice": 3732
+  },
+  {
+   "id": "pd-molteni-c-cleo-tavolino-120",
+   "brand": "Molteni&C",
+   "name": "Cleo · Tavolino 120",
+   "category": "Tavolini",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 2000,
+   "currency": "EUR",
+   "dims": "L 120 × P 120 × H 31 cm",
+   "description": "Laccato Galaxy e basamento Rovere Sunrise. L 120 x P 120 x H 31 cm.\n\nPrezzo di listino: EUR 3.349 · Prezzo Peverelli: EUR 2.000.",
+   "images": [
+    "expo-38-008-054.jpg"
+   ],
+   "materials": [
+    "Legno",
+    "Laccato"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 120 × P 120 × H 31 cm",
+     "price": 2000
+    }
+   ],
+   "listPrice": 3349
+  },
+  {
+   "id": "pd-rimadesio-rialto-madia",
+   "brand": "Rimadesio",
+   "name": "Rialto · Madia",
+   "category": "Contenitori",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 7060,
+   "currency": "EUR",
+   "dims": "L 228 × P 47 × H 79 cm",
+   "description": "Madia con telaio peltro. L 228 x P 47 x H 79 cm.\n\nPrezzo di listino: EUR 10.860 · Prezzo Peverelli: EUR 7.060.",
+   "images": [
+    "expo-39-009-055.jpg"
+   ],
+   "materials": [
+    "Da verificare"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 228 × P 47 × H 79 cm",
+     "price": 7060
+    }
+   ],
+   "listPrice": 10860
+  },
+  {
+   "id": "pd-giorgetti-ghiblim-tavolino",
+   "brand": "Giorgetti",
+   "name": "Ghiblim · Tavolino",
+   "category": "Tavolini",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 3690,
+   "currency": "EUR",
+   "dims": "Da verificare",
+   "description": "Tavolino rettangolare in noce Ghiblim.\n\nPrezzo di listino: EUR 6.153 · Prezzo Peverelli: EUR 3.690.",
+   "images": [
+    "expo-40-009-056.jpg"
+   ],
+   "materials": [
+    "Legno"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "Da verificare",
+     "price": 3690
+    }
+   ],
+   "listPrice": 6153
+  },
+  {
+   "id": "pd-brera-model-3-divano",
+   "brand": "Brera",
+   "name": "Model 3 · Divano",
+   "category": "Sedute",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 6000,
+   "currency": "EUR",
+   "dims": "L 330 × P 230 × H 75 cm",
+   "description": "Divano con chaise-longue in tessuto grigio chiaro. L 330 x P 230 x H 75 cm.\n\nPrezzo di listino: EUR 10.907 · Prezzo Peverelli: EUR 6.000.",
+   "images": [
+    "expo-41-009-057.jpg"
+   ],
+   "materials": [
+    "Tessuto"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 330 × P 230 × H 75 cm",
+     "price": 6000
+    }
+   ],
+   "listPrice": 10907
+  },
+  {
+   "id": "pd-riva-1920-cloe-sedia",
+   "brand": "Riva 1920",
+   "name": "Cloe · Sedia",
+   "category": "Sedute",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 1090,
+   "currency": "EUR",
+   "dims": "Da verificare",
+   "description": "Sedia senza braccioli in noce senza nodi, finitura a olio.\n\nPrezzo di listino: EUR 1.818 cadauno · Prezzo Peverelli: EUR 1.090 cadauno. Disponibili 4 pezzi.",
+   "images": [
+    "expo-42-009-058.jpg"
+   ],
+   "materials": [
+    "Legno"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Set da 4 pezzi (prezzo cadauno)",
+     "dims": "Da verificare",
+     "price": 1090
+    }
+   ],
+   "listPrice": 1818
+  },
+  {
+   "id": "pd-emmemobili-sign-poltroncina",
+   "brand": "Emmemobili",
+   "name": "Sign · Poltroncina",
+   "category": "Sedute",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 1400,
+   "currency": "EUR",
+   "dims": "L 54 × P 60 × H 76 cm",
+   "description": "Pelle marrone e struttura in ottone brunito. L 54 x P 60 x H 76 cm.\n\nPrezzo di listino: EUR 2.780 cadauno · Prezzo Peverelli: EUR 1.400 cadauno. Disponibili 4 pezzi.",
+   "images": [
+    "expo-43-009-059.jpg"
+   ],
+   "materials": [
+    "Pelle",
+    "Ottone"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Set da 4 pezzi (prezzo cadauno)",
+     "dims": "L 54 × P 60 × H 76 cm",
+     "price": 1400
+    }
+   ],
+   "listPrice": 2780
+  },
+  {
+   "id": "pd-emmemobili-fractal-credenza",
+   "brand": "Emmemobili",
+   "name": "Fractal · Credenza",
+   "category": "Contenitori",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 8700,
+   "currency": "EUR",
+   "dims": "L 250 × P 52 × H 80 cm",
+   "description": "Rovere termotrattato con dettagli in ottone brunito spazzolato. L 250 x P 52 x H 80 cm.\n\nPrezzo di listino: EUR 17.290 · Prezzo Peverelli: EUR 8.700.",
+   "images": [
+    "expo-44-010-060.jpg"
+   ],
+   "materials": [
+    "Legno",
+    "Ottone"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 250 × P 52 × H 80 cm",
+     "price": 8700
+    }
+   ],
+   "listPrice": 17290
+  },
+  {
+   "id": "pd-molteni-c-cleo-tavolino-60",
+   "brand": "Molteni&C",
+   "name": "Cleo · Tavolino 60",
+   "category": "Tavolini",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 1240,
+   "currency": "EUR",
+   "dims": "L 60 × P 60 × H 44 cm",
+   "description": "Ecoskin avorio e basamento rovere Sunrise. L 60 x P 60 x H 44 cm.\n\nPrezzo di listino: EUR 2.081 · Prezzo Peverelli: EUR 1.240.",
+   "images": [
+    "expo-47-010-063.jpg"
+   ],
+   "materials": [
+    "Ecopelle",
+    "Legno"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 60 × P 60 × H 44 cm",
+     "price": 1240
+    }
+   ],
+   "listPrice": 2081
+  },
+  {
+   "id": "pd-molteni-c-remi-panca",
+   "brand": "Molteni&C",
+   "name": "Remi · Panca",
+   "category": "Sedute",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 2300,
+   "currency": "EUR",
+   "dims": "L 230 × P 55 × H 55 cm",
+   "description": "Frassino massello tinto; profilo in acciaio color rame. L 230 x P 55 x H 55 cm.\n\nPrezzo di listino: EUR 3.688 · Prezzo Peverelli: EUR 2.300.",
+   "images": [
+    "expo-48-010-064.jpg"
+   ],
+   "materials": [
+    "Legno",
+    "Metallo"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 230 × P 55 × H 55 cm",
+     "price": 2300
+    }
+   ],
+   "listPrice": 3688
+  },
+  {
+   "id": "pd-b-b-italia-lemante-tavolino-ambra",
+   "brand": "B&B Italia",
+   "name": "Lemante · Tavolino ambra",
+   "category": "Tavolini",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 1820,
+   "currency": "EUR",
+   "dims": "Da verificare",
+   "description": "Vetro fuso ambra, laccato lucido oliva, struttura in metallo opaco. Fa parte dello stesso gruppo di tavolini Lemante.\n\nPrezzo di listino: EUR 3.041 · Prezzo Peverelli: EUR 1.820.",
+   "images": [
+    "expo-49-011-065.jpg"
+   ],
+   "materials": [
+    "Vetro",
+    "Metallo",
+    "Laccato"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "Da verificare",
+     "price": 1820
+    }
+   ],
+   "listPrice": 3041
+  },
+  {
+   "id": "pd-b-b-italia-lemante-tavolino-extralight",
+   "brand": "B&B Italia",
+   "name": "Lemante · Tavolino extralight",
+   "category": "Tavolini",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 1120,
+   "currency": "EUR",
+   "dims": "Da verificare",
+   "description": "Vetro extralight trasparente, laccato lucido blu, struttura in metallo opaco. Fa parte dello stesso gruppo di tavolini Lemante.\n\nPrezzo di listino: EUR 1.870 · Prezzo Peverelli: EUR 1.120.",
+   "images": [
+    "expo-50-011-066.jpg"
+   ],
+   "materials": [
+    "Vetro",
+    "Metallo",
+    "Laccato"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "Da verificare",
+     "price": 1120
+    }
+   ],
+   "listPrice": 1870
+  },
+  {
+   "id": "pd-maxalto-arbiter-divano-con-chaise-longue",
+   "brand": "Maxalto",
+   "name": "Arbiter · Divano con chaise-longue",
+   "category": "Sedute",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 11780,
+   "currency": "EUR",
+   "dims": "L 383 × P 106 × H 90 cm",
+   "description": "Tessuto Diana corda 2834207; cuscini Tabacco e Avana. L 383 x P 106 x H 90 cm. Prezzi da verificare.\n\nPrezzo di listino: EUR 23.577 · Prezzo Peverelli: EUR 11.780.",
+   "images": [
+    "expo-51-011-067.jpg"
+   ],
+   "materials": [
+    "Tessuto"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 383 × P 106 × H 90 cm",
+     "price": 11780
+    }
+   ],
+   "listPrice": 23577
+  },
+  {
+   "id": "pd-giorgetti-karphi-divano-modulare",
+   "brand": "Giorgetti",
+   "name": "Karphi · Divano modulare",
+   "category": "Sedute",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 10950,
+   "currency": "EUR",
+   "dims": "L 396 × P 170 × H 80 cm",
+   "description": "Divano modulare con chaise-longue, rivestimento tessile chiaro, cuscini decorativi blu e piano laterale integrato. L 396 x P 170 x H 80 cm.\n\nPrezzo di listino: EUR 19.920 · Prezzo Peverelli: EUR 10.950.",
+   "images": [
+    "expo-52-011-068.jpg"
+   ],
+   "materials": [
+    "Da verificare"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 396 × P 170 × H 80 cm",
+     "price": 10950
+    }
+   ],
+   "listPrice": 19920
+  },
+  {
+   "id": "pd-b-b-italia-area-tavolino",
+   "brand": "B&B Italia",
+   "name": "Area · Tavolino",
+   "category": "Tavolini",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 3778,
+   "currency": "EUR",
+   "dims": "L 108 × P 108 × H 35 cm",
+   "description": "Finitura cromo lucido nero. L 108 x P 108 x H 35 cm.\n\nPrezzo di listino: EUR 5.812 · Prezzo Peverelli: EUR 3.778.",
+   "images": [
+    "expo-53-011-069.jpg"
+   ],
+   "materials": [
+    "Metallo"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 108 × P 108 × H 35 cm",
+     "price": 3778
+    }
+   ],
+   "listPrice": 5812
+  },
+  {
+   "id": "pd-b-b-italia-dambodue-divano",
+   "brand": "B&B Italia",
+   "name": "Dambodue · Divano",
+   "category": "Sedute",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 7740,
+   "currency": "EUR",
+   "dims": "L 332 × P 104 × H 69 cm",
+   "description": "Tessuto Sila bianco 2823100. L 332 x P 104 x H 69 cm.\n\nPrezzo di listino: EUR 12.907 · Prezzo Peverelli: EUR 7.740.",
+   "images": [
+    "expo-54-012-070.jpg"
+   ],
+   "materials": [
+    "Tessuto"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 332 × P 104 × H 69 cm",
+     "price": 7740
+    }
+   ],
+   "listPrice": 12907
+  },
+  {
+   "id": "pd-molteni-c-belsize-tavolino",
+   "brand": "Molteni&C",
+   "name": "Belsize · Tavolino",
+   "category": "Tavolini",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 816,
+   "currency": "EUR",
+   "dims": "L 130 × P 62 × H 44 cm",
+   "description": "Struttura peltro e piano rovere grafite. L 130 x P 62 x H 44 cm.\n\nPrezzo di listino: EUR 1.632 · Prezzo Peverelli: EUR 816.",
+   "images": [
+    "expo-55-012-071.jpg"
+   ],
+   "materials": [
+    "Legno"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 130 × P 62 × H 44 cm",
+     "price": 816
+    }
+   ],
+   "listPrice": 1632
+  },
+  {
+   "id": "pd-molteni-c-hugo-tavolino",
+   "brand": "Molteni&C",
+   "name": "Hugo · Tavolino",
+   "category": "Tavolini",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 1500,
+   "currency": "EUR",
+   "dims": "L 105 × P 50 × H 38 cm",
+   "description": "Finitura eucalipto. L 105 x P 50 x H 38 cm.\n\nPrezzo di listino: EUR 2.535 · Prezzo Peverelli: EUR 1.500.",
+   "images": [
+    "expo-56-012-072.jpg"
+   ],
+   "materials": [
+    "Legno"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 105 × P 50 × H 38 cm",
+     "price": 1500
+    }
+   ],
+   "listPrice": 2535
+  },
+  {
+   "id": "pd-molteni-c-barbican-sedia",
+   "brand": "Molteni&C",
+   "name": "Barbican · Sedia",
+   "category": "Sedute",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 930,
+   "currency": "EUR",
+   "dims": "L 57 × P 55 × H 81 cm",
+   "description": "Base in eucalipto, schienale in pelle e seduta in tessuto. L 57 x P 55 x H 81 cm.\n\nPrezzo di listino: EUR 1.556 cadauno · Prezzo Peverelli: EUR 930 cadauno. Disponibili 4 pezzi.",
+   "images": [
+    "expo-57-012-073.jpg"
+   ],
+   "materials": [
+    "Pelle",
+    "Tessuto",
+    "Legno"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Set da 4 pezzi (prezzo cadauno)",
+     "dims": "L 57 × P 55 × H 81 cm",
+     "price": 930
+    }
+   ],
+   "listPrice": 1556
+  },
+  {
+   "id": "pd-molteni-c-elain-poltrona",
+   "brand": "Molteni&C",
+   "name": "Elain · Poltrona",
+   "category": "Sedute",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 2620,
+   "currency": "EUR",
+   "dims": "L 80 × P 84 × H 68 cm",
+   "description": "Tessuto WG457 arancio, base nera. L 80 x P 84 x H 68 cm.\n\nPrezzo di listino: EUR 4.034 · Prezzo Peverelli: EUR 2.620.",
+   "images": [
+    "expo-58-012-074.jpg"
+   ],
+   "materials": [
+    "Tessuto"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Esemplare showroom",
+     "dims": "L 80 × P 84 × H 68 cm",
+     "price": 2620
+    }
+   ],
+   "listPrice": 4034
+  },
+  {
+   "id": "pd-maxalto-artemone-madia",
+   "brand": "Maxalto",
+   "name": "Artemone · Madia",
+   "category": "Contenitori",
+   "location": "Como",
+   "zone": "",
+   "status": "Esposto",
+   "price": 6660,
+   "currency": "EUR",
+   "dims": "Da verificare",
+   "description": "Rovere nero spazzolato; contenitori con ante e cassetti.\n\nPrezzo di listino: EUR 8.880 cadauno · Prezzo Peverelli: EUR 6.660 cadauno. Disponibili 2 pezzi.",
+   "images": [
+    "expo-59-013-075.jpg"
+   ],
+   "materials": [
+    "Legno"
+   ],
+   "colors": [
+    "Come da esposizione"
+   ],
+   "configs": [
+    {
+     "name": "Set da 2 pezzi (prezzo cadauno)",
+     "dims": "Da verificare",
+     "price": 6660
+    }
+   ],
+   "listPrice": 8880
+  }
+ ]
+}

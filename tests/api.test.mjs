@@ -19,7 +19,7 @@ let srv, sink;
 
 function startServer() {
   return new Promise((resolve, reject) => {
-    srv = spawn(process.execPath, [path.join(root, 'build/server.mjs')], { env: { ...process.env, PORT: String(PORT), DATABASE_URL: DB, UPLOAD_DIR: path.join(tmp, 'uploads'), SMTP_HOST: '127.0.0.1', SMTP_PORT: String(SMTP), SMTP_SECURE: 'false', MAIL_FROM: 'Peverelli Design <showroom@test.local>', ADMIN_EMAIL: 'admin@test.local', ADMIN_PASSWORD: 'admin-password-1', SEED_DEMO: 'true', NODE_ENV: 'test' }, stdio: ['ignore', 'pipe', 'inherit'] });
+    srv = spawn(process.execPath, [path.join(root, 'build/server.mjs')], { env: { ...process.env, PORT: String(PORT), DATABASE_URL: DB, UPLOAD_DIR: path.join(tmp, 'uploads'), SMTP_HOST: '127.0.0.1', SMTP_PORT: String(SMTP), SMTP_SECURE: 'false', MAIL_FROM: 'Peverelli Design <showroom@test.local>', ADMIN_EMAIL: 'admin@test.local', ADMIN_PASSWORD: 'admin-password-1', SEED_DEMO: 'true', SKIP_CATALOG_IMPORT: 'true', NODE_ENV: 'test' }, stdio: ['ignore', 'pipe', 'inherit'] });
     srv.stdout.on('data', d => { if (String(d).includes('http://localhost')) resolve(); });
     srv.on('exit', c => reject(new Error('server exited ' + c)));
   });

@@ -18,6 +18,8 @@ Con Docker (PostgreSQL incluso): `docker compose up --build`.
 
 Al primo avvio con database vuoto viene creato l'amministratore indicato in `ADMIN_EMAIL` / `ADMIN_PASSWORD`. Con `SEED_DEMO=true` vengono caricati anche i 4 prodotti dimostrativi del prototipo.
 
+All'avvio vengono importati una sola volta i cataloghi preparati in `server/import/<nome>/` (`products.json` + foto): attualmente `expo-2026-10`, 58 prodotti dal PDF «Opportunità | Selezione showroom» (CHF → Lugano, EUR → Como; prezzo = prezzo Peverelli, listino nella descrizione). I prodotti modificati o eliminati in seguito non vengono reimportati. `SKIP_CATALOG_IMPORT=true` disattiva l'importazione.
+
 ## Architettura
 
 | Livello | Tecnologia |
