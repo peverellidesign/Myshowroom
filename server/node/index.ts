@@ -21,6 +21,8 @@ import { ClaudeModel } from './llm';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const env = process.env;
+// Nomi delle variabili indipendenti da maiuscole/minuscole (es. "Mail_from" vale come MAIL_FROM)
+for (const [k, v] of Object.entries({ ...env })) { const K = k.toUpperCase(); if (K !== k && env[K] === undefined) env[K] = v; }
 const prod = env.NODE_ENV === 'production';
 const bool = (v: string | undefined, d: boolean) => v === undefined ? d : /^(1|true|yes|si)$/i.test(v);
 
