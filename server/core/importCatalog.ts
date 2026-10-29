@@ -45,3 +45,27 @@ export async function importCatalog(store: Store, storage: BlobStorage, manifest
   await store.insert('files', { id: markerId, storageKey, fileName: 'products.json', mime: 'application/json', size: raw.byteLength, createdBy: null, createdAt: now });
   return added;
 }
+
+/**
+ * Aggiunge il prezzo di listino ai prodotti importati prima che il campo esistesse e toglie
+ * dalla descrizione la vecchia nota "Prezzo di listino … · Prezzo Peverelli …".
+ * Tocca solo le composizioni ancora senza listino e con il prezzo expo invariato.
+ */
+export async function applyListPrices(store: Store, manifest: CatalogImport): Promise<number> {
+  type Cfg = { name: string; dims: string; price?: number; listPrice?: number };
+  let changed = 0;
+  for (const m of manifest.products) {
+    const want = (m.configs as Cfg[] | undefined)?.[0];
+    if (want?.listPrice === undefined) continue;
+    const p = await store.get<{ configs: Cfg[]; description: string; updatedAt: string }>('products', m.id);
+    const first = p?.configs[0];
+    if (!p || !first || first.listPrice !== undefined || first.price !== want.price) continue;
+    const description = p.description.replace(/\n\nPrezzo di listino: [^\n]*$/, old => {
+      const qty = old.match(/Disponibili (\d+) pezzi/);
+      return qty ? `\n\nDisponibili ${qty[1]} pezzi; prezzi cadauno.` : '';
+    });
+    await store.update('products', m.id, { configs: [{ ...first, listPrice: want.listPrice }, ...p.configs.slice(1)], description, updatedAt: new Date().toISOString() });
+    changed++;
+  }
+  return changed;
+}

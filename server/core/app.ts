@@ -59,6 +59,8 @@ function configs(v: unknown): Config[] {
     const out: Config = { name: str(c?.name, 'Nome composizione', { required: true, max: 120 }), dims: str(c?.dims, 'Misure composizione', { max: 120, def: 'Da verificare' }) || 'Da verificare' };
     const p = num(c?.price, 'Prezzo composizione', { optional: true, max: 1e8 });
     if (p !== undefined) out.price = p;
+    const lp = num(c?.listPrice, 'Prezzo di listino', { optional: true, max: 1e8 });
+    if (lp !== undefined) out.listPrice = lp;
     return out;
   });
 }

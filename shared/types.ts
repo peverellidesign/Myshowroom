@@ -15,7 +15,8 @@ export const APPT_TYPES = ['Consulenza arredo', 'Progetto cucina', 'Interior des
 export const APPT_TIMES = ['09:30', '10:00', '11:00', '12:00', '14:30', '15:30', '17:00'] as const;
 export const APPT_DURATIONS = ['30', '60', '90', '120'] as const;
 
-export type Config = { name: string; dims: string; price?: number };
+/** price = prezzo di vendita (prezzo expo per gli esemplari in esposizione); listPrice = prezzo di listino, facoltativo. */
+export type Config = { name: string; dims: string; price?: number; listPrice?: number };
 
 export type User = { id: string; email: string; name: string; role: Role; site: string; active: boolean; createdAt: string };
 
@@ -70,7 +71,7 @@ export type Bootstrap = {
   user: User; users: Pick<User, 'id' | 'name' | 'role' | 'site'>[];
   products: Product[]; documents: DocumentRecord[]; clients: Client[]; quote: Quote;
   appointments: Appointment[]; tasks: Task[]; reservations: Reservation[];
-  config: { mailMode: 'smtp' | 'outbox' | 'gateway'; storage: string; assistant: 'llm' | 'local'; maxUploadMb: number; demo: boolean };
+  config: { mailMode: 'smtp' | 'outbox' | 'gateway' | 'microsoft'; storage: string; assistant: 'llm' | 'local'; maxUploadMb: number; demo: boolean };
 };
 
 export type AssistantAnswer = { answer: string; productIds: string[]; documentIds: string[]; mode: 'llm' | 'local' };

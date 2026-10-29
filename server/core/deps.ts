@@ -13,7 +13,7 @@ export type MailMessage = { to: string; subject: string; text: string; html?: st
 export type MailResult = { status: 'sent' | 'outbox' | 'failed'; messageId?: string; error?: string };
 
 export interface Mailer {
-  readonly mode: 'smtp' | 'outbox' | 'gateway';
+  readonly mode: 'smtp' | 'outbox' | 'gateway' | 'microsoft';
   /** Limiti allegati del fornitore (es. gateway GoDaddy: 10 allegati, 2 MB ciascuno). */
   readonly limits?: { maxAttachments: number; maxAttachmentBytes: number; maxTotalBytes: number };
   send(msg: MailMessage): Promise<MailResult>;

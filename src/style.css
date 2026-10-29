@@ -15,7 +15,7 @@
 .toast{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);background:#222;color:#fff;padding:12px 18px;border-radius:9px;font-size:13px;z-index:80;box-shadow:0 8px 30px #0002;max-width:calc(100vw - 32px)}.toast.error{background:#a43d3d}
 .sentBox{background:#fafaf8;border:1px solid #e8e8e4;border-radius:9px;padding:18px;margin:16px 0}.sentBox p{margin:10px 0 0;font-size:13px}.sentBox strong{font-weight:500}
 .modal.wide{width:min(760px,100%)}.modal .filterLabel{margin-top:22px}
-.configRow{display:grid;grid-template-columns:1.4fr 1fr .8fr auto;gap:8px;margin-bottom:8px;align-items:center}
+.configRow{display:grid;grid-template-columns:1.3fr 1fr .75fr .75fr auto;gap:8px;margin-bottom:8px;align-items:center}
 .editThumbs{flex-wrap:wrap;margin:0 0 12px}.editThumbs span{position:relative}.editThumbs img{width:90px;height:68px;object-fit:cover;border-radius:7px;display:block}.editThumbs .iconBtn{position:absolute;top:3px;right:3px;background:#fff;border-radius:6px;padding:3px}
 .fileBtn{position:relative;overflow:hidden;white-space:nowrap}.fileBtn input{position:absolute;inset:0;opacity:0;cursor:pointer}
 .taskAdd select{width:auto;max-width:170px}
@@ -32,3 +32,6 @@
 .pdfPages{max-height:min(70vh,720px);overflow:auto;margin-top:12px;display:flex;flex-direction:column;gap:10px;background:#f1f1ee;border:1px solid #e8e8e4;border-radius:9px;padding:10px}.pdfPages canvas{display:block;background:#fff;box-shadow:0 1px 4px #0001;border-radius:3px}
 .coverBtn{border:0;padding:0;background:none;display:block;border-radius:7px;overflow:hidden}.editThumbs .cover img{outline:2px solid #222;outline-offset:-2px}
 .modal .configRow input,.modal .taskAdd input{font-size:12px}
+
+/* prezzo di listino + prezzo expo nella scheda prodotto */
+.priceStack{margin:22px 0}.priceStack h2{margin:4px 0 0!important}.listPrice{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid #e8e8e4;font-size:13px;color:#777773}.listPrice span:last-child{font-size:17px;color:#55554f}.expoPrice{display:flex;align-items:center;gap:10px;font-size:10px;letter-spacing:1.3px;text-transform:uppercase;color:#888882}.expoPrice b{font-weight:500;letter-spacing:0;font-size:11px;background:#171717;color:#fff;padding:3px 8px;border-radius:20px}

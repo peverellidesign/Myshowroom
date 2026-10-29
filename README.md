@@ -96,6 +96,17 @@ SEED_DEMO=true
 
 Email su GoDaddy: il mittente è scelto dal gateway (dominio dell'app o dominio verificato); massimo 10 allegati da 2 MB ciascuno. I PDF più grandi vengono inviati come link di download firmati, validi 60 giorni.
 
+## Email da Outlook / Microsoft 365
+
+L'app invia le email dalla casella Microsoft 365 indicata in `MAIL_FROM` tramite **Microsoft Graph** (HTTPS): funziona anche dove le porte SMTP sono bloccate (Railway Hobby) e non usa la vecchia autenticazione SMTP con password, che Microsoft sta disattivando. Le email inviate finiscono nella *Posta inviata* di quella casella.
+
+1. entra.microsoft.com → *App registrations* → *New registration* (nome `myshowroom`, solo questo tenant).
+2. *API permissions* → *Add a permission* → *Microsoft Graph* → *Application permissions* → `Mail.Send` → *Grant admin consent*.
+3. *Certificates & secrets* → *New client secret* → copia il **Value**.
+4. Variabili: `MAIL_PROVIDER=microsoft`, `MS_TENANT_ID` (Directory/tenant ID), `MS_CLIENT_ID` (Application/client ID), `MS_CLIENT_SECRET`, `MAIL_FROM=Peverelli Design <showroom@tuodominio>`.
+
+Consigliato: limitare l'app alla sola casella dello showroom (Exchange Online → *RBAC for Applications*). Allegati fino a 20 MB ciascuno (25 MB totali); oltre diventano link di download firmati. Gli account Outlook.com personali non sono supportati.
+
 ## Caricare i contenuti
 
 - **Prodotti** (amministratore / responsabile): *Prodotti → Nuovo prodotto* oppure *Modifica scheda*: dati, composizioni con prezzi, materiali, colori, più foto per volta (dal telefono anche scattandole), scelta della copertina.
