@@ -152,7 +152,7 @@ export function createApp(deps: Deps) {
 <div style="font-size:10px;letter-spacing:1px;color:#aaa;padding:18px 4px">© PEVERELLI DESIGN · COMO · MILANO BRERA · LUGANO · DUBAI</div></div></body></html>`;
 
   async function sendAndLog(u: DbUser | null, to: string, subject: string, text: string, attachments: (MailAttachment & { fileId: string })[], refs: { quoteId?: string; appointmentId?: string }) {
-    const result = await mailer.send({ to, subject, text, html: brandedHtml(text), replyTo: u?.email, attachments });
+    const result = await mailer.send({ to, subject, text, html: brandedHtml(text), replyTo: u?.email, sender: u ? { address: u.email, name: u.name } : undefined, attachments });
     const rec = await store.insert<EmailRecord>('emails', {
       id: uid(), to, subject, body: text,
       attachments: attachments.map<EmailAttachment>(a => ({ fileId: a.fileId, fileName: a.filename, size: a.content.byteLength })),
@@ -675,12 +675,15 @@ export function createApp(deps: Deps) {
     const b = await c.json<Record<string, unknown>>();
     const patch: Record<string, unknown> = {};
     if ('name' in b) patch.name = str(b.name, 'Nome', { required: true, max: 120 });
+    if ('email' in b) patch.email = email(b.email, 'Email', true).toLowerCase();
     if ('role' in b) patch.role = oneOf(b.role, ROLES, 'Ruolo') as Role;
     if ('site' in b) patch.site = oneOf(b.site, LOCATIONS, 'Sede');
     if ('active' in b) patch.active = !!b.active;
     if (c.params.id === me.id && (patch.active === false || (patch.role && patch.role !== 'admin'))) throw new HttpError(400, 'Non puoi disattivare o declassare il tuo account');
     if ('password' in b) { const p = str(b.password, 'Password', { required: true, max: 200 }); if (p.length < 10) throw new HttpError(400, 'La password deve avere almeno 10 caratteri'); patch.passwordHash = await hashPassword(p); }
-    const u = await store.update<DbUser>('users', c.params.id, patch);
+    let u: DbUser | null;
+    try { u = await store.update<DbUser>('users', c.params.id, patch); }
+    catch (e) { if (e instanceof UniqueViolation) throw new HttpError(409, 'Esiste già un utente con questa email'); throw e; }
     if (!u) throw new HttpError(404, 'Utente non trovato');
     if (patch.active === false || patch.passwordHash) await store.remove('sessions', { userId: u.id });
     return json(publicUser(u));

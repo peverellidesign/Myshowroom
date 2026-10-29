@@ -98,14 +98,16 @@ Email su GoDaddy: il mittente è scelto dal gateway (dominio dell'app o dominio 
 
 ## Email da Outlook / Microsoft 365
 
-L'app invia le email dalla casella Microsoft 365 indicata in `MAIL_FROM` tramite **Microsoft Graph** (HTTPS): funziona anche dove le porte SMTP sono bloccate (Railway Hobby) e non usa la vecchia autenticazione SMTP con password, che Microsoft sta disattivando. Le email inviate finiscono nella *Posta inviata* di quella casella.
+L'app invia le email tramite **Microsoft Graph** (HTTPS): funziona anche dove le porte SMTP sono bloccate (Railway Hobby) e non usa la vecchia autenticazione SMTP con password, che Microsoft sta disattivando.
+
+**Ogni utente invia dalla propria casella**: preventivi e conferme partono dall'indirizzo con cui la persona accede all'app (es. il venditore di Milano dalla sua casella) e restano nella sua *Posta inviata*. Per questo l'email di ogni utente nel *Team* deve essere il suo indirizzo Outlook aziendale (l'amministratore può correggerla con *Cambia email*). Se la casella non esiste o non è autorizzata, l'email parte dalla casella condivisa `MAIL_FROM` con *Rispondi a* l'utente.
 
 1. entra.microsoft.com → *App registrations* → *New registration* (nome `myshowroom`, solo questo tenant).
 2. *API permissions* → *Add a permission* → *Microsoft Graph* → *Application permissions* → `Mail.Send` → *Grant admin consent*.
 3. *Certificates & secrets* → *New client secret* → copia il **Value**.
-4. Variabili: `MAIL_PROVIDER=microsoft`, `MS_TENANT_ID` (Directory/tenant ID), `MS_CLIENT_ID` (Application/client ID), `MS_CLIENT_SECRET`, `MAIL_FROM=Peverelli Design <showroom@tuodominio>`.
+4. Variabili: `MAIL_PROVIDER=microsoft`, `MS_TENANT_ID` (Directory/tenant ID), `MS_CLIENT_ID` (Application/client ID), `MS_CLIENT_SECRET`, facoltativa `MAIL_FROM=Peverelli Design <showroom@tuodominio>` (casella di riserva).
 
-Consigliato: limitare l'app alla sola casella dello showroom (Exchange Online → *RBAC for Applications*). Allegati fino a 20 MB ciascuno (25 MB totali); oltre diventano link di download firmati. Gli account Outlook.com personali non sono supportati.
+Il permesso applicativo `Mail.Send` vale per tutte le caselle dell'organizzazione; l'app usa solo quella dell'utente collegato. Consigliato: limitarlo alle caselle del personale showroom (Exchange Online → *RBAC for Applications*, gruppo di sicurezza abilitato alla posta). Allegati fino a 20 MB ciascuno (25 MB totali); oltre diventano link di download firmati. Gli account Outlook.com personali non sono supportati.
 
 ## Caricare i contenuti
 

@@ -13,6 +13,7 @@ import postgres from 'postgres';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DB = process.env.TEST_DATABASE_URL || 'postgres://myshowroom:myshowroom@127.0.0.1:5432/myshowroom_test';
 const PORT = 3125, MS = 2601, BASE = `http://127.0.0.1:${PORT}`, MSB = `http://127.0.0.1:${MS}`;
+const MAILBOXES = ['admin@test.local', 'showroom@peverelli.test'];
 const log = []; const sent = []; const drafts = {}; let tokens = 0, deny = false;
 let srv, ms, cookie = '';
 const req = async (method, url, body, headers = {}) => {
@@ -37,18 +38,18 @@ function fakeMicrosoft(q, s) {
       assert.equal(q.headers.authorization, undefined); assert.equal(end - start + 1, buf.length); assert.ok(buf.length <= 4 * 1024 * 1024);
       a.data = Buffer.concat([a.data, buf]); a.total = total; return reply(end + 1 === total ? 201 : 200, {});
     }
-    const pre = '/v1.0/users/showroom%40peverelli.test';
+    const mb = decodeURIComponent((u.pathname.match(/^\/v1\.0\/users\/([^/]+)/) || [])[1] || '');
     if (q.headers.authorization !== 'Bearer tok') return reply(401, { error: { code: 'InvalidAuthenticationToken', message: 'Access token is empty.' } });
     if (deny) return reply(403, { error: { code: 'ErrorAccessDenied', message: 'Access is denied. Check credentials and try again.' } });
-    const p = u.pathname.startsWith(pre) ? u.pathname.slice(pre.length) : null;
-    if (p === null) return reply(404, { error: { code: 'ErrorInvalidUser', message: 'The requested user is invalid.' } });
+    if (!MAILBOXES.includes(mb)) return reply(404, { error: { code: 'ErrorInvalidUser', message: 'The requested user is invalid.' } });
+    const p = u.pathname.slice(`/v1.0/users/${encodeURIComponent(mb)}`.length);
     const body = buf.length && q.headers['content-type']?.includes('json') ? JSON.parse(buf) : null;
-    if (q.method === 'POST' && p === '/sendMail') { sent.push({ mode: 'direct', message: body.message, saveToSentItems: body.saveToSentItems }); return reply(202); }
+    if (q.method === 'POST' && p === '/sendMail') { sent.push({ mode: 'direct', mailbox: mb, message: body.message, saveToSentItems: body.saveToSentItems }); return reply(202); }
     if (q.method === 'POST' && p === '/messages') { const id = 'draft' + Object.keys(drafts).length; drafts[id] = { message: body, attachments: [], uploads: [] }; return reply(201, { id }); }
     let m;
     if ((m = p.match(/^\/messages\/(\w+)\/attachments$/))) { drafts[m[1]].attachments.push(body); return reply(201, { id: 'att' }); }
     if ((m = p.match(/^\/messages\/(\w+)\/attachments\/createUploadSession$/))) { drafts[m[1]].uploads.push({ meta: body.AttachmentItem, data: Buffer.alloc(0) }); return reply(201, { uploadUrl: `${MSB}/upload/${m[1]}` }); }
-    if ((m = p.match(/^\/messages\/(\w+)\/send$/))) { sent.push({ mode: 'draft', ...drafts[m[1]] }); return reply(202); }
+    if ((m = p.match(/^\/messages\/(\w+)\/send$/))) { sent.push({ mode: 'draft', mailbox: mb, ...drafts[m[1]] }); return reply(202); }
     if (q.method === 'DELETE') return reply(204);
     reply(400, { error: { code: 'BadRequest', message: p } });
   });
@@ -68,15 +69,17 @@ before(async () => {
 });
 after(() => { srv.kill(); ms.close(); });
 
-test('conferma appuntamento: sendMail diretto con invito .ics, mittente e casella corretti', async () => {
+test('conferma appuntamento: parte dalla casella dell’utente collegato, sendMail diretto con .ics', async () => {
   const date = new Date(Date.now() + 5 * 864e5).toISOString().slice(0, 10);
   const a = (await req('POST', '/api/appointments', { client: 'Anna', email: 'anna@example.com', site: 'Como', type: 'Visita showroom', date, time: '10:00', duration: '60' })).body;
   const r = await req('POST', `/api/appointments/${a.id}/confirm`);
   assert.equal(r.body.status, 'sent', JSON.stringify(r.body));
   const msg = sent.at(-1);
   assert.equal(msg.mode, 'direct'); assert.equal(msg.saveToSentItems, true);
+  assert.equal(msg.mailbox, 'admin@test.local');
   assert.deepEqual(msg.message.toRecipients, [{ emailAddress: { address: 'anna@example.com' } }]);
-  assert.deepEqual(msg.message.from, { emailAddress: { address: 'showroom@peverelli.test', name: 'Peverelli Design' } });
+  assert.equal(msg.message.from.emailAddress.address, 'admin@test.local');
+  assert.equal(msg.message.replyTo, undefined);
   assert.equal(msg.message.attachments[0]['@odata.type'], '#microsoft.graph.fileAttachment');
   assert.match(Buffer.from(msg.message.attachments[0].contentBytes, 'base64').toString(), /BEGIN:VCALENDAR/);
 });
@@ -93,7 +96,7 @@ test('preventivo con catalogo da 9 MB: bozza, upload a blocchi, invio; token riu
   assert.equal(s.body.email.status, 'sent', s.body.email.error);
   assert.deepEqual(s.body.skipped, []);
   const msg = sent.at(-1);
-  assert.equal(msg.mode, 'draft');
+  assert.equal(msg.mode, 'draft'); assert.equal(msg.mailbox, 'admin@test.local');
   assert.equal(msg.message.subject, 'Proposta');
   assert.equal(msg.attachments.length, 1); assert.match(msg.attachments[0].name, /^Proposta PD-\d{4}-0001/);
   assert.equal(msg.uploads.length, 1);
@@ -110,4 +113,28 @@ test('permesso mancante: errore leggibile, bozza eliminata', async () => {
   deny = false;
   assert.equal(r.body.status, 'failed');
   assert.match(r.body.error, /ErrorAccessDenied.*Mail\.Send/);
+});
+
+test('utente senza casella Microsoft 365: invio dalla casella condivisa MAIL_FROM con risposta all’utente', async () => {
+  const g = await req('POST', '/api/users', { name: 'Giulia Rossi', email: 'giulia@altrodominio.test', role: 'consultant', site: 'Milano', password: 'password-giulia-1' });
+  assert.equal(g.status, 201, JSON.stringify(g.body));
+  const saved = cookie; cookie = '';
+  assert.equal((await req('POST', '/api/auth/login', { email: 'giulia@altrodominio.test', password: 'password-giulia-1' })).status, 200);
+  const date = new Date(Date.now() + 7 * 864e5).toISOString().slice(0, 10);
+  const a = (await req('POST', '/api/appointments', { client: 'Carla', email: 'carla@example.com', site: 'Milano', type: 'Visita showroom', date, time: '12:00', duration: '60' })).body;
+  const r = await req('POST', `/api/appointments/${a.id}/confirm`);
+  cookie = saved;
+  assert.equal(r.body.status, 'sent', r.body.error);
+  const msg = sent.at(-1);
+  assert.equal(msg.mailbox, 'showroom@peverelli.test');
+  assert.deepEqual(msg.message.from, { emailAddress: { address: 'showroom@peverelli.test', name: 'Peverelli Design' } });
+  assert.deepEqual(msg.message.replyTo, [{ emailAddress: { address: 'giulia@altrodominio.test' } }]);
+});
+
+test('l’amministratore corregge l’email di un utente; email duplicate rifiutate', async () => {
+  const users = (await req('GET', '/api/users')).body;
+  const giulia = users.find(u => u.email === 'giulia@altrodominio.test');
+  const r = await req('PATCH', `/api/users/${giulia.id}`, { email: 'Giulia@Peverelli.test' });
+  assert.equal(r.status, 200); assert.equal(r.body.email, 'giulia@peverelli.test');
+  assert.equal((await req('PATCH', `/api/users/${giulia.id}`, { email: 'admin@test.local' })).status, 409);
 });

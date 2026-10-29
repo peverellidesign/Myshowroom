@@ -9,8 +9,9 @@ export interface BlobStorage {
 }
 
 export type MailAttachment = { filename: string; content: Uint8Array; contentType: string };
-export type MailMessage = { to: string; subject: string; text: string; html?: string; replyTo?: string; attachments: MailAttachment[] };
-export type MailResult = { status: 'sent' | 'outbox' | 'failed'; messageId?: string; error?: string };
+/** sender: utente che invia; i fornitori che lo supportano (Microsoft 365) spediscono dalla sua casella. */
+export type MailMessage = { to: string; subject: string; text: string; html?: string; replyTo?: string; sender?: { address: string; name?: string }; attachments: MailAttachment[] };
+export type MailResult = { status: 'sent' | 'outbox' | 'failed'; messageId?: string; error?: string; from?: string };
 
 export interface Mailer {
   readonly mode: 'smtp' | 'outbox' | 'gateway' | 'microsoft';

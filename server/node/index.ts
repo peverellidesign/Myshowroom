@@ -68,10 +68,10 @@ async function main() {
   if (storageKind === 's3' && (!env.S3_BUCKET || !env.S3_ACCESS_KEY_ID || !env.S3_SECRET_ACCESS_KEY)) { console.error('STORAGE=s3 richiede S3_BUCKET, S3_ACCESS_KEY_ID, S3_SECRET_ACCESS_KEY'); process.exit(1); }
 
   const microsoft = env.MAIL_PROVIDER === 'microsoft' || env.MAIL_PROVIDER === 'outlook';
-  if (microsoft && !(env.MS_TENANT_ID && env.MS_CLIENT_ID && env.MS_CLIENT_SECRET && env.MAIL_FROM))
-    console.error('[myshowroom] Email Outlook non attiva: impostare MS_TENANT_ID, MS_CLIENT_ID, MS_CLIENT_SECRET e MAIL_FROM.');
-  const mailer: Mailer = microsoft && env.MS_TENANT_ID && env.MS_CLIENT_ID && env.MS_CLIENT_SECRET && env.MAIL_FROM
-    ? new MicrosoftGraphMailer({ tenantId: env.MS_TENANT_ID, clientId: env.MS_CLIENT_ID, clientSecret: env.MS_CLIENT_SECRET, from: env.MAIL_FROM, loginUrl: env.MS_LOGIN_URL, graphUrl: env.MS_GRAPH_URL })
+  if (microsoft && !(env.MS_TENANT_ID && env.MS_CLIENT_ID && env.MS_CLIENT_SECRET))
+    console.error('[myshowroom] Email Outlook non attiva: impostare MS_TENANT_ID, MS_CLIENT_ID e MS_CLIENT_SECRET.');
+  const mailer: Mailer = microsoft && env.MS_TENANT_ID && env.MS_CLIENT_ID && env.MS_CLIENT_SECRET
+    ? new MicrosoftGraphMailer({ tenantId: env.MS_TENANT_ID, clientId: env.MS_CLIENT_ID, clientSecret: env.MS_CLIENT_SECRET, from: env.MAIL_FROM || undefined, loginUrl: env.MS_LOGIN_URL, graphUrl: env.MS_GRAPH_URL })
     : env.MAIL_PROVIDER === 'godaddy'
     ? new GoDaddyGatewayMailer(env.MAIL_GATEWAY_URL || undefined)
     : env.SMTP_HOST
