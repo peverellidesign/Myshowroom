@@ -5,8 +5,15 @@ export type Role = 'admin' | 'manager' | 'consultant';
 export const ROLES: Role[] = ['admin', 'manager', 'consultant'];
 export const ROLE_LABEL: Record<Role, string> = { admin: 'Amministratore', manager: 'Responsabile showroom', consultant: 'Consulente' };
 
-export const LOCATIONS = ['Como', 'Lugano', 'Milano', 'Dubai', 'Magazzino'] as const;
-export const SHOWROOMS = ['Como', 'Lugano', 'Milano', 'Dubai'] as const;
+export const LOCATIONS = ['Como Città', 'Bulgarograsso', 'Milano', 'Lugano', 'Dubai', 'Magazzino'] as const;
+export const SHOWROOMS = ['Como Città', 'Bulgarograsso', 'Milano', 'Lugano', 'Dubai'] as const;
+/** Sede predefinita e nomi usati in passato (migrati all'avvio). */
+export const DEFAULT_SITE = 'Como Città';
+export const RENAMED_SITES: Record<string, string> = { Como: 'Como Città' };
+export const SITES_LINE = 'Como · Bulgarograsso · Milano Brera · Lugano · Dubai';
+/** Indirizzo breve per i link di prenotazione: "Como Città" → "como-citta"; accetta anche i vecchi /book/como. */
+export const siteSlug = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+export const siteFromSlug = (slug: string) => SHOWROOMS.find(s => siteSlug(s) === siteSlug(slug)) ?? (siteSlug(slug) === 'como' ? DEFAULT_SITE : undefined);
 export const CATEGORIES = ['Sedute', 'Tavoli', 'Contenitori', 'Tavolini', 'Letti', 'Cucine', 'Illuminazione', 'Complementi', 'Outdoor'] as const;
 export const STATUSES = ['Esposto', 'Disponibile', 'Riservato', 'Venduto', 'In trasferimento'] as const;
 export const DOC_TYPES = ['Catalogo prodotto', 'Catalogo generale', 'Scheda tecnica', 'Listino prezzi', 'Materiali e finiture', 'Istruzioni di montaggio', 'Altro'] as const;

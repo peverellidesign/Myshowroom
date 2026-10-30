@@ -5,7 +5,7 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createApp } from '../core/app';
-import { ensureSeed, removeSampleClient } from '../core/seed';
+import { ensureSeed, removeSampleClient, renameSites } from '../core/seed';
 import { applyListPrices, importCatalog, type CatalogImport } from '../core/importCatalog';
 import { readdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -112,6 +112,8 @@ async function main() {
       if (priced) console.log(`[myshowroom] Catalogo "${dir}": prezzo di listino aggiunto a ${priced} prodotti.`);
     }
   await removeSampleClient(store);
+  const renamed = await renameSites(store);
+  if (renamed) console.log(`[myshowroom] Sedi rinominate: ${renamed} record aggiornati (Como → Como Città).`);
   setInterval(() => app.purgeSessions().catch(() => {}), 6 * 3600_000).unref();
 
   const dist = path.join(root, 'dist');

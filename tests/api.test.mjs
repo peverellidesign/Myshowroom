@@ -88,7 +88,7 @@ test('gestione utenti e ruoli', async () => {
 });
 
 test('catalogo prodotti: creazione, modifica, validazione', async () => {
-  const bad = await admin.post('/api/products', { brand: 'B&B Italia', name: 'Camaleonda', category: 'Inesistente', location: 'Como', status: 'Esposto', currency: 'EUR', configs: [{ name: 'A' }] });
+  const bad = await admin.post('/api/products', { brand: 'B&B Italia', name: 'Camaleonda', category: 'Inesistente', location: 'Como Città', status: 'Esposto', currency: 'EUR', configs: [{ name: 'A' }] });
   assert.equal(bad.status, 400);
   const p = await admin.post('/api/products', { brand: 'B&B Italia', name: 'Camaleonda', category: 'Sedute', location: 'Milano', zone: 'Living', status: 'Esposto', currency: 'EUR', dims: '254 × 98 × 74 cm', materials: ['Tessuto'], colors: ['Ecru'], images: ['https://images.unsplash.com/photo-1555041469-a586c61ea9bc'], configs: [{ name: 'Composizione 3 moduli', dims: '254 × 98 × 74 cm', price: 15800 }, { name: 'Composizione 4 moduli', dims: '342 × 98 × 74 cm', price: 19900 }] });
   assert.equal(p.status, 201); assert.equal(p.body.price, 15800); assert.equal(p.body.configs.length, 2);

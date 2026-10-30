@@ -71,7 +71,7 @@ after(() => { srv.kill(); ms.close(); });
 
 test('conferma appuntamento: parte dalla casella dell’utente collegato, sendMail diretto con .ics', async () => {
   const date = new Date(Date.now() + 5 * 864e5).toISOString().slice(0, 10);
-  const a = (await req('POST', '/api/appointments', { client: 'Anna', email: 'anna@example.com', site: 'Como', type: 'Visita showroom', date, time: '10:00', duration: '60' })).body;
+  const a = (await req('POST', '/api/appointments', { client: 'Anna', email: 'anna@example.com', site: 'Como Città', type: 'Visita showroom', date, time: '10:00', duration: '60' })).body;
   const r = await req('POST', `/api/appointments/${a.id}/confirm`);
   assert.equal(r.body.status, 'sent', JSON.stringify(r.body));
   const msg = sent.at(-1);
@@ -108,7 +108,7 @@ test('preventivo con catalogo da 9 MB: bozza, upload a blocchi, invio; token riu
 test('permesso mancante: errore leggibile, bozza eliminata', async () => {
   deny = true;
   const date = new Date(Date.now() + 6 * 864e5).toISOString().slice(0, 10);
-  const a = (await req('POST', '/api/appointments', { client: 'Bruno', email: 'bruno@example.com', site: 'Como', type: 'Visita showroom', date, time: '11:00', duration: '60' })).body;
+  const a = (await req('POST', '/api/appointments', { client: 'Bruno', email: 'bruno@example.com', site: 'Como Città', type: 'Visita showroom', date, time: '11:00', duration: '60' })).body;
   const r = await req('POST', `/api/appointments/${a.id}/confirm`);
   deny = false;
   assert.equal(r.body.status, 'failed');

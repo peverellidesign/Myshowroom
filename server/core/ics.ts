@@ -1,7 +1,7 @@
 // Invito calendario (.ics) allegato alla conferma appuntamento.
 import type { Appointment } from '../../shared/types';
 
-export const SITE_TZ: Record<string, string> = { Como: 'Europe/Rome', Milano: 'Europe/Rome', Lugano: 'Europe/Zurich', Dubai: 'Asia/Dubai' };
+export const SITE_TZ: Record<string, string> = { Como: 'Europe/Rome', 'Como Città': 'Europe/Rome', Bulgarograsso: 'Europe/Rome', Milano: 'Europe/Rome', Lugano: 'Europe/Zurich', Dubai: 'Asia/Dubai' };
 const esc = (s: string) => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
 const fold = (line: string) => line.match(/.{1,73}/g)!.join('\r\n ');
 

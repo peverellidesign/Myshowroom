@@ -5,7 +5,7 @@ create table if not exists users (
   email text not null unique,
   name text not null,
   role text not null check (role in ('admin','manager','consultant')),
-  site text not null default 'Como',
+  site text not null default 'Como Città',
   active boolean not null default true,
   password_hash text not null,
   created_at timestamptz not null default now()

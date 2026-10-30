@@ -85,3 +85,14 @@ test('modulo privacy: firma obbligatoria, PDF generato, consenso registrato, can
   assert.equal((await req('admin', 'GET', `/api/files/${r2.body.client.consentFileId}`)).status, 404);
   assert.equal((await req('admin', 'GET', `/api/files/${c.cardFileId}`)).status, 404);
 });
+
+test('sedi: Como Città e Bulgarograsso, link di prenotazione', async () => {
+  const { SHOWROOMS, siteSlug, siteFromSlug } = await import('../shared/types.ts');
+  assert.ok(SHOWROOMS.includes('Bulgarograsso')); assert.ok(SHOWROOMS.includes('Como Città')); assert.ok(!SHOWROOMS.includes('Como'));
+  assert.equal(siteSlug('Como Città'), 'como-citta');
+  assert.equal(siteFromSlug('como-citta'), 'Como Città'); assert.equal(siteFromSlug('como'), 'Como Città'); assert.equal(siteFromSlug('bulgarograsso'), 'Bulgarograsso');
+  const date = new Date(Date.now() + 9 * 864e5).toISOString().slice(0, 10);
+  const slots = await req('giulia', 'GET', `/api/public/slots?site=${encodeURIComponent('Bulgarograsso')}&date=${date}`);
+  assert.equal(slots.status, 200, JSON.stringify(slots.body)); assert.equal(slots.body.site, 'Bulgarograsso');
+  assert.equal((await req('giulia', 'POST', '/api/clients', { name: 'Test sede', site: 'Bulgarograsso' })).body.site, 'Bulgarograsso');
+});

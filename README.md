@@ -1,6 +1,6 @@
 # myshowroom — by Peverelli Design
 
-Web app multiutente per gli showroom Peverelli Design (Como · Milano Brera · Lugano · Dubai): catalogo prodotti e inventario multi-sede, schede prodotto con gallerie/composizioni/materiali, cataloghi PDF in archivio cloud, clienti, preventivi PDF, invio email con allegati, agenda condivisa con prenotazione online, attività, riserve e assistente di ricerca.
+Web app multiutente per gli showroom Peverelli Design (Como Città · Bulgarograsso · Milano Brera · Lugano · Dubai): catalogo prodotti e inventario multi-sede, schede prodotto con gallerie/composizioni/materiali, cataloghi PDF in archivio cloud, clienti, preventivi PDF, invio email con allegati, agenda condivisa con prenotazione online, attività, riserve e assistente di ricerca.
 
 Il design (colori, tipografia, layout, navigazione, schermate) è quello del prototipo v1: stesse classi CSS e stessa struttura; le nuove funzioni usano gli stessi token visivi e sono raccolte in un blocco separato in fondo a `src/style.css`.
 
@@ -45,7 +45,7 @@ Sessioni con cookie `HttpOnly`/`SameSite=Lax` (14 giorni), password PBKDF2-SHA25
 - **Cataloghi PDF**: upload fino a `MAX_UPLOAD_MB` (default 100 MB), condivisi con tutto il team, collegabili a più prodotti, apertura/download, link esterni.
 - **Preventivi**: ogni consulente ha la propria bozza; numerazione `PD-AAAA-NNNN`; PDF intestato; invio email con PDF e cataloghi allegati (oltre 20 MB i cataloghi diventano una nota nel testo); storico con stato di consegna; duplicazione.
 - **Agenda**: condivisa per sede, controllo conflitti di fascia oraria lato database, consulente assegnato, conferma email con invito calendario.
-- **Prenotazione online**: `/book/como`, `/book/lugano`, `/book/milano`, `/book/dubai` mostrano solo gli orari liberi.
+- **Prenotazione online**: `/book/como-citta`, `/book/bulgarograsso`, `/book/milano`, `/book/lugano`, `/book/dubai` (il vecchio `/book/como` porta a Como Città) mostrano solo gli orari liberi.
 - **Senza SMTP** le email non vengono consegnate: l'app lo indica chiaramente e il PDF resta scaricabile.
 
 ## Pubblicazione consigliata: Render + Supabase (3 valori)

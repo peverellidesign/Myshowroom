@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { CalendarDays, CheckCircle } from 'lucide-react';
-import { APPT_TYPES, SHOWROOMS, isEmail } from '../shared/types';
+import { APPT_TYPES, DEFAULT_SITE, SHOWROOMS, SITES_LINE, isEmail, siteFromSlug } from '../shared/types';
 import { ApiError, get, post } from './api';
 
-/** Pagina pubblica di prenotazione: /book/como, /book/lugano, /book/milano, /book/dubai */
+/** Pagina pubblica di prenotazione: /book/como-citta, /book/bulgarograsso, /book/milano, /book/lugano, /book/dubai */
 export function Booking({ siteSlug }: { siteSlug: string }) {
-  const initial = SHOWROOMS.find(s => s.toLowerCase() === siteSlug.toLowerCase()) || 'Como';
+  const initial = siteFromSlug(siteSlug) || DEFAULT_SITE;
   const tomorrow = new Date(Date.now() + 864e5).toISOString().slice(0, 10);
   const [f, setF] = useState({ client: '', email: '', site: initial as string, type: 'Visita showroom', date: tomorrow, time: '', duration: '60', notes: '', website: '' });
   const [times, setTimes] = useState<string[] | null>(null);
@@ -42,6 +42,6 @@ export function Booking({ siteSlug }: { siteSlug: string }) {
           <p className="hint">I dati sono usati esclusivamente per gestire l’appuntamento.</p>
         </section>}
     </main>
-    <footer className="footer"><span>© PEVERELLI DESIGN</span><span>COMO · MILANO BRERA · LUGANO · DUBAI</span></footer>
+    <footer className="footer"><span>© PEVERELLI DESIGN</span><span>{SITES_LINE.toUpperCase()}</span></footer>
   </div>;
 }

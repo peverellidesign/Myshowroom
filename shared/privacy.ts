@@ -6,7 +6,7 @@ export const DEFAULT_PRIVACY_TEXT = `INFORMATIVA SUL TRATTAMENTO DEI DATI PERSON
 ai sensi dell'art. 13 del Regolamento (UE) 2016/679 ("GDPR")
 
 1. Titolare del trattamento
-[RAGIONE SOCIALE] – Peverelli Design, con sede legale in [INDIRIZZO SEDE LEGALE], P.IVA [P.IVA], email [EMAIL PRIVACY] ("Titolare"), per gli showroom di Como, Milano Brera, Lugano e Dubai.
+[RAGIONE SOCIALE] – Peverelli Design, con sede legale in [INDIRIZZO SEDE LEGALE], P.IVA [P.IVA], email [EMAIL PRIVACY] ("Titolare"), per le sedi di Como Città, Bulgarograsso, Milano Brera, Lugano e Dubai.
 
 2. Dati trattati
 Dati anagrafici e di contatto (nome, cognome, azienda, ruolo, telefono, email, indirizzo), anche ricavati dal biglietto da visita da Lei consegnato; informazioni sulle Sue preferenze di arredo, richieste, preventivi e appuntamenti; firma apposta sul presente modulo.

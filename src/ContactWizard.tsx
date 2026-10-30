@@ -5,7 +5,7 @@ import { ApiError, get, openFile, patch, post, upload } from './api';
 import { SignaturePad, type SignaturePadHandle } from './SignaturePad';
 import { scanBusinessCard, warmUpScanner, type ScanStatus } from './ocr';
 import { CONSENT_MARKETING, CONSENT_SERVICE } from '../shared/privacy';
-import { SHOWROOMS, isEmail, type Client, type EmailRecord, type PrivacySettings, type User } from '../shared/types';
+import { DEFAULT_SITE, SHOWROOMS, isEmail, type Client, type EmailRecord, type PrivacySettings, type User } from '../shared/types';
 import type { CardFields } from '../shared/cardParse';
 
 type Draft = { name: string; company: string; role: string; email: string; mobile: string; phone: string; website: string; address: string; site: string; notes: string };
@@ -25,7 +25,7 @@ export function ContactWizard({ me, clients, initial, startAt = 'data', onSaved,
   const [client, setClient] = useState<Client | null>(initial ?? null);
   const [d, setD] = useState<Draft>(() => initial
     ? { name: initial.name, company: initial.company, role: initial.role, email: initial.email, mobile: initial.mobile, phone: initial.phone, website: initial.website, address: initial.address, site: initial.site || me.site, notes: initial.notes }
-    : { name: '', company: '', role: '', email: '', mobile: '', phone: '', website: '', address: '', site: (SHOWROOMS as readonly string[]).includes(me.site) ? me.site : 'Como', notes: '' });
+    : { name: '', company: '', role: '', email: '', mobile: '', phone: '', website: '', address: '', site: (SHOWROOMS as readonly string[]).includes(me.site) ? me.site : DEFAULT_SITE, notes: '' });
   const [scanned, setScanned] = useState<Set<keyof Draft>>(new Set());
   const [scan, setScan] = useState<{ status: ScanStatus | 'done' | 'error'; text?: string; preview?: string; error?: string } | null>(null);
   const photo = useRef<Blob | null>(null);

@@ -59,7 +59,7 @@ test('preventivo via gateway: PDF allegato, catalogo da 3 MB come link firmato',
 
 test('conferma appuntamento via gateway con invito .ics', async () => {
   const date = new Date(Date.now() + 5 * 864e5).toISOString().slice(0, 10);
-  const a = (await req('POST', '/api/appointments', { client: 'Anna', email: 'anna@example.com', site: 'Como', type: 'Visita showroom', date, time: '10:00', duration: '60' })).body;
+  const a = (await req('POST', '/api/appointments', { client: 'Anna', email: 'anna@example.com', site: 'Como Città', type: 'Visita showroom', date, time: '10:00', duration: '60' })).body;
   const r = await req('POST', `/api/appointments/${a.id}/confirm`);
   assert.equal(r.body.status, 'sent');
   const msg = received.at(-1);

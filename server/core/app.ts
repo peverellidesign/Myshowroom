@@ -1,6 +1,6 @@
 // API di myshowroom by Peverelli Design — indipendente dal runtime.
 import {
-  APPT_DURATIONS, APPT_TIMES, APPT_TYPES, CATEGORIES, DOC_LANGS, DOC_TYPES, LOCATIONS, ROLES, SHOWROOMS, STATUSES,
+  APPT_DURATIONS, APPT_TIMES, APPT_TYPES, CATEGORIES, DOC_LANGS, DOC_TYPES, LOCATIONS, ROLES, SHOWROOMS, STATUSES, DEFAULT_SITE, SITES_LINE,
   convert, formatMoney, isEmail, quoteTotal,
   type Appointment, type Bootstrap, type Client, type Config, type Currency, type DocumentRecord, type EmailAttachment,
   type EmailRecord, type FileRecord, type Product, type Quote, type QuoteItem, type Reservation, type Role, type Task, type User,
@@ -141,7 +141,7 @@ export function createApp(deps: Deps) {
       const p = await store.get<Product>('products', it.productId);
       images[it.productId] = p?.images[0] ? await loadImage(p.images[0]) : null;
     }
-    return renderQuotePdf({ quote: q, client, author: publicUser(author), images, sites: 'Como · Milano Brera · Lugano · Dubai', date: q.sentAt ? new Date(q.sentAt) : clock() });
+    return renderQuotePdf({ quote: q, client, author: publicUser(author), images, sites: SITES_LINE, date: q.sentAt ? new Date(q.sentAt) : clock() });
   }
   const quoteText = (q: Quote, showPrices: boolean) => q.items.map((x, i) =>
     `${i + 1}. ${x.brand} — ${x.productName}\n${x.config} · ${x.dims}\n${x.material} / ${x.color}${showPrices ? '\n' + formatMoney(convert(x.price, x.currency, q.currency, q.rate), q.currency) : ''}`).join('\n\n');
@@ -150,7 +150,7 @@ export function createApp(deps: Deps) {
 <div style="max-width:600px;margin:0 auto;padding:32px 20px"><div style="background:#fff;border:1px solid #e8e8e4;border-radius:12px;padding:32px">
 <div style="font-size:23px;font-weight:500;letter-spacing:-1px">myshowroom</div><div style="font-size:11px;color:#888882;margin-bottom:28px">by Peverelli Design</div>
 <div style="font-size:14px;line-height:1.65;white-space:pre-wrap">${htmlEscape(text)}</div></div>
-<div style="font-size:10px;letter-spacing:1px;color:#aaa;padding:18px 4px">© PEVERELLI DESIGN · COMO · MILANO BRERA · LUGANO · DUBAI</div></div></body></html>`;
+<div style="font-size:10px;letter-spacing:1px;color:#aaa;padding:18px 4px">© PEVERELLI DESIGN · ${SITES_LINE.toUpperCase()}</div></div></body></html>`;
 
   async function sendAndLog(u: DbUser | null, to: string, subject: string, text: string, attachments: (MailAttachment & { fileId: string })[], refs: { quoteId?: string; appointmentId?: string }) {
     const result = await mailer.send({ to, subject, text, html: brandedHtml(text), replyTo: u?.email, sender: u ? { address: u.email, name: u.name } : undefined, attachments });
@@ -731,7 +731,7 @@ export function createApp(deps: Deps) {
     const password = str(b.password, 'Password temporanea', { required: true, max: 200 });
     if (password.length < 10) throw new HttpError(400, 'La password deve avere almeno 10 caratteri');
     try {
-      const u = await store.insert<DbUser>('users', { id: uid(), email: email(b.email, 'Email', true), name: str(b.name, 'Nome', { required: true, max: 120 }), role: oneOf(b.role, ROLES, 'Ruolo'), site: oneOf(b.site, LOCATIONS, 'Sede', 'Como'), active: true, passwordHash: await hashPassword(password), createdAt: now() });
+      const u = await store.insert<DbUser>('users', { id: uid(), email: email(b.email, 'Email', true), name: str(b.name, 'Nome', { required: true, max: 120 }), role: oneOf(b.role, ROLES, 'Ruolo'), site: oneOf(b.site, LOCATIONS, 'Sede', DEFAULT_SITE), active: true, passwordHash: await hashPassword(password), createdAt: now() });
       return json(publicUser(u), 201);
     } catch (e) { if (e instanceof UniqueViolation) throw new HttpError(409, 'Esiste già un utente con questa email'); throw e; }
   });
