@@ -16,39 +16,57 @@ export function SwatchPicker({ collections, selected, onSelect, canManage, onDel
   collections: MaterialCollection[]; selected: MaterialSwatch | null; onSelect: (s: MaterialSwatch | null) => void;
   canManage?: boolean; onDeleteCollection?: (c: MaterialCollection) => void;
 }) {
-  const [cat, setCat] = useState('Tutte');
+  const [activeId, setActiveId] = useState<string>(() => selected?.collectionId ?? collections[0]?.id ?? '');
   const [q, setQ] = useState('');
   const [zoom, setZoom] = useState<{ s: MaterialSwatch; c: MaterialCollection } | null>(null);
-  const cats = [...new Set(collections.map(c => c.category))];
-  const shown = collections.filter(c => cat === 'Tutte' || c.category === cat);
+  const active = collections.find(c => c.id === activeId) ?? collections[0];
+  const byCat = useMemo(() => { const m = new Map<string, MaterialCollection[]>(); for (const c of collections) m.set(c.category, [...(m.get(c.category) ?? []), c]); return [...m]; }, [collections]);
+  const term = q.trim().toLowerCase();
+  // ricerca per codice su tutte le collezioni; senza ricerca si mostra solo la collezione attiva
+  const results = term ? collections.map(c => ({ c, list: c.swatches.filter(s => (s.code + ' ' + s.name).toLowerCase().includes(term)) })).filter(r => r.list.length) : active ? [{ c: active, list: active.swatches }] : [];
+  const tile = (s: MaterialSwatch, c: MaterialCollection) => <button type="button" key={s.id} className={'swatch' + (selected?.id === s.id ? ' chosen' : '')} onClick={() => onSelect(selected?.id === s.id ? null : s)} title={`${c.name} · ${s.name}`}>
+    <Img src={swatchSrc(s)} alt={s.name} loading="lazy" />{selected?.id === s.id && <span className="swatchCheck"><Check size={14} /></span>}
+    <span className="swatchCode">{s.code}</span>
+    <span className="swatchZoom" role="button" aria-label="Ingrandisci" onClick={e => { e.stopPropagation(); setZoom({ s, c }); }}><ZoomIn size={13} /></span>
+  </button>;
   return <div className="swatchLibrary">
-    {(cats.length > 1 || collections.reduce((n, c) => n + c.swatches.length, 0) > 12) && <div className="swatchFilters">
-      {cats.length > 1 && <div className="chips">{['Tutte', ...cats].map(x => <button key={x} className={cat === x ? 'chosen' : ''} onClick={() => setCat(x)}>{x}</button>)}</div>}
-      <input value={q} onChange={e => setQ(e.target.value)} placeholder="Cerca codice, es. 856" aria-label="Cerca campione" />
-    </div>}
-    {shown.map(c => {
-      const list = c.swatches.filter(s => !q.trim() || (s.code + ' ' + s.name).toLowerCase().includes(q.trim().toLowerCase()));
-      return <div className="swatchCollection" key={c.id}>
-        <div className="swatchHead"><div><small>{c.brand.toUpperCase()} · {c.category.toUpperCase()}</small><strong>{c.name}</strong><span>{c.swatches.length} varianti{c.notes ? ` · ${c.notes}` : ''}</span></div>
-          {canManage && onDeleteCollection && <button className="iconBtn" title="Elimina collezione" onClick={() => onDeleteCollection(c)}><Trash2 size={16} /></button>}</div>
-        <div className="swatchGrid">{list.map(s => <button type="button" key={s.id} className={'swatch' + (selected?.id === s.id ? ' chosen' : '')} onClick={() => onSelect(selected?.id === s.id ? null : s)} title={`${c.name} · ${s.name}`}>
-          <Img src={swatchSrc(s)} alt={s.name} loading="lazy" />{selected?.id === s.id && <span className="swatchCheck"><Check size={14} /></span>}
-          <span className="swatchCode">{s.code}</span>
-          <span className="swatchZoom" role="button" aria-label="Ingrandisci" onClick={e => { e.stopPropagation(); setZoom({ s, c }); }}><ZoomIn size={13} /></span>
-        </button>)}{!list.length && <p className="hint">Nessun campione con questo codice.</p>}</div>
-      </div>;
-    })}
+    <div className="swatchStep"><span>1</span> Scegli il rivestimento</div>
+    {byCat.map(([cat, list]) => <div key={cat} className="collectionGroup">
+      {byCat.length > 1 && <small className="collectionCat">{cat.toUpperCase()}</small>}
+      <div className="collectionTabs" role="tablist">{list.map(c => {
+        const on = !term && c.id === active?.id, has = selected?.collectionId === c.id;
+        return <button type="button" role="tab" aria-selected={on} key={c.id} className={'collectionTab' + (on ? ' chosen' : '') + (has ? ' hasPick' : '')} onClick={() => { setActiveId(c.id); setQ(''); }}>
+          <span className="collectionDots">{c.swatches.slice(0, 5).map(s => <Img key={s.id} src={swatchSrc(s)} alt="" />)}</span>
+          <strong>{c.name}</strong><small>{c.swatches.length} colori{has ? ' · scelto' : ''}</small>
+        </button>;
+      })}</div>
+    </div>)}
+    <div className="swatchStep"><span>2</span> Scegli il colore{active && !term ? <em> · {active.brand} {active.name}</em> : null}
+      <input value={q} onChange={e => setQ(e.target.value)} placeholder="Cerca codice in tutte le collezioni" aria-label="Cerca campione" /></div>
+    {active?.notes && !term && <p className="hint">{active.notes}</p>}
+    {results.map(({ c, list }) => <div className="swatchCollection" key={c.id}>
+      {term && <div className="swatchHead"><div><small>{c.brand.toUpperCase()} · {c.category.toUpperCase()}</small><strong>{c.name}</strong></div></div>}
+      <div className="swatchGrid">{list.map(s => tile(s, c))}</div>
+    </div>)}
+    {term && !results.length && <p className="hint">Nessun campione con «{q}».</p>}
+    {canManage && onDeleteCollection && active && !term && <button type="button" className="linkBtn dangerLink" onClick={() => onDeleteCollection(active)}><Trash2 size={13} /> Elimina la collezione {active.name}</button>}
     {zoom && <div className="modalBackdrop" onClick={() => setZoom(null)}><div className="modal swatchZoomModal" onClick={e => e.stopPropagation()}>
       <div className="modalHeader"><h2>{zoom.c.name} · {zoom.s.code}</h2><button className="iconBtn" onClick={() => setZoom(null)}><X /></button></div>
       <Img src={swatchSrc(zoom.s)} alt={zoom.s.name} />
       <p className="hint">{zoom.c.brand} · {zoom.c.category} · {zoom.s.name}. Il colore a schermo è indicativo: verificare sempre sul campione fisico.</p>
-      <div className="actionRow"><button className="btn" onClick={() => { onSelect(zoom.s); setZoom(null); }}><Check size={15} /> Scegli questa finitura</button></div>
+      <div className="actionRow"><button className="btn" onClick={() => { onSelect(zoom.s); setActiveId(zoom.c.id); setZoom(null); }}><Check size={15} /> Scegli questa finitura</button></div>
     </div></div>}
   </div>;
 }
 
 type Row = { brand: string; category: string; collection: string; code: string; name: string; file: string };
 const IMG = /\.(jpe?g|png|webp)$/i;
+/** "920a7b24-Flexform_PELLE_403_24_campioni.zip" → "PELLE 403" */
+export const zipCollectionName = (file: string, brand: string) => {
+  let n = file.replace(/\.zip$/i, '').replace(/^[0-9a-f]{6,}-/i, '').replace(/[_ -]\d+[_ -]campioni$/i, '');
+  if (brand) n = n.replace(new RegExp('^' + brand.replace(/[^\w]/g, '.?') + '[_ -]*', 'i'), '');
+  return n.replace(/[_-]+/g, ' ').trim();
+};
 const pick = (r: Record<string, string>, ...keys: string[]) => keys.map(k => r[k]).find(v => v && v.trim()) ?? '';
 
 async function shrink(data: Uint8Array, type: string): Promise<Blob> {
@@ -88,7 +106,7 @@ export function MaterialImport({ defaultBrand, onDone, onClose }: { defaultBrand
       if (!out.length) throw new Error('Nessuna immagine di campione trovata nello ZIP');
       out.sort((a, b) => a.code.localeCompare(b.code, 'it', { numeric: true }));
       const first = out[0];
-      setMeta(m => ({ brand: first.brand || m.brand, category: (MATERIAL_CATEGORIES as readonly string[]).includes(first.category) ? first.category : m.category, collection: first.collection || f.name.replace(/\.zip$/i, '').replace(/[_-]+/g, ' ') }));
+      setMeta(m => ({ brand: first.brand || m.brand, category: (MATERIAL_CATEGORIES as readonly string[]).includes(first.category) ? first.category : m.category, collection: first.collection || zipCollectionName(f.name, first.brand || m.brand) }));
       setFiles(map); setRows(out);
     } catch (e) { setError((e as Error).message); }
   }

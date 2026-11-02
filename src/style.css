@@ -121,3 +121,20 @@
 .importSummary{font-size:13px;margin:12px 0 0}
 @media(max-width:800px){.swatchGrid{grid-template-columns:repeat(auto-fill,minmax(78px,1fr));gap:8px}.swatchFilters input{max-width:none}}
 .quoteItem{align-items:center}.quoteItem>div{flex:1}
+/* scelta organizzata: 1) collezione 2) colore */
+.swatchStep{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;font-weight:500;margin:20px 0 10px}
+.swatchStep>span{width:22px;height:22px;border-radius:50%;background:#171717;color:#fff;font-size:11px;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0}
+.swatchStep em{font-style:normal;font-weight:400;color:#888882}
+.swatchStep input{margin-left:auto;max-width:260px;font-size:13px;padding:9px 12px}
+.collectionGroup{margin-bottom:10px}.collectionCat{display:block;font-size:10px;letter-spacing:1.3px;color:#888882;margin:4px 0 8px}
+.collectionTabs{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px}
+.collectionTab{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;border:1px solid #e8e8e4;background:#fff;border-radius:10px;padding:12px 14px;cursor:pointer;transition:border-color .15s,box-shadow .15s}
+.collectionTab:hover{border-color:#c8c8c2}
+.collectionTab.chosen{border-color:#171717;box-shadow:0 0 0 1px #171717}
+.collectionTab strong{font-size:14px;font-weight:500}.collectionTab small{font-size:11.5px;color:#888882}
+.collectionTab.hasPick small{color:#2f6b3d}
+.collectionDots{display:flex}.collectionDots img{width:22px;height:22px;border-radius:50%;object-fit:cover;border:2px solid #fff;margin-left:-6px;box-shadow:0 0 0 1px #e8e8e4}.collectionDots img:first-child{margin-left:0}
+.dangerLink{color:#b3261e;font-size:12px;margin-top:14px}
+@media(max-width:800px){.swatchStep input{margin-left:0;max-width:none;width:100%}.collectionTabs{grid-template-columns:1fr 1fr}}
+.dangerLink{margin-bottom:18px}
+@media(max-width:800px){.swatchGrid{grid-template-columns:repeat(4,1fr);gap:7px}.swatchCode{font-size:10px;padding:1px 6px;left:4px;bottom:4px}.swatchZoom{width:20px;height:20px;top:4px;right:4px}.swatchCheck{width:18px;height:18px;top:4px;left:4px}}

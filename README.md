@@ -122,7 +122,8 @@ Il permesso applicativo `Mail.Send` vale per tutte le caselle dell'organizzazion
 - Ogni prodotto mostra in *Materiali & Colori* i rivestimenti del proprio marchio (es. tutti i prodotti Flexform → PELLE 411). Nella scheda prodotto (*Modifica scheda → Rivestimenti dal campionario*) si possono limitare a collezioni specifiche.
 - Toccando un campione lo si sceglie: entra nel preventivo come materiale/colore con la sua foto, visibile anche nel PDF.
 - **Importa campionario** (responsabili e amministratori): ZIP con le foto dei campioni e, facoltativo, `materiali.csv` con colonne `brand, macrocategoria, collezione, codice, nome, file_immagine` (come lo ZIP Flexform PELLE 411). Reimportare la stessa collezione aggiorna i campioni esistenti.
-- Collezione iniziale: Flexform · Pelle · PELLE 411 (24 campioni) in `server/import/flexform-pelle-411`, caricata una sola volta all'avvio.
+- Collezioni iniziali: Flexform · Pelle · PELLE 403 e PELLE 411 (24 campioni ciascuna) in `server/import/`, caricate una sola volta all'avvio.
+- Scelta in due passi: prima la collezione (schede con anteprima dei colori, raggruppate per categoria), poi il colore; la ricerca per codice cerca in tutte le collezioni.
 
 ## Caricare i contenuti
 
