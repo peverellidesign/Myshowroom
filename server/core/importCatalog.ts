@@ -72,7 +72,13 @@ export async function applyListPrices(store: Store, manifest: CatalogImport): Pr
 
 export type MaterialImport = {
   key: string; brand: string; category: string; name: string; notes?: string;
-  swatches: { code: string; name: string; image: string; sources?: { catalog: string; original: string; sha256: string }[] }[];
+  swatches: {
+    code: string; name: string;
+    /** foto mostrata; con primary=true sostituisce quella del campione esistente (es. fotografia principale del catalogo) */
+    image?: string; primary?: boolean;
+    /** provenienze: foto originale nel pacchetto (original) o già caricata da un pacchetto precedente (fileId) */
+    sources?: { catalog: string; original?: string; fileId?: string; sha256: string }[];
+  }[];
   /** Collezioni doppie dello stesso marchio da unire in questa (stessi codici colore): i loro campioni diventano provenienze. */
   mergeFrom?: string[];
 };
@@ -80,11 +86,11 @@ type Row = { id: string; [k: string]: unknown };
 const mimeOf = (name: string) => /\.png$/i.test(name) ? 'image/png' : /\.webp$/i.test(name) ? 'image/webp' : 'image/jpeg';
 
 /** Importa una collezione di materiali una sola volta (con provenienze per catalogo); non ricrea ciò che l'utente ha eliminato. */
-export async function importMaterialCollection(store: Store, storage: BlobStorage, m: MaterialImport, readImage: (name: string) => Promise<Uint8Array>): Promise<{ added: number; merged: number }> {
+export async function importMaterialCollection(store: Store, storage: BlobStorage, m: MaterialImport, readImage: (name: string) => Promise<Uint8Array>): Promise<{ added: number; updated: number; merged: number }> {
   const markerId = `import-${m.key}`;
   const now = new Date().toISOString();
   const findCol = async () => (await store.all<Row & { brand: string; name: string }>('materialCollections')).find(c => c.brand.toLowerCase() === m.brand.toLowerCase() && c.name.toLowerCase() === m.name.toLowerCase());
-  let added = 0;
+  let added = 0, updated = 0;
   const ensureFile = async (id: string, name: string, data?: Uint8Array) => {
     if (await store.get('files', id)) return id;
     const bytes = data ?? await readImage(name); const storageKey = `imports/${m.key}/${name}`;
@@ -101,17 +107,22 @@ export async function importMaterialCollection(store: Store, storage: BlobStorag
   let col = await findCol();
   if (!(await store.get('files', markerId))) {
     if (!col) col = await store.insert<Row & { brand: string; name: string }>('materialCollections', { id: `mc-${m.key}`, brand: m.brand, category: m.category, name: m.name, notes: m.notes ?? '', createdBy: null, createdAt: now });
+    else if (m.notes) await store.update('materialCollections', col.id, { notes: m.notes });
     const colId = col.id;
     const existing = await store.all<Row & { code: string }>('materialSwatches', { collectionId: colId });
     let pos = existing.length;
     for (const s of m.swatches) {
       let sw = existing.find(e => e.code === s.code);
+      const display = s.image ? () => ensureFile(`${m.key}-${s.code}`.replace(/[^\w-]/g, '-'), s.image!) : null;
       if (!sw) {
-        const fileId = await ensureFile(`${m.key}-${s.code}`.replace(/[^\w-]/g, '-'), s.image);
-        sw = await store.insert<Row & { code: string }>('materialSwatches', { id: `ms-${m.key}-${s.code}`.replace(/[^\w-]/g, '-'), collectionId: colId, code: s.code, name: s.name, fileId, position: ++pos });
+        if (!display) continue;
+        sw = await store.insert<Row & { code: string }>('materialSwatches', { id: `ms-${m.key}-${s.code}`.replace(/[^\w-]/g, '-'), collectionId: colId, code: s.code, name: s.name, fileId: await display(), position: ++pos });
         added++;
+      } else if (s.primary && display) { await store.update('materialSwatches', sw.id, { fileId: await display() }); updated++; }
+      for (const src of s.sources ?? []) {
+        const fileId = src.fileId ? ((await store.get('files', src.fileId)) ? src.fileId : null) : src.original ? await ensureFile(`${m.key}-src-${src.sha256.slice(0, 16)}`, src.original) : null;
+        await upsertSource(sw.id, src.catalog, fileId, src.sha256);
       }
-      for (const src of s.sources ?? []) await upsertSource(sw.id, src.catalog, await ensureFile(`${m.key}-src-${src.sha256.slice(0, 16)}`, src.original), src.sha256);
     }
     const raw = new TextEncoder().encode(JSON.stringify(m));
     await storage.put(`imports/${m.key}/collection.json`, raw, 'application/json');
@@ -138,5 +149,5 @@ export async function importMaterialCollection(store: Store, storage: BlobStorag
       merged++;
     }
   }
-  return { added, merged };
+  return { added, updated, merged };
 }

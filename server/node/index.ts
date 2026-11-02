@@ -106,6 +106,7 @@ async function main() {
         const r = await importMaterialCollection(store, storage, JSON.parse(readFileSync(colFile, 'utf8')) as MaterialImport,
           async name => new Uint8Array(await readFile(path.join(importDir, dir, path.basename(name)))));
         if (r.added) console.log(`[myshowroom] Materiali "${dir}": importati ${r.added} campioni.`);
+        if (r.updated) console.log(`[myshowroom] Materiali "${dir}": foto principale aggiornata per ${r.updated} colori.`);
         if (r.merged) console.log(`[myshowroom] Materiali "${dir}": unite ${r.merged} collezioni doppie.`);
         continue;
       }

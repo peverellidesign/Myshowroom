@@ -54,13 +54,13 @@ export function SwatchPicker({ collections, selected, onSelect, canManage, onDel
       <div className="modalHeader"><h2>{zoom.c.name} · {zoom.s.code}</h2><button className="iconBtn" onClick={() => setZoom(null)}><X /></button></div>
       <Img src={swatchSrc(zoom.s)} alt={zoom.s.name} />
       <p className="hint">{zoom.c.brand} · {zoom.c.category} · {zoom.s.name}. Il colore a schermo è indicativo: verificare sempre sul campione fisico.</p>
-      {!!zoom.s.sources?.length && <p className="hint">Presente nei cataloghi: {zoom.s.sources.map(x => x.catalog).join(' · ')}</p>}
+      {!!zoom.s.sources?.length && <p className="hint">Presente nei cataloghi: {zoom.s.sources.filter(x => !x.catalog.includes('foto principale')).map(x => x.catalog.replace(/^PELLE /, '')).join(' · ')}{zoom.s.sources.some(x => x.catalog.includes('foto principale')) ? ' · fotografia principale del catalogo' : ''}</p>}
       <div className="actionRow"><button className="btn" onClick={() => { onSelect(zoom.s); setActiveId(zoom.c.id); setZoom(null); }}><Check size={15} /> Scegli questa finitura</button></div>
     </div></div>}
   </div>;
 }
 
-type Row = { brand: string; category: string; collection: string; catalog: string; code: string; name: string; file: string };
+type Row = { brand: string; category: string; collection: string; catalog: string; code: string; name: string; file: string; featured?: string };
 const IMG = /\.(jpe?g|png|webp)$/i;
 /** "920a7b24-Flexform_PELLE_403_24_campioni.zip" → "PELLE 403" */
 export const zipCollectionName = (file: string, brand: string) => {
@@ -105,7 +105,7 @@ export function MaterialImport({ defaultBrand, onDone, onClose }: { defaultBrand
       if (js) list = JSON.parse(new TextDecoder().decode(await js.read())).map((o: Record<string, unknown>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k.toLowerCase(), String(v ?? '')])));
       else if (csv) list = parseCsv(new TextDecoder().decode(await csv.read()));
       const resolve = (file: string) => { const f = file.toLowerCase().replace(/^\.?\//, ''); if (map.has(f)) return f; const hits = [...map.keys()].filter(k => k.endsWith('/' + f) || (!f.includes('/') && k.split('/').pop() === f)); return hits.length === 1 ? hits[0] : ''; };
-      let out: Row[] = list.map(r => { const raw = pick(r, 'codice', 'code'); return { brand: pick(r, 'brand', 'marchio'), category: pick(r, 'macrocategoria', 'categoria', 'category'), collection: pick(r, 'collezione', 'collection'), catalog: pick(r, 'catalogo', 'catalog'), code: raw.match(/(\d[\w-]*)$/)?.[1] ?? raw, name: pick(r, 'nome', 'name') || raw, file: resolve(pick(r, 'file_immagine', 'file', 'immagine', 'image')) }; })
+      let out: Row[] = list.map(r => { const raw = pick(r, 'codice', 'code'); return { brand: pick(r, 'brand', 'marchio'), category: pick(r, 'macrocategoria', 'categoria', 'category'), collection: pick(r, 'collezione', 'collection'), catalog: pick(r, 'catalogo', 'catalog'), code: raw.match(/(\d[\w-]*)$/)?.[1] ?? raw, name: pick(r, 'nome', 'name') || raw, file: resolve(pick(r, 'file_immagine', 'swatch_path', 'file', 'immagine', 'image')), featured: resolve(pick(r, 'featured_path', 'foto_principale')) || undefined }; })
         .filter(r => r.code && r.file);
       if (!out.length) out = [...map.keys()].map(file => { const base = file.split('/').pop()!.replace(IMG, ''); const code = base.match(/(\d[\w-]*)$/)?.[1] ?? base; return { brand: '', category: '', collection: '', catalog: '', code, name: base.replace(/[_-]+/g, ' ').toUpperCase(), file }; });
       if (!out.length) throw new Error('Nessuna immagine di campione trovata nello ZIP');
@@ -139,7 +139,16 @@ export function MaterialImport({ defaultBrand, onDone, onClose }: { defaultBrand
             if (!bySha.has(sha)) bySha.set(sha, (await upload(new File([bytes as Uint8Array<ArrayBuffer>], r.file.split('/').pop()!, { type: typeOf(r.file) }))).id);
             sources.push({ catalog: r.catalog, fileId: bySha.get(sha), sha256: sha });
           }
-          const blob = await shrink(refBytes!, typeOf(ref.file));
+          // fotografia principale del catalogo (se presente) come immagine del colore
+          const feat = rs.find(r => r.featured)?.featured;
+          if (feat) {
+            const fb = await files.get(feat)!();
+            refBytes = fb;
+            const fsha = [...new Uint8Array(await crypto.subtle.digest('SHA-256', fb as Uint8Array<ArrayBuffer>))].map(b => b.toString(16).padStart(2, '0')).join('');
+            if (!bySha.has(fsha)) bySha.set(fsha, (await upload(new File([fb as Uint8Array<ArrayBuffer>], feat.split('/').pop()!, { type: typeOf(feat) }))).id);
+            sources.push({ catalog: `${rs.find(r => r.featured)!.catalog} · foto principale`, fileId: bySha.get(fsha), sha256: fsha });
+          }
+          const blob = await shrink(refBytes!, typeOf(feat ?? ref.file));
           const f = await upload(new File([blob], `${code}.jpg`, { type: blob.type || 'image/jpeg' }));
           swatches.push({ code, name: ref.name || code, fileId: f.id, sources });
         }
