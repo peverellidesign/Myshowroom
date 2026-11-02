@@ -1,0 +1,613 @@
+{
+ "key": "flexform-pelle",
+ "brand": "Flexform",
+ "category": "Pelle",
+ "name": "Pelle",
+ "notes": "Cartella colori pelle Flexform: 24 codici comuni ai cataloghi PELLE 400, 402, 403, 405, 411. Colori indicativi: verificare sempre sul campione fisico.",
+ "mergeFrom": [
+  "PELLE 403",
+  "PELLE 411"
+ ],
+ "swatches": [
+  {
+   "code": "400",
+   "name": "PELLE 400",
+   "image": "pelle-400.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-9a514fce2709c57f.jpeg",
+     "sha256": "9a514fce2709c57ff2af685a20d23e4a2e87540add795831d126276a98dfd1ac",
+     "file": "PELLE_400/PELLE_400.jpeg"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-9a514fce2709c57f.jpeg",
+     "sha256": "9a514fce2709c57ff2af685a20d23e4a2e87540add795831d126276a98dfd1ac",
+     "file": "PELLE_402/PELLE_400.jpeg"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-9a514fce2709c57f.jpeg",
+     "sha256": "9a514fce2709c57ff2af685a20d23e4a2e87540add795831d126276a98dfd1ac",
+     "file": "PELLE_405/PELLE_400.jpeg"
+    }
+   ]
+  },
+  {
+   "code": "401",
+   "name": "PELLE 401",
+   "image": "pelle-401.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-176baa1dff55c294.png",
+     "sha256": "176baa1dff55c294952ac7a6e43f96844ee745f0e5098dafc2e5a2541e7acd66",
+     "file": "PELLE_400/PELLE_401.png"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-176baa1dff55c294.png",
+     "sha256": "176baa1dff55c294952ac7a6e43f96844ee745f0e5098dafc2e5a2541e7acd66",
+     "file": "PELLE_402/PELLE_401.png"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-176baa1dff55c294.png",
+     "sha256": "176baa1dff55c294952ac7a6e43f96844ee745f0e5098dafc2e5a2541e7acd66",
+     "file": "PELLE_405/PELLE_401.png"
+    }
+   ]
+  },
+  {
+   "code": "402",
+   "name": "PELLE 402",
+   "image": "pelle-402.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-03460ed4366ce883.jpeg",
+     "sha256": "03460ed4366ce883cf6d59d2401726d68732ade4fb7ab36b25265f941c26d9c6",
+     "file": "PELLE_400/PELLE_402.jpeg"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-03460ed4366ce883.jpeg",
+     "sha256": "03460ed4366ce883cf6d59d2401726d68732ade4fb7ab36b25265f941c26d9c6",
+     "file": "PELLE_402/PELLE_402.jpeg"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-03460ed4366ce883.jpeg",
+     "sha256": "03460ed4366ce883cf6d59d2401726d68732ade4fb7ab36b25265f941c26d9c6",
+     "file": "PELLE_405/PELLE_402.jpeg"
+    }
+   ]
+  },
+  {
+   "code": "403",
+   "name": "PELLE 403",
+   "image": "pelle-403.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-a5630a97cdb8ec92.jpeg",
+     "sha256": "a5630a97cdb8ec92449274675bd9f7b7229d2910242fc0b7a1cd68259a7c47b9",
+     "file": "PELLE_400/PELLE_403.jpeg"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-a5630a97cdb8ec92.jpeg",
+     "sha256": "a5630a97cdb8ec92449274675bd9f7b7229d2910242fc0b7a1cd68259a7c47b9",
+     "file": "PELLE_402/PELLE_403.jpeg"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-a5630a97cdb8ec92.jpeg",
+     "sha256": "a5630a97cdb8ec92449274675bd9f7b7229d2910242fc0b7a1cd68259a7c47b9",
+     "file": "PELLE_405/PELLE_403.jpeg"
+    }
+   ]
+  },
+  {
+   "code": "404",
+   "name": "PELLE 404",
+   "image": "pelle-404.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-e262d7f994ef58a6.jpeg",
+     "sha256": "e262d7f994ef58a6c470f38a533c0edaad81eed90ccccd8cc75f78dc56883d42",
+     "file": "PELLE_400/PELLE_404.jpeg"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-e262d7f994ef58a6.jpeg",
+     "sha256": "e262d7f994ef58a6c470f38a533c0edaad81eed90ccccd8cc75f78dc56883d42",
+     "file": "PELLE_402/PELLE_404.jpeg"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-e262d7f994ef58a6.jpeg",
+     "sha256": "e262d7f994ef58a6c470f38a533c0edaad81eed90ccccd8cc75f78dc56883d42",
+     "file": "PELLE_405/PELLE_404.jpeg"
+    }
+   ]
+  },
+  {
+   "code": "405",
+   "name": "PELLE 405",
+   "image": "pelle-405.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-a5262c763f245bf0.jpeg",
+     "sha256": "a5262c763f245bf0272f73f7815078aa52299b9a62acbfd55eea5ef8638b76d9",
+     "file": "PELLE_400/PELLE_405.jpeg"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-a5262c763f245bf0.jpeg",
+     "sha256": "a5262c763f245bf0272f73f7815078aa52299b9a62acbfd55eea5ef8638b76d9",
+     "file": "PELLE_402/PELLE_405.jpeg"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-a5262c763f245bf0.jpeg",
+     "sha256": "a5262c763f245bf0272f73f7815078aa52299b9a62acbfd55eea5ef8638b76d9",
+     "file": "PELLE_405/PELLE_405.jpeg"
+    }
+   ]
+  },
+  {
+   "code": "406",
+   "name": "PELLE 406",
+   "image": "pelle-406.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-e0c6e8c661c99d64.jpeg",
+     "sha256": "e0c6e8c661c99d64741602a94c2869ae3dc165192059bd87ed9213c6fc546709",
+     "file": "PELLE_400/PELLE_406.jpeg"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-e0c6e8c661c99d64.jpeg",
+     "sha256": "e0c6e8c661c99d64741602a94c2869ae3dc165192059bd87ed9213c6fc546709",
+     "file": "PELLE_402/PELLE_406.jpeg"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-e0c6e8c661c99d64.jpeg",
+     "sha256": "e0c6e8c661c99d64741602a94c2869ae3dc165192059bd87ed9213c6fc546709",
+     "file": "PELLE_405/PELLE_406.jpeg"
+    }
+   ]
+  },
+  {
+   "code": "407",
+   "name": "PELLE 407",
+   "image": "pelle-407.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-2947450c69c791a5.jpeg",
+     "sha256": "2947450c69c791a5a21c86aa7fe1a1c14ba1270bb36a65afb408c8e7cf0adc90",
+     "file": "PELLE_400/PELLE_407.jpeg"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-2947450c69c791a5.jpeg",
+     "sha256": "2947450c69c791a5a21c86aa7fe1a1c14ba1270bb36a65afb408c8e7cf0adc90",
+     "file": "PELLE_402/PELLE_407.jpeg"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-2947450c69c791a5.jpeg",
+     "sha256": "2947450c69c791a5a21c86aa7fe1a1c14ba1270bb36a65afb408c8e7cf0adc90",
+     "file": "PELLE_405/PELLE_407.jpeg"
+    }
+   ]
+  },
+  {
+   "code": "408",
+   "name": "PELLE 408",
+   "image": "pelle-408.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-63c8c951c259dc4d.png",
+     "sha256": "63c8c951c259dc4dc917dfda0e9b26469f77809ecdf48210de1284bd05ddd763",
+     "file": "PELLE_400/PELLE_408.png"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-63c8c951c259dc4d.png",
+     "sha256": "63c8c951c259dc4dc917dfda0e9b26469f77809ecdf48210de1284bd05ddd763",
+     "file": "PELLE_402/PELLE_408.png"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-63c8c951c259dc4d.png",
+     "sha256": "63c8c951c259dc4dc917dfda0e9b26469f77809ecdf48210de1284bd05ddd763",
+     "file": "PELLE_405/PELLE_408.png"
+    }
+   ]
+  },
+  {
+   "code": "409",
+   "name": "PELLE 409",
+   "image": "pelle-409.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-1731507515b38bfa.jpeg",
+     "sha256": "1731507515b38bfa87796b43442e640823325e9325d381363bcd796796c92b64",
+     "file": "PELLE_400/PELLE_409.jpeg"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-1731507515b38bfa.jpeg",
+     "sha256": "1731507515b38bfa87796b43442e640823325e9325d381363bcd796796c92b64",
+     "file": "PELLE_402/PELLE_409.jpeg"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-1731507515b38bfa.jpeg",
+     "sha256": "1731507515b38bfa87796b43442e640823325e9325d381363bcd796796c92b64",
+     "file": "PELLE_405/PELLE_409.jpeg"
+    }
+   ]
+  },
+  {
+   "code": "410",
+   "name": "PELLE 410",
+   "image": "pelle-410.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-b53eff4d21636a51.jpeg",
+     "sha256": "b53eff4d21636a515ef9c98ddcdb9bea075f20222e3178d509c00274af3523a5",
+     "file": "PELLE_400/PELLE_410.jpeg"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-b53eff4d21636a51.jpeg",
+     "sha256": "b53eff4d21636a515ef9c98ddcdb9bea075f20222e3178d509c00274af3523a5",
+     "file": "PELLE_402/PELLE_410.jpeg"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-b53eff4d21636a51.jpeg",
+     "sha256": "b53eff4d21636a515ef9c98ddcdb9bea075f20222e3178d509c00274af3523a5",
+     "file": "PELLE_405/PELLE_410.jpeg"
+    }
+   ]
+  },
+  {
+   "code": "411",
+   "name": "PELLE 411",
+   "image": "pelle-411.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-0739c09fa0c94034.jpeg",
+     "sha256": "0739c09fa0c94034b656bf3500763e55833b9559fcc6c7ffb8192a621d811e50",
+     "file": "PELLE_400/PELLE_411.jpeg"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-0739c09fa0c94034.jpeg",
+     "sha256": "0739c09fa0c94034b656bf3500763e55833b9559fcc6c7ffb8192a621d811e50",
+     "file": "PELLE_402/PELLE_411.jpeg"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-0739c09fa0c94034.jpeg",
+     "sha256": "0739c09fa0c94034b656bf3500763e55833b9559fcc6c7ffb8192a621d811e50",
+     "file": "PELLE_405/PELLE_411.jpeg"
+    }
+   ]
+  },
+  {
+   "code": "412",
+   "name": "PELLE 412",
+   "image": "pelle-412.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-a9921e43c51cde05.jpeg",
+     "sha256": "a9921e43c51cde059720af46bbbe51c61d6c2c920fe2f6b457f3c612d725af3f",
+     "file": "PELLE_400/PELLE_412.jpeg"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-a9921e43c51cde05.jpeg",
+     "sha256": "a9921e43c51cde059720af46bbbe51c61d6c2c920fe2f6b457f3c612d725af3f",
+     "file": "PELLE_402/PELLE_412.jpeg"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-a9921e43c51cde05.jpeg",
+     "sha256": "a9921e43c51cde059720af46bbbe51c61d6c2c920fe2f6b457f3c612d725af3f",
+     "file": "PELLE_405/PELLE_412.jpeg"
+    }
+   ]
+  },
+  {
+   "code": "413",
+   "name": "PELLE 413",
+   "image": "pelle-413.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-8bd34404ab568502.png",
+     "sha256": "8bd34404ab568502396450db87208e3e9c99ff3ce5e6cf55a5f41a1b9d7bf5d0",
+     "file": "PELLE_400/PELLE_413.png"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-8bd34404ab568502.png",
+     "sha256": "8bd34404ab568502396450db87208e3e9c99ff3ce5e6cf55a5f41a1b9d7bf5d0",
+     "file": "PELLE_402/PELLE_413.png"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-8bd34404ab568502.png",
+     "sha256": "8bd34404ab568502396450db87208e3e9c99ff3ce5e6cf55a5f41a1b9d7bf5d0",
+     "file": "PELLE_405/PELLE_413.png"
+    }
+   ]
+  },
+  {
+   "code": "850",
+   "name": "PELLE 850",
+   "image": "pelle-850.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-b1a94ed229b05d1d.jpeg",
+     "sha256": "b1a94ed229b05d1db1a5a2b0e079c9f787c38223a97b895d8cbcbe26d57c0ad1",
+     "file": "PELLE_400/PELLE_850.jpeg"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-b1a94ed229b05d1d.jpeg",
+     "sha256": "b1a94ed229b05d1db1a5a2b0e079c9f787c38223a97b895d8cbcbe26d57c0ad1",
+     "file": "PELLE_402/PELLE_850.jpeg"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-b1a94ed229b05d1d.jpeg",
+     "sha256": "b1a94ed229b05d1db1a5a2b0e079c9f787c38223a97b895d8cbcbe26d57c0ad1",
+     "file": "PELLE_405/PELLE_850.jpeg"
+    }
+   ]
+  },
+  {
+   "code": "851",
+   "name": "PELLE 851",
+   "image": "pelle-851.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-ba4a56d07cd2e32b.jpeg",
+     "sha256": "ba4a56d07cd2e32b8f2a8cfcc20c6fd3acdc8a20bb93f58cf330a12647c92ced",
+     "file": "PELLE_400/PELLE_851.jpeg"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-ba4a56d07cd2e32b.jpeg",
+     "sha256": "ba4a56d07cd2e32b8f2a8cfcc20c6fd3acdc8a20bb93f58cf330a12647c92ced",
+     "file": "PELLE_402/PELLE_851.jpeg"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-ba4a56d07cd2e32b.jpeg",
+     "sha256": "ba4a56d07cd2e32b8f2a8cfcc20c6fd3acdc8a20bb93f58cf330a12647c92ced",
+     "file": "PELLE_405/PELLE_851.jpeg"
+    }
+   ]
+  },
+  {
+   "code": "852",
+   "name": "PELLE 852",
+   "image": "pelle-852.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-0f891e57efccb4c1.jpeg",
+     "sha256": "0f891e57efccb4c1d0d13eaba5def6c924bfafed4704d88f74e9eca67093e261",
+     "file": "PELLE_400/PELLE_852.jpeg"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-0f891e57efccb4c1.jpeg",
+     "sha256": "0f891e57efccb4c1d0d13eaba5def6c924bfafed4704d88f74e9eca67093e261",
+     "file": "PELLE_402/PELLE_852.jpeg"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-0f891e57efccb4c1.jpeg",
+     "sha256": "0f891e57efccb4c1d0d13eaba5def6c924bfafed4704d88f74e9eca67093e261",
+     "file": "PELLE_405/PELLE_852.jpeg"
+    }
+   ]
+  },
+  {
+   "code": "853",
+   "name": "PELLE 853",
+   "image": "pelle-853.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-338de16c8fedcf55.jpeg",
+     "sha256": "338de16c8fedcf55819c58b5577f40ae06dc4420a4d17fdc98bd133268f98899",
+     "file": "PELLE_400/PELLE_853.jpeg"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-338de16c8fedcf55.jpeg",
+     "sha256": "338de16c8fedcf55819c58b5577f40ae06dc4420a4d17fdc98bd133268f98899",
+     "file": "PELLE_402/PELLE_853.jpeg"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-338de16c8fedcf55.jpeg",
+     "sha256": "338de16c8fedcf55819c58b5577f40ae06dc4420a4d17fdc98bd133268f98899",
+     "file": "PELLE_405/PELLE_853.jpeg"
+    }
+   ]
+  },
+  {
+   "code": "854",
+   "name": "PELLE 854",
+   "image": "pelle-854.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-fbfb864a8fb9ce6e.jpeg",
+     "sha256": "fbfb864a8fb9ce6ec6f712d90534fd217a86cefd3112ef6d791c28bfbd9920f1",
+     "file": "PELLE_400/PELLE_854.jpeg"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-fbfb864a8fb9ce6e.jpeg",
+     "sha256": "fbfb864a8fb9ce6ec6f712d90534fd217a86cefd3112ef6d791c28bfbd9920f1",
+     "file": "PELLE_402/PELLE_854.jpeg"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-fbfb864a8fb9ce6e.jpeg",
+     "sha256": "fbfb864a8fb9ce6ec6f712d90534fd217a86cefd3112ef6d791c28bfbd9920f1",
+     "file": "PELLE_405/PELLE_854.jpeg"
+    }
+   ]
+  },
+  {
+   "code": "855",
+   "name": "PELLE 855",
+   "image": "pelle-855.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-4fb692fff403090a.jpeg",
+     "sha256": "4fb692fff403090a1c4bf24af074beb894e514950fe4e13ca9d19e3ac03a57ca",
+     "file": "PELLE_400/PELLE_855.jpeg"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-4fb692fff403090a.jpeg",
+     "sha256": "4fb692fff403090a1c4bf24af074beb894e514950fe4e13ca9d19e3ac03a57ca",
+     "file": "PELLE_402/PELLE_855.jpeg"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-4fb692fff403090a.jpeg",
+     "sha256": "4fb692fff403090a1c4bf24af074beb894e514950fe4e13ca9d19e3ac03a57ca",
+     "file": "PELLE_405/PELLE_855.jpeg"
+    }
+   ]
+  },
+  {
+   "code": "856",
+   "name": "PELLE 856",
+   "image": "pelle-856.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-38f412be1431d303.jpeg",
+     "sha256": "38f412be1431d303c881745f895a607855a8d9cde2b52b9a92115a38f2f71ab2",
+     "file": "PELLE_400/PELLE_856.jpeg"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-38f412be1431d303.jpeg",
+     "sha256": "38f412be1431d303c881745f895a607855a8d9cde2b52b9a92115a38f2f71ab2",
+     "file": "PELLE_402/PELLE_856.jpeg"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-38f412be1431d303.jpeg",
+     "sha256": "38f412be1431d303c881745f895a607855a8d9cde2b52b9a92115a38f2f71ab2",
+     "file": "PELLE_405/PELLE_856.jpeg"
+    }
+   ]
+  },
+  {
+   "code": "857",
+   "name": "PELLE 857",
+   "image": "pelle-857.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-b22725e8639249fa.jpeg",
+     "sha256": "b22725e8639249fa0e37b6a0983034800f8249753250c9429853df3d0cb4a659",
+     "file": "PELLE_400/PELLE_857.jpeg"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-b22725e8639249fa.jpeg",
+     "sha256": "b22725e8639249fa0e37b6a0983034800f8249753250c9429853df3d0cb4a659",
+     "file": "PELLE_402/PELLE_857.jpeg"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-b22725e8639249fa.jpeg",
+     "sha256": "b22725e8639249fa0e37b6a0983034800f8249753250c9429853df3d0cb4a659",
+     "file": "PELLE_405/PELLE_857.jpeg"
+    }
+   ]
+  },
+  {
+   "code": "858",
+   "name": "PELLE 858",
+   "image": "pelle-858.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-9c6ba6b566cfe761.jpeg",
+     "sha256": "9c6ba6b566cfe7614b0c9dac5d6eff8351fcfea4edb15ded3187155bef1adb24",
+     "file": "PELLE_400/PELLE_858.jpeg"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-9c6ba6b566cfe761.jpeg",
+     "sha256": "9c6ba6b566cfe7614b0c9dac5d6eff8351fcfea4edb15ded3187155bef1adb24",
+     "file": "PELLE_402/PELLE_858.jpeg"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-9c6ba6b566cfe761.jpeg",
+     "sha256": "9c6ba6b566cfe7614b0c9dac5d6eff8351fcfea4edb15ded3187155bef1adb24",
+     "file": "PELLE_405/PELLE_858.jpeg"
+    }
+   ]
+  },
+  {
+   "code": "859",
+   "name": "PELLE 859",
+   "image": "pelle-859.jpg",
+   "sources": [
+    {
+     "catalog": "PELLE 400",
+     "original": "orig-ebe33c7f82d9622f.jpeg",
+     "sha256": "ebe33c7f82d9622f181d9fd4652e96a564d95880c3ccc24a98b7e8b5f6ea3714",
+     "file": "PELLE_400/PELLE_859.jpeg"
+    },
+    {
+     "catalog": "PELLE 402",
+     "original": "orig-ebe33c7f82d9622f.jpeg",
+     "sha256": "ebe33c7f82d9622f181d9fd4652e96a564d95880c3ccc24a98b7e8b5f6ea3714",
+     "file": "PELLE_402/PELLE_859.jpeg"
+    },
+    {
+     "catalog": "PELLE 405",
+     "original": "orig-ebe33c7f82d9622f.jpeg",
+     "sha256": "ebe33c7f82d9622f181d9fd4652e96a564d95880c3ccc24a98b7e8b5f6ea3714",
+     "file": "PELLE_405/PELLE_859.jpeg"
+    }
+   ]
+  }
+ ]
+}

@@ -3,7 +3,7 @@ import {
   APPT_DURATIONS, APPT_TIMES, APPT_TYPES, CATEGORIES, DOC_LANGS, DOC_TYPES, LOCATIONS, ROLES, SHOWROOMS, STATUSES, DEFAULT_SITE, SITES_LINE, MATERIAL_CATEGORIES,
   convert, formatMoney, isEmail, quoteTotal,
   type Appointment, type Bootstrap, type Client, type Config, type Currency, type DocumentRecord, type EmailAttachment,
-  type EmailRecord, type FileRecord, type MaterialCollection, type MaterialSwatch, type Product, type Quote, type QuoteItem, type Reservation, type Role, type Task, type User,
+  type EmailRecord, type FileRecord, type MaterialCollection, type MaterialSource, type MaterialSwatch, type Product, type Quote, type QuoteItem, type Reservation, type Role, type Task, type User,
 } from '../../shared/types';
 import { ask } from './assistant';
 import {
@@ -373,9 +373,17 @@ export function createApp(deps: Deps) {
   const sameBrand = (a: string, b: string) => a.trim().toLowerCase().replace(/[^a-z0-9]/g, '') === b.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
   const collectionAllowed = (p: Product, col: Pick<MaterialCollection, 'id' | 'brand'>) => (p.materialCollectionIds?.length ? p.materialCollectionIds.includes(col.id) : sameBrand(p.brand, col.brand));
   async function materialsAll(): Promise<MaterialCollection[]> {
-    const [cols, sw] = await Promise.all([store.all<Omit<MaterialCollection, 'swatches'>>('materialCollections', {}, 'createdAt asc'), store.all<MaterialSwatch>('materialSwatches', {}, 'position asc')]);
-    return cols.map(c => ({ ...c, notes: c.notes ?? '', swatches: sw.filter(s => s.collectionId === c.id) }))
+    const [cols, sw, src] = await Promise.all([store.all<Omit<MaterialCollection, 'swatches'>>('materialCollections', {}, 'createdAt asc'), store.all<MaterialSwatch>('materialSwatches', {}, 'position asc'), store.all<MaterialSource & { swatchId: string }>('materialSwatchSources', {}, 'catalog asc')]);
+    return cols.map(c => ({ ...c, notes: c.notes ?? '', swatches: sw.filter(s => s.collectionId === c.id).map(s => ({ ...s, sources: src.filter(x => x.swatchId === s.id).map(x => ({ catalog: x.catalog, fileId: x.fileId, sha256: x.sha256 })) })) }))
       .sort((a, b) => a.brand.localeCompare(b.brand) || a.category.localeCompare(b.category) || a.name.localeCompare(b.name, 'it', { numeric: true }));
+  }
+  async function upsertSources(swatchId: string, sources: MaterialSource[]) {
+    const have = await store.all<MaterialSource & { id: string }>('materialSwatchSources', { swatchId });
+    for (const x of sources) {
+      const o = have.find(h => h.catalog.toLowerCase() === x.catalog.toLowerCase());
+      if (o) await store.update('materialSwatchSources', o.id, { ...(x.fileId ? { fileId: x.fileId } : {}), ...(x.sha256 ? { sha256: x.sha256 } : {}) });
+      else await store.insert('materialSwatchSources', { id: uid(), swatchId, catalog: x.catalog, fileId: x.fileId, sha256: x.sha256 ?? null, createdAt: now() });
+    }
   }
   router.get('/api/materials', async c => { requireUser(c); return json(await materialsAll()); });
   /** Crea una collezione o aggiunge/aggiorna campioni di una esistente (stesso marchio e nome). */
@@ -387,12 +395,18 @@ export function createApp(deps: Deps) {
     const category = oneOf(b.category || 'Altro', MATERIAL_CATEGORIES, 'Categoria');
     const notes = str(b.notes, 'Note', { max: 2000 });
     if (!Array.isArray(b.swatches) || b.swatches.length > 500) throw new HttpError(400, 'Campioni: elenco non valido');
-    const swatches = [] as { code: string; name: string; fileId: string | null }[];
+    const swatches = [] as { code: string; name: string; fileId: string | null; sources: MaterialSource[] }[];
+    const imageFile = async (id: unknown, code: string) => {
+      if (!id) return null; const fid = str(id, 'Foto campione', { max: 80 });
+      const f = await store.get<FileRecord>('files', fid); if (!f || !f.mime.startsWith('image/')) throw new HttpError(400, `Foto del campione ${code} non valida`);
+      return fid;
+    };
     for (const s of b.swatches as Record<string, unknown>[]) {
       const code = str(s?.code, 'Codice campione', { required: true, max: 60 });
-      const fileId = s?.fileId ? str(s.fileId, 'Foto campione', { max: 80 }) : null;
-      if (fileId) { const f = await store.get<FileRecord>('files', fileId); if (!f || !f.mime.startsWith('image/')) throw new HttpError(400, `Foto del campione ${code} non valida`); }
-      swatches.push({ code, name: str(s?.name, 'Nome campione', { max: 120 }) || code, fileId });
+      const sources: MaterialSource[] = [];
+      for (const x of (Array.isArray(s?.sources) ? s.sources : []).slice(0, 50) as Record<string, unknown>[])
+        sources.push({ catalog: str(x?.catalog, 'Catalogo', { required: true, max: 120 }), fileId: await imageFile(x?.fileId, code), sha256: x?.sha256 ? str(x.sha256, 'sha256', { max: 64 }) : null });
+      swatches.push({ code, name: str(s?.name, 'Nome campione', { max: 120 }) || code, fileId: await imageFile(s?.fileId, code), sources });
     }
     let col = (await store.all<MaterialCollection>('materialCollections')).find(x => sameBrand(x.brand, brand) && x.name.trim().toLowerCase() === name.trim().toLowerCase());
     if (!col) col = await store.insert<MaterialCollection>('materialCollections', { id: uid(), brand, category, name, notes, createdBy: u.id, createdAt: now() });
@@ -402,8 +416,10 @@ export function createApp(deps: Deps) {
     let added = 0, updated = 0;
     for (const s of swatches) {
       const old = existing.find(x => x.code.toLowerCase() === s.code.toLowerCase());
-      if (old) { await store.update('materialSwatches', old.id, { name: s.name, ...(s.fileId ? { fileId: s.fileId } : {}) }); updated++; }
-      else { await store.insert('materialSwatches', { id: uid(), collectionId: col.id, code: s.code, name: s.name, fileId: s.fileId, position: ++pos }); added++; }
+      let swatchId: string;
+      if (old) { swatchId = old.id; await store.update('materialSwatches', old.id, { name: s.name, ...(s.fileId ? { fileId: s.fileId } : {}) }); updated++; }
+      else { swatchId = uid(); await store.insert('materialSwatches', { id: swatchId, collectionId: col.id, code: s.code, name: s.name, fileId: s.fileId, position: ++pos }); added++; }
+      await upsertSources(swatchId, s.sources);
     }
     return json({ collection: (await materialsAll()).find(x => x.id === col!.id), added, updated }, 201);
   });
@@ -418,16 +434,21 @@ export function createApp(deps: Deps) {
     catch (e) { if (e instanceof UniqueViolation) throw new HttpError(409, 'Esiste già una collezione con questo nome per il marchio'); throw e; }
     return json((await materialsAll()).find(x => x.id === c.params.id));
   });
-  async function dropSwatchFiles(list: MaterialSwatch[]) {
-    for (const s of list) {
-      if (!s.fileId || await store.count('quoteItems', { swatchFileId: s.fileId })) continue; // la foto resta se usata in un preventivo
-      const f = await store.get<FileRecord & { storageKey: string }>('files', s.fileId);
-      if (f) { await storage.delete(f.storageKey).catch(() => {}); await store.remove('files', { id: s.fileId }); }
+  async function dropSwatchFiles(list: (MaterialSwatch & { sourceFileIds?: (string | null)[] })[]) {
+    const ids = new Set<string>();
+    for (const s of list) for (const id of [s.fileId, ...(s.sourceFileIds ?? [])]) if (id) ids.add(id);
+    for (const id of ids) {
+      // la foto resta se usata in un preventivo o da un altro campione
+      if (await store.count('quoteItems', { swatchFileId: id }) || await store.count('materialSwatches', { fileId: id }) || await store.count('materialSwatchSources', { fileId: id })) continue;
+      const f = await store.get<FileRecord & { storageKey: string }>('files', id);
+      if (f) { await storage.delete(f.storageKey).catch(() => {}); await store.remove('files', { id }); }
     }
   }
+  const withSourceFiles = async (list: MaterialSwatch[]) => Promise.all(list.map(async s => ({ ...s, sourceFileIds: (await store.all<{ fileId: string | null }>('materialSwatchSources', { swatchId: s.id })).map(x => x.fileId) })));
   router.delete('/api/materials/collections/:id', async c => {
     requireUser(c, 'admin', 'manager');
-    const sw = await store.all<MaterialSwatch>('materialSwatches', { collectionId: c.params.id });
+    const sw = await withSourceFiles(await store.all<MaterialSwatch>('materialSwatches', { collectionId: c.params.id }));
+    for (const s of sw) await store.remove('materialSwatchSources', { swatchId: s.id });
     await store.remove('materialCollections', { id: c.params.id });
     await store.remove('materialSwatches', { collectionId: c.params.id });
     await dropSwatchFiles(sw);
@@ -438,7 +459,8 @@ export function createApp(deps: Deps) {
     requireUser(c, 'admin', 'manager');
     const s = await store.get<MaterialSwatch>('materialSwatches', c.params.id);
     if (!s) throw new HttpError(404, 'Campione non trovato');
-    await store.remove('materialSwatches', { id: s.id }); await dropSwatchFiles([s]);
+    const [full] = await withSourceFiles([s]);
+    await store.remove('materialSwatchSources', { swatchId: s.id }); await store.remove('materialSwatches', { id: s.id }); await dropSwatchFiles([full]);
     return json({ ok: true });
   });
 

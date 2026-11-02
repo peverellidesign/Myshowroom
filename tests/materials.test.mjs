@@ -80,3 +80,17 @@ test('collezioni scelte nella scheda prodotto ed eliminazione', async () => {
   assert.equal((await req('admin', 'GET', `/api/files/${unused}`)).status, 404);
   assert.deepEqual((await req('admin', 'GET', '/api/bootstrap')).body.products.find(x => x.id === frau.id).materialCollectionIds, []);
 });
+
+test('provenienze per catalogo: un colore, più cataloghi, upsert idempotente', async () => {
+  const a = await img('admin'), b = await img('admin');
+  const body = { brand: 'Flexform', category: 'Pelle', name: 'Pelle', swatches: [{ code: '405', name: 'PELLE 405', fileId: a, sources: [{ catalog: 'PELLE 400', fileId: b, sha256: 'x1' }, { catalog: 'PELLE 402', fileId: b, sha256: 'x1' }] }] };
+  const r = await req('admin', 'POST', '/api/materials/collections', body);
+  assert.equal(r.status, 201, JSON.stringify(r.body));
+  const again = await req('admin', 'POST', '/api/materials/collections', { ...body, swatches: [{ ...body.swatches[0], sources: [{ catalog: 'PELLE 405', fileId: b }, { catalog: 'pelle 400', fileId: b }] }] });
+  assert.equal(again.body.added, 0); assert.equal(again.body.updated, 1);
+  const sw = again.body.collection.swatches;
+  assert.equal(sw.length, 1, 'un solo colore per codice');
+  assert.deepEqual(sw[0].sources.map(x => x.catalog), ['PELLE 400', 'PELLE 402', 'PELLE 405']);
+  assert.equal((await req('admin', 'DELETE', `/api/materials/collections/${again.body.collection.id}`)).status, 200);
+  assert.equal((await req('admin', 'GET', `/api/files/${b}`)).status, 404, 'foto delle provenienze rimosse con la collezione');
+});

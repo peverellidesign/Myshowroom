@@ -103,9 +103,10 @@ async function main() {
     for (const dir of readdirSync(importDir).sort()) {
       const colFile = path.join(importDir, dir, 'collection.json');
       if (existsSync(colFile)) {
-        const added = await importMaterialCollection(store, storage, JSON.parse(readFileSync(colFile, 'utf8')) as MaterialImport,
+        const r = await importMaterialCollection(store, storage, JSON.parse(readFileSync(colFile, 'utf8')) as MaterialImport,
           async name => new Uint8Array(await readFile(path.join(importDir, dir, path.basename(name)))));
-        if (added) console.log(`[myshowroom] Materiali "${dir}": importati ${added} campioni.`);
+        if (r.added) console.log(`[myshowroom] Materiali "${dir}": importati ${r.added} campioni.`);
+        if (r.merged) console.log(`[myshowroom] Materiali "${dir}": unite ${r.merged} collezioni doppie.`);
         continue;
       }
       const file = path.join(importDir, dir, 'products.json');

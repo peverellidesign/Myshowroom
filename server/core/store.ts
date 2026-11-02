@@ -21,6 +21,7 @@ export const TABLES = {
   settings: { json: [] },
   materialCollections: { json: [] },
   materialSwatches: { json: [] },
+  materialSwatchSources: { json: [] },
 } as const;
 export type Table = keyof typeof TABLES;
 
@@ -33,6 +34,7 @@ export const UNIQUE: Partial<Record<Table, string[][]>> = {
   quotes: [['number']],
   materialCollections: [['brand', 'name']],
   materialSwatches: [['collectionId', 'code']],
+  materialSwatchSources: [['swatchId', 'catalog']],
 };
 
 export class UniqueViolation extends Error {

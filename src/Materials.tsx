@@ -54,12 +54,13 @@ export function SwatchPicker({ collections, selected, onSelect, canManage, onDel
       <div className="modalHeader"><h2>{zoom.c.name} · {zoom.s.code}</h2><button className="iconBtn" onClick={() => setZoom(null)}><X /></button></div>
       <Img src={swatchSrc(zoom.s)} alt={zoom.s.name} />
       <p className="hint">{zoom.c.brand} · {zoom.c.category} · {zoom.s.name}. Il colore a schermo è indicativo: verificare sempre sul campione fisico.</p>
+      {!!zoom.s.sources?.length && <p className="hint">Presente nei cataloghi: {zoom.s.sources.map(x => x.catalog).join(' · ')}</p>}
       <div className="actionRow"><button className="btn" onClick={() => { onSelect(zoom.s); setActiveId(zoom.c.id); setZoom(null); }}><Check size={15} /> Scegli questa finitura</button></div>
     </div></div>}
   </div>;
 }
 
-type Row = { brand: string; category: string; collection: string; code: string; name: string; file: string };
+type Row = { brand: string; category: string; collection: string; catalog: string; code: string; name: string; file: string };
 const IMG = /\.(jpe?g|png|webp)$/i;
 /** "920a7b24-Flexform_PELLE_403_24_campioni.zip" → "PELLE 403" */
 export const zipCollectionName = (file: string, brand: string) => {
@@ -87,22 +88,26 @@ export function MaterialImport({ defaultBrand, onDone, onClose }: { defaultBrand
   const [meta, setMeta] = useState({ brand: defaultBrand, category: 'Pelle', collection: '' });
   const [progress, setProgress] = useState<string>('');
   const [error, setError] = useState('');
-  const groups = useMemo(() => { const g = new Map<string, Row[]>(); for (const r of rows ?? []) { const k = `${r.brand || meta.brand}|${r.collection || meta.collection}`; g.set(k, [...(g.get(k) ?? []), r]); } return g; }, [rows, meta]);
-  const fromList = !!rows?.some(r => r.collection);
+  // con la colonna "catalogo" gli stessi codici in più cataloghi diventano un solo colore (con provenienze), raggruppati per marchio + categoria
+  const byCatalog = !!rows?.some(r => r.catalog);
+  const colName = (r: Row) => byCatalog ? (r.collection || r.category || meta.category) : (r.collection || meta.collection);
+  const groups = useMemo(() => { const g = new Map<string, Row[]>(); for (const r of rows ?? []) { const k = `${r.brand || meta.brand}|${colName(r)}`; g.set(k, [...(g.get(k) ?? []), r]); } return g; }, [rows, meta]);
+  const fromList = !!rows?.some(r => r.collection || r.catalog);
 
   async function load(f: File | undefined) {
     if (!f) return; setError(''); setRows(null);
     try {
       const entries = await readZip(f);
-      const map = new Map(entries.filter(e => IMG.test(e.name)).map(e => [e.name.split('/').pop()!.toLowerCase(), e.read]));
-      const csv = entries.find(e => /(^|\/)materiali\.csv$/i.test(e.name)) || entries.find(e => /\.csv$/i.test(e.name));
-      const js = entries.find(e => /(^|\/)materiali\.json$/i.test(e.name));
+      const map = new Map(entries.filter(e => IMG.test(e.name)).map(e => [e.name.toLowerCase(), e.read]));
+      const csv = entries.find(e => /(^|\/)(materiali|materials)\.csv$/i.test(e.name)) || entries.find(e => /\.csv$/i.test(e.name));
+      const js = entries.find(e => /(^|\/)(materiali|materials)\.json$/i.test(e.name));
       let list: Record<string, string>[] = [];
       if (js) list = JSON.parse(new TextDecoder().decode(await js.read())).map((o: Record<string, unknown>) => Object.fromEntries(Object.entries(o).map(([k, v]) => [k.toLowerCase(), String(v ?? '')])));
       else if (csv) list = parseCsv(new TextDecoder().decode(await csv.read()));
-      let out: Row[] = list.map(r => ({ brand: pick(r, 'brand', 'marchio'), category: pick(r, 'macrocategoria', 'categoria', 'category'), collection: pick(r, 'collezione', 'collection'), code: pick(r, 'codice', 'code'), name: pick(r, 'nome', 'name'), file: pick(r, 'file_immagine', 'file', 'immagine', 'image') }))
-        .filter(r => r.code && map.has(r.file.split('/').pop()!.toLowerCase()));
-      if (!out.length) out = [...map.keys()].map(file => { const base = file.replace(IMG, ''); const code = base.match(/(\d[\w-]*)$/)?.[1] ?? base; return { brand: '', category: '', collection: '', code, name: base.replace(/[_-]+/g, ' ').toUpperCase(), file }; });
+      const resolve = (file: string) => { const f = file.toLowerCase().replace(/^\.?\//, ''); if (map.has(f)) return f; const hits = [...map.keys()].filter(k => k.endsWith('/' + f) || (!f.includes('/') && k.split('/').pop() === f)); return hits.length === 1 ? hits[0] : ''; };
+      let out: Row[] = list.map(r => { const raw = pick(r, 'codice', 'code'); return { brand: pick(r, 'brand', 'marchio'), category: pick(r, 'macrocategoria', 'categoria', 'category'), collection: pick(r, 'collezione', 'collection'), catalog: pick(r, 'catalogo', 'catalog'), code: raw.match(/(\d[\w-]*)$/)?.[1] ?? raw, name: pick(r, 'nome', 'name') || raw, file: resolve(pick(r, 'file_immagine', 'file', 'immagine', 'image')) }; })
+        .filter(r => r.code && r.file);
+      if (!out.length) out = [...map.keys()].map(file => { const base = file.split('/').pop()!.replace(IMG, ''); const code = base.match(/(\d[\w-]*)$/)?.[1] ?? base; return { brand: '', category: '', collection: '', catalog: '', code, name: base.replace(/[_-]+/g, ' ').toUpperCase(), file }; });
       if (!out.length) throw new Error('Nessuna immagine di campione trovata nello ZIP');
       out.sort((a, b) => a.code.localeCompare(b.code, 'it', { numeric: true }));
       const first = out[0];
@@ -115,17 +120,31 @@ export function MaterialImport({ defaultBrand, onDone, onClose }: { defaultBrand
     setError(''); const saved: MaterialCollection[] = [];
     try {
       let n = 0; const total = rows!.length;
+      const bySha = new Map<string, string>();
+      const typeOf = (f: string) => /png$/i.test(f) ? 'image/png' : /webp$/i.test(f) ? 'image/webp' : 'image/jpeg';
       for (const [, list] of groups) {
         const swatches = [];
-        for (const r of list) {
-          setProgress(`Caricamento campioni ${++n} di ${total}…`);
-          const read = files.get(r.file.split('/').pop()!.toLowerCase())!;
-          const blob = await shrink(await read(), /png$/i.test(r.file) ? 'image/png' : 'image/jpeg');
-          const f = await upload(new File([blob], `${r.code}.jpg`, { type: blob.type || 'image/jpeg' }));
-          swatches.push({ code: r.code, name: r.name || r.code, fileId: f.id });
+        const codes = new Map<string, Row[]>(); for (const r of list) codes.set(r.code, [...(codes.get(r.code) ?? []), r]);
+        for (const [code, rs] of codes) {
+          // foto di riferimento: dal catalogo che porta lo stesso codice, altrimenti la prima; le altre restano come provenienze
+          const ref = rs.find(r => r.catalog.endsWith(' ' + code)) ?? rs[0];
+          const sources = [];
+          let refBytes: Uint8Array | null = null;
+          for (const r of rs) {
+            setProgress(`Caricamento foto ${++n} di ${total}…`);
+            const bytes = await files.get(r.file)!();
+            if (r === ref) refBytes = bytes;
+            if (!byCatalog) continue;
+            const sha = [...new Uint8Array(await crypto.subtle.digest('SHA-256', bytes as Uint8Array<ArrayBuffer>))].map(b => b.toString(16).padStart(2, '0')).join('');
+            if (!bySha.has(sha)) bySha.set(sha, (await upload(new File([bytes as Uint8Array<ArrayBuffer>], r.file.split('/').pop()!, { type: typeOf(r.file) }))).id);
+            sources.push({ catalog: r.catalog, fileId: bySha.get(sha), sha256: sha });
+          }
+          const blob = await shrink(refBytes!, typeOf(ref.file));
+          const f = await upload(new File([blob], `${code}.jpg`, { type: blob.type || 'image/jpeg' }));
+          swatches.push({ code, name: ref.name || code, fileId: f.id, sources });
         }
         const r0 = list[0];
-        const res = await post<{ collection: MaterialCollection }>('/api/materials/collections', { brand: r0.brand || meta.brand, category: fromList && (MATERIAL_CATEGORIES as readonly string[]).includes(r0.category) ? r0.category : meta.category, name: r0.collection || meta.collection, swatches });
+        const res = await post<{ collection: MaterialCollection }>('/api/materials/collections', { brand: r0.brand || meta.brand, category: fromList && (MATERIAL_CATEGORIES as readonly string[]).includes(r0.category) ? r0.category : meta.category, name: colName(r0), swatches });
         saved.push(res.collection);
       }
       onDone(saved);
@@ -134,7 +153,7 @@ export function MaterialImport({ defaultBrand, onDone, onClose }: { defaultBrand
 
   return <div className="modalBackdrop" onClick={() => !progress && onClose()}><div className="modal wide" onClick={e => e.stopPropagation()}>
     <div className="modalHeader"><h2>Importa campionario</h2><button className="iconBtn" onClick={onClose} disabled={!!progress}><X /></button></div>
-    <p className="hint">ZIP con le foto dei campioni. Se contiene <strong>materiali.csv</strong> (brand, macrocategoria, collezione, codice, nome, file_immagine) marchio, collezione e codici vengono letti da lì; altrimenti il codice è il nome del file. Importando di nuovo la stessa collezione, i campioni vengono aggiornati.</p>
+    <p className="hint">ZIP con le foto dei campioni. Se contiene <strong>materiali.csv</strong> o <strong>materials.csv</strong> (brand, categoria, collezione o catalogo, codice, nome, file) marchio, collezione e codici vengono letti da lì; con la colonna catalogo i codici ripetuti in più cataloghi diventano un solo colore; altrimenti il codice è il nome del file. Importando di nuovo la stessa collezione, i campioni vengono aggiornati.</p>
     <label className="btn secondary fileBtn"><Archive size={15} /> Scegli file ZIP<input type="file" accept=".zip,application/zip" hidden onChange={e => { load(e.target.files?.[0]); e.target.value = ''; }} /></label>
     {rows && <>
       {!fromList && <div className="inlineFields">
@@ -142,9 +161,10 @@ export function MaterialImport({ defaultBrand, onDone, onClose }: { defaultBrand
         <label className="field"><span>Collezione</span><input value={meta.collection} onChange={e => setMeta({ ...meta, collection: e.target.value })} /></label>
       </div>}
       {!fromList && <label className="field"><span>Categoria</span><select value={meta.category} onChange={e => setMeta({ ...meta, category: e.target.value })}>{MATERIAL_CATEGORIES.map(c => <option key={c}>{c}</option>)}</select></label>}
-      {[...groups].map(([k, list]) => <p key={k} className="importSummary"><strong>{list[0].brand || meta.brand} · {list[0].collection || meta.collection}</strong> — {list.length} campioni ({list.slice(0, 8).map(r => r.code).join(', ')}{list.length > 8 ? '…' : ''})</p>)}
+      {[...groups].map(([k, list]) => { const codes = [...new Set(list.map(r => r.code))]; const cats = [...new Set(list.map(r => r.catalog).filter(Boolean))];
+        return <p key={k} className="importSummary"><strong>{list[0].brand || meta.brand} · {colName(list[0])}</strong> — {codes.length} colori ({codes.slice(0, 8).join(', ')}{codes.length > 8 ? '…' : ''}){cats.length ? <><br /><small>{list.length} foto da {cats.length} cataloghi ({cats.join(', ')}): ogni codice compare una volta sola, le foto dei cataloghi restano come provenienza.</small></> : null}</p>; })}
       {progress && <><span className="scanProgress" /><p className="hint">{progress}</p></>}
-      <div className="actionRow"><button className="btn" disabled={!!progress || (!fromList && (!meta.brand.trim() || !meta.collection.trim()))} onClick={run}>Importa {rows.length} campioni</button></div>
+      <div className="actionRow"><button className="btn" disabled={!!progress || (!fromList && (!meta.brand.trim() || !meta.collection.trim()))} onClick={run}>Importa {new Set(rows.map(r => `${r.brand}|${colName(r)}|${r.code}`)).size} colori</button></div>
     </>}
     {error && <p className="formError">{error}</p>}
   </div></div>;

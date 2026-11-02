@@ -159,6 +159,16 @@ create table if not exists material_swatches (
   unique (collection_id, code)
 );
 create index if not exists material_swatches_collection_idx on material_swatches(collection_id);
+-- provenienza: in quali cataloghi compare il campione, con la foto originale di ciascun catalogo
+create table if not exists material_swatch_sources (
+  id text primary key,
+  swatch_id text not null references material_swatches(id) on delete cascade,
+  catalog text not null,
+  file_id text references files(id) on delete set null,
+  sha256 text,
+  created_at timestamptz not null default now(),
+  unique (swatch_id, catalog)
+);
 alter table products add column if not exists material_collection_ids jsonb not null default '[]';
 
 create table if not exists appointments (
@@ -221,7 +231,7 @@ create index if not exists emails_quote_idx on emails(quote_id);
 do $$
 declare t text;
 begin
-  foreach t in array array['users','sessions','products','files','documents','document_products','clients','quotes','quote_items','appointments','tasks','reservations','emails','settings','material_collections','material_swatches'] loop
+  foreach t in array array['users','sessions','products','files','documents','document_products','clients','quotes','quote_items','appointments','tasks','reservations','emails','settings','material_collections','material_swatches','material_swatch_sources'] loop
     execute format('alter table %I enable row level security', t);
     if exists (select 1 from pg_roles where rolname = 'anon') then
       execute format('revoke all on table %I from anon', t);
