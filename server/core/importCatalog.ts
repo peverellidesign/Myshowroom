@@ -151,3 +151,47 @@ export async function importMaterialCollection(store: Store, storage: BlobStorag
   }
   return { added, updated, merged };
 }
+
+export type CatalogsImport = {
+  key: string; brand: string; category: string; notes?: string;
+  /** collezioni da togliere dalla scelta (es. la vecchia "Pelle" unica); le foto restano */
+  removeCollections?: string[];
+  catalogs: { name: string; cover?: string | null; swatches: { code: string; name: string; fileId: string; source?: { fileId: string; sha256: string | null; pdf?: string } }[] }[];
+};
+
+/** Un catalogo = una collezione con i suoi campioni (le foto sono già nell'archivio). Una sola volta, idempotente. */
+export async function importMaterialCatalogs(store: Store, m: CatalogsImport): Promise<{ created: number; removed: number }> {
+  const markerId = `import-${m.key}`;
+  if (await store.get('files', markerId)) return { created: 0, removed: 0 };
+  const now = new Date().toISOString();
+  const fileOk = async (id?: string | null) => (id && (await store.get('files', id)) ? id : null);
+  const all = await store.all<Row & { brand: string; name: string }>('materialCollections');
+  let created = 0, removed = 0;
+  for (const cat of m.catalogs) {
+    let col = all.find(c => c.brand.toLowerCase() === m.brand.toLowerCase() && c.name.toLowerCase() === cat.name.toLowerCase());
+    const cover = await fileOk(cat.cover);
+    if (!col) { col = await store.insert<Row & { brand: string; name: string }>('materialCollections', { id: `mc-${m.key}-${cat.name}`.toLowerCase().replace(/[^\w-]+/g, '-'), brand: m.brand, category: m.category, name: cat.name, notes: m.notes ?? '', coverFileId: cover, createdBy: null, createdAt: now }); created++; }
+    else if (cover) await store.update('materialCollections', col.id, { coverFileId: cover });
+    const have = await store.all<Row & { code: string }>('materialSwatches', { collectionId: col.id });
+    let pos = have.length;
+    for (const s of cat.swatches) {
+      if (have.some(h => h.code === s.code)) continue;
+      const fileId = await fileOk(s.fileId) ?? await fileOk(s.source?.fileId);
+      const swId = `ms-${col.id}-${s.code}`.replace(/[^\w-]+/g, '-');
+      await store.insert('materialSwatches', { id: swId, collectionId: col.id, code: s.code, name: s.name, fileId, position: ++pos });
+      if (s.source) await store.insert('materialSwatchSources', { id: crypto.randomUUID(), swatchId: swId, catalog: cat.name, fileId: await fileOk(s.source.fileId), sha256: s.source.sha256, createdAt: now });
+    }
+  }
+  for (const name of m.removeCollections ?? []) {
+    for (const c of (await store.all<Row & { brand: string; name: string }>('materialCollections')).filter(c => c.brand.toLowerCase() === m.brand.toLowerCase() && c.name.toLowerCase() === name.toLowerCase())) {
+      for (const sw of await store.all<Row>('materialSwatches', { collectionId: c.id })) await store.remove('materialSwatchSources', { swatchId: sw.id });
+      await store.remove('materialSwatches', { collectionId: c.id });
+      for (const p of await store.all<Row & { materialCollectionIds?: string[] }>('products'))
+        if (p.materialCollectionIds?.includes(c.id)) await store.update('products', p.id, { materialCollectionIds: p.materialCollectionIds.filter(x => x !== c.id) });
+      await store.remove('materialCollections', { id: c.id });
+      removed++;
+    }
+  }
+  await store.insert('files', { id: markerId, storageKey: `imports/${m.key}/catalogs.json`, fileName: 'catalogs.json', mime: 'application/json', size: 0, createdBy: null, createdAt: now });
+  return { created, removed };
+}

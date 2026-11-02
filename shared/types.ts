@@ -66,7 +66,9 @@ export type QuoteItem = {
 export const MATERIAL_CATEGORIES = ['Pelle', 'Tessuto', 'Legno', 'Metallo', 'Marmo e pietra', 'Vetro', 'Laccato', 'Altro'] as const;
 export type MaterialSource = { catalog: string; fileId: string | null; sha256?: string | null };
 export type MaterialSwatch = { id: string; collectionId: string; code: string; name: string; fileId: string | null; position: number; sources?: MaterialSource[] };
-export type MaterialCollection = { id: string; brand: string; category: string; name: string; notes: string; createdBy: string | null; createdAt: string; swatches: MaterialSwatch[] };
+export type MaterialCollection = { id: string; brand: string; category: string; name: string; notes: string; createdBy: string | null; createdAt: string; swatches: MaterialSwatch[];
+  /** fotografia principale del catalogo (copertina) */
+  coverFileId?: string | null };
 
 export type Quote = {
   id: string; number: string | null; clientId: string | null; status: 'draft' | 'sent';

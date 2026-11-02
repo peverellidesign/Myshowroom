@@ -374,7 +374,7 @@ export function createApp(deps: Deps) {
   const collectionAllowed = (p: Product, col: Pick<MaterialCollection, 'id' | 'brand'>) => (p.materialCollectionIds?.length ? p.materialCollectionIds.includes(col.id) : sameBrand(p.brand, col.brand));
   async function materialsAll(): Promise<MaterialCollection[]> {
     const [cols, sw, src] = await Promise.all([store.all<Omit<MaterialCollection, 'swatches'>>('materialCollections', {}, 'createdAt asc'), store.all<MaterialSwatch>('materialSwatches', {}, 'position asc'), store.all<MaterialSource & { swatchId: string }>('materialSwatchSources', {}, 'catalog asc')]);
-    return cols.map(c => ({ ...c, notes: c.notes ?? '', swatches: sw.filter(s => s.collectionId === c.id).map(s => ({ ...s, sources: src.filter(x => x.swatchId === s.id).map(x => ({ catalog: x.catalog, fileId: x.fileId, sha256: x.sha256 })) })) }))
+    return cols.map(c => ({ ...c, notes: c.notes ?? '', coverFileId: c.coverFileId ?? null, swatches: sw.filter(s => s.collectionId === c.id).map(s => ({ ...s, sources: src.filter(x => x.swatchId === s.id).map(x => ({ catalog: x.catalog, fileId: x.fileId, sha256: x.sha256 })) })) }))
       .sort((a, b) => a.brand.localeCompare(b.brand) || a.category.localeCompare(b.category) || a.name.localeCompare(b.name, 'it', { numeric: true }));
   }
   async function upsertSources(swatchId: string, sources: MaterialSource[]) {
@@ -394,6 +394,8 @@ export function createApp(deps: Deps) {
     const name = str(b.name, 'Collezione', { required: true, max: 120 });
     const category = oneOf(b.category || 'Altro', MATERIAL_CATEGORIES, 'Categoria');
     const notes = str(b.notes, 'Note', { max: 2000 });
+    let coverFileId: string | null = null;
+    if (b.coverFileId) { coverFileId = str(b.coverFileId, 'Copertina', { max: 80 }); const f = await store.get<FileRecord>('files', coverFileId); if (!f || !f.mime.startsWith('image/')) throw new HttpError(400, 'Copertina non valida'); }
     if (!Array.isArray(b.swatches) || b.swatches.length > 500) throw new HttpError(400, 'Campioni: elenco non valido');
     const swatches = [] as { code: string; name: string; fileId: string | null; sources: MaterialSource[] }[];
     const imageFile = async (id: unknown, code: string) => {
@@ -409,8 +411,8 @@ export function createApp(deps: Deps) {
       swatches.push({ code, name: str(s?.name, 'Nome campione', { max: 120 }) || code, fileId: await imageFile(s?.fileId, code), sources });
     }
     let col = (await store.all<MaterialCollection>('materialCollections')).find(x => sameBrand(x.brand, brand) && x.name.trim().toLowerCase() === name.trim().toLowerCase());
-    if (!col) col = await store.insert<MaterialCollection>('materialCollections', { id: uid(), brand, category, name, notes, createdBy: u.id, createdAt: now() });
-    else col = (await store.update<MaterialCollection>('materialCollections', col.id, { category, ...(notes ? { notes } : {}) }))!;
+    if (!col) col = await store.insert<MaterialCollection>('materialCollections', { id: uid(), brand, category, name, notes, coverFileId, createdBy: u.id, createdAt: now() });
+    else col = (await store.update<MaterialCollection>('materialCollections', col.id, { category, ...(notes ? { notes } : {}), ...(coverFileId ? { coverFileId } : {}) }))!;
     const existing = await store.all<MaterialSwatch>('materialSwatches', { collectionId: col.id });
     let pos = existing.reduce((m, s) => Math.max(m, s.position), 0);
     let added = 0, updated = 0;

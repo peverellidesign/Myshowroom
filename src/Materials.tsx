@@ -20,6 +20,8 @@ export function SwatchPicker({ collections, selected, onSelect, canManage, onDel
   const [q, setQ] = useState('');
   const [zoom, setZoom] = useState<{ s: MaterialSwatch; c: MaterialCollection } | null>(null);
   const active = collections.find(c => c.id === activeId) ?? collections[0];
+  // copertina: fotografia principale del catalogo, altrimenti il campione con lo stesso codice del catalogo (es. PELLE 411 → 411)
+  const cover = (c: MaterialCollection) => { if (c.coverFileId) return `/api/files/${c.coverFileId}`; const n = c.name.match(/(\d+)\s*$/)?.[1]; const s = n ? c.swatches.find(x => x.code === n) : undefined; return s?.fileId ? swatchSrc(s) : null; };
   const byCat = useMemo(() => { const m = new Map<string, MaterialCollection[]>(); for (const c of collections) m.set(c.category, [...(m.get(c.category) ?? []), c]); return [...m]; }, [collections]);
   const term = q.trim().toLowerCase();
   // ricerca per codice su tutte le collezioni; senza ricerca si mostra solo la collezione attiva
@@ -30,18 +32,18 @@ export function SwatchPicker({ collections, selected, onSelect, canManage, onDel
     <span className="swatchZoom" role="button" aria-label="Ingrandisci" onClick={e => { e.stopPropagation(); setZoom({ s, c }); }}><ZoomIn size={13} /></span>
   </button>;
   return <div className="swatchLibrary">
-    <div className="swatchStep"><span>1</span> Scegli il rivestimento</div>
+    <div className="swatchStep"><span>1</span> Scegli il catalogo</div>
     {byCat.map(([cat, list]) => <div key={cat} className="collectionGroup">
       {byCat.length > 1 && <small className="collectionCat">{cat.toUpperCase()}</small>}
       <div className="collectionTabs" role="tablist">{list.map(c => {
         const on = !term && c.id === active?.id, has = selected?.collectionId === c.id;
         return <button type="button" role="tab" aria-selected={on} key={c.id} className={'collectionTab' + (on ? ' chosen' : '') + (has ? ' hasPick' : '')} onClick={() => { setActiveId(c.id); setQ(''); }}>
-          <span className="collectionDots">{c.swatches.slice(0, 5).map(s => <Img key={s.id} src={swatchSrc(s)} alt="" />)}</span>
-          <strong>{c.name}</strong><small>{c.swatches.length} colori{has ? ' · scelto' : ''}</small>
+          {cover(c) ? <Img className="collectionCover" src={cover(c)!} alt="" /> : <span className="collectionDots">{c.swatches.slice(0, 5).map(s => <Img key={s.id} src={swatchSrc(s)} alt="" />)}</span>}
+          <strong>{c.name}</strong><small>{c.swatches.length} varianti{has ? ' · scelta' : ''}</small>
         </button>;
       })}</div>
     </div>)}
-    <div className="swatchStep"><span>2</span> Scegli il colore{active && !term ? <em> · {active.brand} {active.name}</em> : null}
+    <div className="swatchStep"><span>2</span> Scegli la variante{active && !term ? <em> · {active.brand} {active.name}</em> : null}
       <input value={q} onChange={e => setQ(e.target.value)} placeholder="Cerca codice in tutte le collezioni" aria-label="Cerca campione" /></div>
     {active?.notes && !term && <p className="hint">{active.notes}</p>}
     {results.map(({ c, list }) => <div className="swatchCollection" key={c.id}>
@@ -54,7 +56,6 @@ export function SwatchPicker({ collections, selected, onSelect, canManage, onDel
       <div className="modalHeader"><h2>{zoom.c.name} · {zoom.s.code}</h2><button className="iconBtn" onClick={() => setZoom(null)}><X /></button></div>
       <Img src={swatchSrc(zoom.s)} alt={zoom.s.name} />
       <p className="hint">{zoom.c.brand} · {zoom.c.category} · {zoom.s.name}. Il colore a schermo è indicativo: verificare sempre sul campione fisico.</p>
-      {!!zoom.s.sources?.length && <p className="hint">Presente nei cataloghi: {zoom.s.sources.filter(x => !x.catalog.includes('foto principale')).map(x => x.catalog.replace(/^PELLE /, '')).join(' · ')}{zoom.s.sources.some(x => x.catalog.includes('foto principale')) ? ' · fotografia principale del catalogo' : ''}</p>}
       <div className="actionRow"><button className="btn" onClick={() => { onSelect(zoom.s); setActiveId(zoom.c.id); setZoom(null); }}><Check size={15} /> Scegli questa finitura</button></div>
     </div></div>}
   </div>;
@@ -88,9 +89,9 @@ export function MaterialImport({ defaultBrand, onDone, onClose }: { defaultBrand
   const [meta, setMeta] = useState({ brand: defaultBrand, category: 'Pelle', collection: '' });
   const [progress, setProgress] = useState<string>('');
   const [error, setError] = useState('');
-  // con la colonna "catalogo" gli stessi codici in più cataloghi diventano un solo colore (con provenienze), raggruppati per marchio + categoria
+  // con la colonna "catalogo" ogni catalogo diventa una collezione con i suoi campioni (es. PELLE 411 → 24 varianti)
   const byCatalog = !!rows?.some(r => r.catalog);
-  const colName = (r: Row) => byCatalog ? (r.collection || r.category || meta.category) : (r.collection || meta.collection);
+  const colName = (r: Row) => byCatalog ? (r.catalog || r.collection || meta.collection) : (r.collection || meta.collection);
   const groups = useMemo(() => { const g = new Map<string, Row[]>(); for (const r of rows ?? []) { const k = `${r.brand || meta.brand}|${colName(r)}`; g.set(k, [...(g.get(k) ?? []), r]); } return g; }, [rows, meta]);
   const fromList = !!rows?.some(r => r.collection || r.catalog);
 
@@ -139,21 +140,15 @@ export function MaterialImport({ defaultBrand, onDone, onClose }: { defaultBrand
             if (!bySha.has(sha)) bySha.set(sha, (await upload(new File([bytes as Uint8Array<ArrayBuffer>], r.file.split('/').pop()!, { type: typeOf(r.file) }))).id);
             sources.push({ catalog: r.catalog, fileId: bySha.get(sha), sha256: sha });
           }
-          // fotografia principale del catalogo (se presente) come immagine del colore
-          const feat = rs.find(r => r.featured)?.featured;
-          if (feat) {
-            const fb = await files.get(feat)!();
-            refBytes = fb;
-            const fsha = [...new Uint8Array(await crypto.subtle.digest('SHA-256', fb as Uint8Array<ArrayBuffer>))].map(b => b.toString(16).padStart(2, '0')).join('');
-            if (!bySha.has(fsha)) bySha.set(fsha, (await upload(new File([fb as Uint8Array<ArrayBuffer>], feat.split('/').pop()!, { type: typeOf(feat) }))).id);
-            sources.push({ catalog: `${rs.find(r => r.featured)!.catalog} · foto principale`, fileId: bySha.get(fsha), sha256: fsha });
-          }
-          const blob = await shrink(refBytes!, typeOf(feat ?? ref.file));
+          const blob = await shrink(refBytes!, typeOf(ref.file));
           const f = await upload(new File([blob], `${code}.jpg`, { type: blob.type || 'image/jpeg' }));
           swatches.push({ code, name: ref.name || code, fileId: f.id, sources });
         }
         const r0 = list[0];
-        const res = await post<{ collection: MaterialCollection }>('/api/materials/collections', { brand: r0.brand || meta.brand, category: fromList && (MATERIAL_CATEGORIES as readonly string[]).includes(r0.category) ? r0.category : meta.category, name: colName(r0), swatches });
+        // fotografia principale del catalogo come copertina
+        const feat = list.find(r => r.featured)?.featured;
+        const coverFileId = feat ? (await upload(new File([await shrink(await files.get(feat)!(), typeOf(feat))], `copertina ${colName(r0)}.jpg`, { type: 'image/jpeg' }))).id : undefined;
+        const res = await post<{ collection: MaterialCollection }>('/api/materials/collections', { brand: r0.brand || meta.brand, category: fromList && (MATERIAL_CATEGORIES as readonly string[]).includes(r0.category) ? r0.category : meta.category, name: colName(r0), swatches, coverFileId });
         saved.push(res.collection);
       }
       onDone(saved);
@@ -171,7 +166,7 @@ export function MaterialImport({ defaultBrand, onDone, onClose }: { defaultBrand
       </div>}
       {!fromList && <label className="field"><span>Categoria</span><select value={meta.category} onChange={e => setMeta({ ...meta, category: e.target.value })}>{MATERIAL_CATEGORIES.map(c => <option key={c}>{c}</option>)}</select></label>}
       {[...groups].map(([k, list]) => { const codes = [...new Set(list.map(r => r.code))]; const cats = [...new Set(list.map(r => r.catalog).filter(Boolean))];
-        return <p key={k} className="importSummary"><strong>{list[0].brand || meta.brand} · {colName(list[0])}</strong> — {codes.length} colori ({codes.slice(0, 8).join(', ')}{codes.length > 8 ? '…' : ''}){cats.length ? <><br /><small>{list.length} foto da {cats.length} cataloghi ({cats.join(', ')}): ogni codice compare una volta sola, le foto dei cataloghi restano come provenienza.</small></> : null}</p>; })}
+        return <p key={k} className="importSummary"><strong>{list[0].brand || meta.brand} · {colName(list[0])}</strong> — {codes.length} colori ({codes.slice(0, 8).join(', ')}{codes.length > 8 ? '…' : ''}){cats.length ? <><br /><small>{list.length} foto</small></> : null}</p>; })}
       {progress && <><span className="scanProgress" /><p className="hint">{progress}</p></>}
       <div className="actionRow"><button className="btn" disabled={!!progress || (!fromList && (!meta.brand.trim() || !meta.collection.trim()))} onClick={run}>Importa {new Set(rows.map(r => `${r.brand}|${colName(r)}|${r.code}`)).size} colori</button></div>
     </>}

@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createApp } from '../core/app';
 import { ensureSeed, removeSampleClient, renameSites } from '../core/seed';
-import { applyListPrices, importCatalog, importMaterialCollection, type CatalogImport, type MaterialImport } from '../core/importCatalog';
+import { applyListPrices, importCatalog, importMaterialCatalogs, importMaterialCollection, type CatalogImport, type CatalogsImport, type MaterialImport } from '../core/importCatalog';
 import { readdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import type { BlobStorage, Mailer } from '../core/deps';
@@ -101,6 +101,12 @@ async function main() {
   const importDir = path.join(root, 'server', 'import');
   if (existsSync(importDir) && !bool(env.SKIP_CATALOG_IMPORT, false))
     for (const dir of readdirSync(importDir).sort()) {
+      const catsFile = path.join(importDir, dir, 'catalogs.json');
+      if (existsSync(catsFile)) {
+        const r = await importMaterialCatalogs(store, JSON.parse(readFileSync(catsFile, 'utf8')) as CatalogsImport);
+        if (r.created || r.removed) console.log(`[myshowroom] Materiali "${dir}": ${r.created} cataloghi creati, ${r.removed} collezioni sostituite.`);
+        continue;
+      }
       const colFile = path.join(importDir, dir, 'collection.json');
       if (existsSync(colFile)) {
         const r = await importMaterialCollection(store, storage, JSON.parse(readFileSync(colFile, 'utf8')) as MaterialImport,

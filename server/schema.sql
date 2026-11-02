@@ -159,6 +159,7 @@ create table if not exists material_swatches (
   unique (collection_id, code)
 );
 create index if not exists material_swatches_collection_idx on material_swatches(collection_id);
+alter table material_collections add column if not exists cover_file_id text references files(id) on delete set null;
 -- provenienza: in quali cataloghi compare il campione, con la foto originale di ciascun catalogo
 create table if not exists material_swatch_sources (
   id text primary key,

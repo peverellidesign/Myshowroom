@@ -4,10 +4,6 @@
  "category": "Pelle",
  "name": "Pelle",
  "notes": "Cartella colori pelle Flexform: 24 codici comuni ai cataloghi PELLE 400, 402, 403, 405, 411. Colori indicativi: verificare sempre sul campione fisico.",
- "mergeFrom": [
-  "PELLE 403",
-  "PELLE 411"
- ],
  "swatches": [
   {
    "code": "400",
