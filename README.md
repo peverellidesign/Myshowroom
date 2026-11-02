@@ -117,6 +117,13 @@ Il permesso applicativo `Mail.Send` vale per tutte le caselle dell'organizzazion
 - La firma raccolta è una firma elettronica semplice: adeguata a documentare l'informativa e i consensi (art. 7 GDPR), non sostituisce una firma digitale qualificata.
 - Eliminando un contatto vengono cancellati anche la foto del biglietto e il modulo firmato.
 
+## Campionario materiali (pelli, tessuti, finiture)
+
+- Ogni prodotto mostra in *Materiali & Colori* i rivestimenti del proprio marchio (es. tutti i prodotti Flexform → PELLE 411). Nella scheda prodotto (*Modifica scheda → Rivestimenti dal campionario*) si possono limitare a collezioni specifiche.
+- Toccando un campione lo si sceglie: entra nel preventivo come materiale/colore con la sua foto, visibile anche nel PDF.
+- **Importa campionario** (responsabili e amministratori): ZIP con le foto dei campioni e, facoltativo, `materiali.csv` con colonne `brand, macrocategoria, collezione, codice, nome, file_immagine` (come lo ZIP Flexform PELLE 411). Reimportare la stessa collezione aggiorna i campioni esistenti.
+- Collezione iniziale: Flexform · Pelle · PELLE 411 (24 campioni) in `server/import/flexform-pelle-411`, caricata una sola volta all'avvio.
+
 ## Caricare i contenuti
 
 - **Prodotti** (amministratore / responsabile): *Prodotti → Nuovo prodotto* oppure *Modifica scheda*: dati, composizioni con prezzi, materiali, colori, più foto per volta (dal telefono anche scattandole), scelta della copertina.

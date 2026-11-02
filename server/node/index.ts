@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createApp } from '../core/app';
 import { ensureSeed, removeSampleClient, renameSites } from '../core/seed';
-import { applyListPrices, importCatalog, type CatalogImport } from '../core/importCatalog';
+import { applyListPrices, importCatalog, importMaterialCollection, type CatalogImport, type MaterialImport } from '../core/importCatalog';
 import { readdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import type { BlobStorage, Mailer } from '../core/deps';
@@ -101,6 +101,13 @@ async function main() {
   const importDir = path.join(root, 'server', 'import');
   if (existsSync(importDir) && !bool(env.SKIP_CATALOG_IMPORT, false))
     for (const dir of readdirSync(importDir).sort()) {
+      const colFile = path.join(importDir, dir, 'collection.json');
+      if (existsSync(colFile)) {
+        const added = await importMaterialCollection(store, storage, JSON.parse(readFileSync(colFile, 'utf8')) as MaterialImport,
+          async name => new Uint8Array(await readFile(path.join(importDir, dir, path.basename(name)))));
+        if (added) console.log(`[myshowroom] Materiali "${dir}": importati ${added} campioni.`);
+        continue;
+      }
       const file = path.join(importDir, dir, 'products.json');
       if (!existsSync(file)) continue;
       const raw = new Uint8Array(readFileSync(file));

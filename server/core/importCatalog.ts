@@ -69,3 +69,32 @@ export async function applyListPrices(store: Store, manifest: CatalogImport): Pr
   }
   return changed;
 }
+
+export type MaterialImport = { key: string; brand: string; category: string; name: string; notes?: string; swatches: { code: string; name: string; image: string }[] };
+
+/** Importa una collezione di materiali (es. Flexform PELLE 411) una sola volta; non ricrea ciò che l'utente ha eliminato. */
+export async function importMaterialCollection(store: Store, storage: BlobStorage, m: MaterialImport, readImage: (name: string) => Promise<Uint8Array>): Promise<number> {
+  const markerId = `import-${m.key}`;
+  if (await store.get('files', markerId)) return 0;
+  const now = new Date().toISOString();
+  const all = await store.all<{ id: string; brand: string; name: string }>('materialCollections');
+  let col = all.find(c => c.brand.toLowerCase() === m.brand.toLowerCase() && c.name.toLowerCase() === m.name.toLowerCase());
+  if (!col) col = await store.insert<{ id: string; brand: string; name: string }>('materialCollections', { id: `mc-${m.key}`, brand: m.brand, category: m.category, name: m.name, notes: m.notes ?? '', createdBy: null, createdAt: now });
+  const colId = col.id;
+  const existing = await store.all<{ code: string }>('materialSwatches', { collectionId: colId });
+  let added = 0, pos = existing.length;
+  for (const s of m.swatches) {
+    if (existing.some(e => e.code === s.code)) continue;
+    const data = await readImage(s.image);
+    const fileId = `${m.key}-${s.code}`.replace(/[^\w-]/g, '-');
+    const storageKey = `imports/${m.key}/${s.image}`;
+    await storage.put(storageKey, data, 'image/jpeg');
+    if (!(await store.get('files', fileId))) await store.insert('files', { id: fileId, storageKey, fileName: s.image, mime: 'image/jpeg', size: data.byteLength, createdBy: null, createdAt: now });
+    await store.insert('materialSwatches', { id: `ms-${fileId}`, collectionId: colId, code: s.code, name: s.name, fileId, position: ++pos });
+    added++;
+  }
+  const raw = new TextEncoder().encode(JSON.stringify(m));
+  await storage.put(`imports/${m.key}/collection.json`, raw, 'application/json');
+  await store.insert('files', { id: markerId, storageKey: `imports/${m.key}/collection.json`, fileName: 'collection.json', mime: 'application/json', size: raw.byteLength, createdBy: null, createdAt: now });
+  return added;
+}

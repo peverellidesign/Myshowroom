@@ -136,6 +136,30 @@ create table if not exists quote_items (
   position integer not null default 0
 );
 create index if not exists quote_items_quote_idx on quote_items(quote_id);
+alter table quote_items add column if not exists swatch_file_id text;
+
+-- libreria materiali: collezioni (es. Flexform · Pelle · PELLE 411) e campioni con foto
+create table if not exists material_collections (
+  id text primary key,
+  brand text not null,
+  category text not null,
+  name text not null,
+  notes text not null default '',
+  created_by text references users(id) on delete set null,
+  created_at timestamptz not null default now(),
+  unique (brand, name)
+);
+create table if not exists material_swatches (
+  id text primary key,
+  collection_id text not null references material_collections(id) on delete cascade,
+  code text not null,
+  name text not null,
+  file_id text references files(id) on delete set null,
+  position integer not null default 0,
+  unique (collection_id, code)
+);
+create index if not exists material_swatches_collection_idx on material_swatches(collection_id);
+alter table products add column if not exists material_collection_ids jsonb not null default '[]';
 
 create table if not exists appointments (
   id text primary key,
@@ -197,7 +221,7 @@ create index if not exists emails_quote_idx on emails(quote_id);
 do $$
 declare t text;
 begin
-  foreach t in array array['users','sessions','products','files','documents','document_products','clients','quotes','quote_items','appointments','tasks','reservations','emails','settings'] loop
+  foreach t in array array['users','sessions','products','files','documents','document_products','clients','quotes','quote_items','appointments','tasks','reservations','emails','settings','material_collections','material_swatches'] loop
     execute format('alter table %I enable row level security', t);
     if exists (select 1 from pg_roles where rolname = 'anon') then
       execute format('revoke all on table %I from anon', t);

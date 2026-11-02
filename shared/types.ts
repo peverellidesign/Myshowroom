@@ -32,6 +32,8 @@ export type Product = {
   price: number; currency: Currency; dims: string; description: string;
   images: string[]; materials: string[]; colors: string[]; configs: Config[];
   createdAt: string; updatedAt: string;
+  /** Collezioni materiali disponibili; vuoto = tutte quelle dello stesso marchio */
+  materialCollectionIds?: string[];
 };
 
 export type FileRecord = { id: string; fileName: string; mime: string; size: number; createdBy: string | null; createdAt: string };
@@ -57,7 +59,13 @@ export type PrivacySettings = { text: string; version: string; updatedAt: string
 export type QuoteItem = {
   id: string; quoteId: string; productId: string; brand: string; productName: string;
   config: string; dims: string; material: string; color: string; price: number; currency: Currency; position: number;
+  /** Campione scelto dalla libreria materiali (foto mostrata in app e nel PDF) */
+  swatchFileId?: string | null;
 };
+
+export const MATERIAL_CATEGORIES = ['Pelle', 'Tessuto', 'Legno', 'Metallo', 'Marmo e pietra', 'Vetro', 'Laccato', 'Altro'] as const;
+export type MaterialSwatch = { id: string; collectionId: string; code: string; name: string; fileId: string | null; position: number };
+export type MaterialCollection = { id: string; brand: string; category: string; name: string; notes: string; createdBy: string | null; createdAt: string; swatches: MaterialSwatch[] };
 
 export type Quote = {
   id: string; number: string | null; clientId: string | null; status: 'draft' | 'sent';
@@ -86,7 +94,7 @@ export type EmailRecord = {
 
 export type Bootstrap = {
   user: User; users: Pick<User, 'id' | 'name' | 'role' | 'site'>[];
-  products: Product[]; documents: DocumentRecord[]; clients: Client[]; quote: Quote;
+  products: Product[]; documents: DocumentRecord[]; clients: Client[]; quote: Quote; materials: MaterialCollection[];
   appointments: Appointment[]; tasks: Task[]; reservations: Reservation[];
   config: { mailMode: 'smtp' | 'outbox' | 'gateway' | 'microsoft'; storage: string; assistant: 'llm' | 'local'; maxUploadMb: number; demo: boolean };
 };

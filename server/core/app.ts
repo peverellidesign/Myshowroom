@@ -1,9 +1,9 @@
 // API di myshowroom by Peverelli Design — indipendente dal runtime.
 import {
-  APPT_DURATIONS, APPT_TIMES, APPT_TYPES, CATEGORIES, DOC_LANGS, DOC_TYPES, LOCATIONS, ROLES, SHOWROOMS, STATUSES, DEFAULT_SITE, SITES_LINE,
+  APPT_DURATIONS, APPT_TIMES, APPT_TYPES, CATEGORIES, DOC_LANGS, DOC_TYPES, LOCATIONS, ROLES, SHOWROOMS, STATUSES, DEFAULT_SITE, SITES_LINE, MATERIAL_CATEGORIES,
   convert, formatMoney, isEmail, quoteTotal,
   type Appointment, type Bootstrap, type Client, type Config, type Currency, type DocumentRecord, type EmailAttachment,
-  type EmailRecord, type FileRecord, type Product, type Quote, type QuoteItem, type Reservation, type Role, type Task, type User,
+  type EmailRecord, type FileRecord, type MaterialCollection, type MaterialSwatch, type Product, type Quote, type QuoteItem, type Reservation, type Role, type Task, type User,
 } from '../../shared/types';
 import { ask } from './assistant';
 import {
@@ -127,7 +127,7 @@ export function createApp(deps: Deps) {
     return data ? { file: f, data } : null;
   }
   async function loadImage(url: string) {
-    const m = url.match(/^\/api\/files\/([0-9a-f-]{36})$/);
+    const m = url.match(/^\/api\/files\/([\w-]{1,80})$/);
     if (m) { const r = await readFile(m[1]); return r ? { data: r.data, mime: r.file.mime } : null; }
     if (/^https?:\/\//.test(url) && deps.fetchImage) return deps.fetchImage(url).catch(() => null);
     return null;
@@ -141,7 +141,9 @@ export function createApp(deps: Deps) {
       const p = await store.get<Product>('products', it.productId);
       images[it.productId] = p?.images[0] ? await loadImage(p.images[0]) : null;
     }
-    return renderQuotePdf({ quote: q, client, author: publicUser(author), images, sites: SITES_LINE, date: q.sentAt ? new Date(q.sentAt) : clock() });
+    const swatches: Record<string, { data: Uint8Array; mime: string } | null> = {};
+    for (const it of q.items) if (it.swatchFileId && !(it.swatchFileId in swatches)) swatches[it.swatchFileId] = await loadImage(`/api/files/${it.swatchFileId}`);
+    return renderQuotePdf({ quote: q, client, author: publicUser(author), images, swatches, sites: SITES_LINE, date: q.sentAt ? new Date(q.sentAt) : clock() });
   }
   const quoteText = (q: Quote, showPrices: boolean) => q.items.map((x, i) =>
     `${i + 1}. ${x.brand} — ${x.productName}\n${x.config} · ${x.dims}\n${x.material} / ${x.color}${showPrices ? '\n' + formatMoney(convert(x.price, x.currency, q.currency, q.rate), q.currency) : ''}`).join('\n\n');
@@ -223,10 +225,11 @@ export function createApp(deps: Deps) {
       store.all<Client>('clients', {}, 'createdAt asc'), currentDraft(u), store.all<Appointment>('appointments', {}, 'date asc'),
       store.all<Task>('tasks', {}, 'createdAt asc'), store.all<Reservation>('reservations', {}, 'createdAt asc'),
     ]);
+    const materials = await materialsAll();
     appointments.sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
     const body: Bootstrap = {
       user: publicUser(u), users: users.map(x => ({ id: x.id, name: x.name, role: x.role, site: x.site })),
-      products, documents, clients: clients.map(clientOut), quote, appointments, tasks, reservations,
+      products: products.map(p => ({ ...p, materialCollectionIds: p.materialCollectionIds ?? [] })), documents, clients: clients.map(clientOut), quote, materials, appointments, tasks, reservations,
       config: { mailMode: mailer.mode, storage: storage.kind, assistant: deps.llm ? 'llm' : 'local', maxUploadMb: config.maxUploadMb, demo: config.demo },
     };
     return json(body);
@@ -249,6 +252,7 @@ export function createApp(deps: Deps) {
     if (has('materials')) out.materials = strList(b.materials, 'Materiali');
     if (has('colors')) out.colors = strList(b.colors, 'Colori');
     if (has('configs')) out.configs = configs(b.configs);
+    if ('materialCollectionIds' in b) out.materialCollectionIds = strList(b.materialCollectionIds, 'Collezioni materiali', 200).map(s => s.slice(0, 80));
     if ('price' in b && b.price !== '' && b.price !== null) out.price = num(b.price, 'Prezzo', { max: 1e8 });
     else if (out.configs) out.price = (out.configs as Config[]).find(c => c.price !== undefined)?.price ?? 0;
     return out;
@@ -362,6 +366,79 @@ export function createApp(deps: Deps) {
       const stillUsed = await store.count('documents', { fileId: d.fileId });
       if (f && !stillUsed) { await storage.delete(f.storageKey); await store.remove('files', { id: d.fileId }); }
     }
+    return json({ ok: true });
+  });
+
+  // ───────────── libreria materiali ─────────────
+  const sameBrand = (a: string, b: string) => a.trim().toLowerCase().replace(/[^a-z0-9]/g, '') === b.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+  const collectionAllowed = (p: Product, col: Pick<MaterialCollection, 'id' | 'brand'>) => (p.materialCollectionIds?.length ? p.materialCollectionIds.includes(col.id) : sameBrand(p.brand, col.brand));
+  async function materialsAll(): Promise<MaterialCollection[]> {
+    const [cols, sw] = await Promise.all([store.all<Omit<MaterialCollection, 'swatches'>>('materialCollections', {}, 'createdAt asc'), store.all<MaterialSwatch>('materialSwatches', {}, 'position asc')]);
+    return cols.map(c => ({ ...c, notes: c.notes ?? '', swatches: sw.filter(s => s.collectionId === c.id) }))
+      .sort((a, b) => a.brand.localeCompare(b.brand) || a.category.localeCompare(b.category) || a.name.localeCompare(b.name, 'it', { numeric: true }));
+  }
+  router.get('/api/materials', async c => { requireUser(c); return json(await materialsAll()); });
+  /** Crea una collezione o aggiunge/aggiorna campioni di una esistente (stesso marchio e nome). */
+  router.post('/api/materials/collections', async c => {
+    const u = requireUser(c, 'admin', 'manager');
+    const b = await c.json<Record<string, unknown>>();
+    const brand = str(b.brand, 'Marchio', { required: true, max: 80 });
+    const name = str(b.name, 'Collezione', { required: true, max: 120 });
+    const category = oneOf(b.category || 'Altro', MATERIAL_CATEGORIES, 'Categoria');
+    const notes = str(b.notes, 'Note', { max: 2000 });
+    if (!Array.isArray(b.swatches) || b.swatches.length > 500) throw new HttpError(400, 'Campioni: elenco non valido');
+    const swatches = [] as { code: string; name: string; fileId: string | null }[];
+    for (const s of b.swatches as Record<string, unknown>[]) {
+      const code = str(s?.code, 'Codice campione', { required: true, max: 60 });
+      const fileId = s?.fileId ? str(s.fileId, 'Foto campione', { max: 80 }) : null;
+      if (fileId) { const f = await store.get<FileRecord>('files', fileId); if (!f || !f.mime.startsWith('image/')) throw new HttpError(400, `Foto del campione ${code} non valida`); }
+      swatches.push({ code, name: str(s?.name, 'Nome campione', { max: 120 }) || code, fileId });
+    }
+    let col = (await store.all<MaterialCollection>('materialCollections')).find(x => sameBrand(x.brand, brand) && x.name.trim().toLowerCase() === name.trim().toLowerCase());
+    if (!col) col = await store.insert<MaterialCollection>('materialCollections', { id: uid(), brand, category, name, notes, createdBy: u.id, createdAt: now() });
+    else col = (await store.update<MaterialCollection>('materialCollections', col.id, { category, ...(notes ? { notes } : {}) }))!;
+    const existing = await store.all<MaterialSwatch>('materialSwatches', { collectionId: col.id });
+    let pos = existing.reduce((m, s) => Math.max(m, s.position), 0);
+    let added = 0, updated = 0;
+    for (const s of swatches) {
+      const old = existing.find(x => x.code.toLowerCase() === s.code.toLowerCase());
+      if (old) { await store.update('materialSwatches', old.id, { name: s.name, ...(s.fileId ? { fileId: s.fileId } : {}) }); updated++; }
+      else { await store.insert('materialSwatches', { id: uid(), collectionId: col.id, code: s.code, name: s.name, fileId: s.fileId, position: ++pos }); added++; }
+    }
+    return json({ collection: (await materialsAll()).find(x => x.id === col!.id), added, updated }, 201);
+  });
+  router.patch('/api/materials/collections/:id', async c => {
+    requireUser(c, 'admin', 'manager');
+    const b = await c.json<Record<string, unknown>>(); const patch: Record<string, unknown> = {};
+    if ('brand' in b) patch.brand = str(b.brand, 'Marchio', { required: true, max: 80 });
+    if ('name' in b) patch.name = str(b.name, 'Collezione', { required: true, max: 120 });
+    if ('category' in b) patch.category = oneOf(b.category, MATERIAL_CATEGORIES, 'Categoria');
+    if ('notes' in b) patch.notes = str(b.notes, 'Note', { max: 2000 });
+    try { if (!(await store.update('materialCollections', c.params.id, patch))) throw new HttpError(404, 'Collezione non trovata'); }
+    catch (e) { if (e instanceof UniqueViolation) throw new HttpError(409, 'Esiste già una collezione con questo nome per il marchio'); throw e; }
+    return json((await materialsAll()).find(x => x.id === c.params.id));
+  });
+  async function dropSwatchFiles(list: MaterialSwatch[]) {
+    for (const s of list) {
+      if (!s.fileId || await store.count('quoteItems', { swatchFileId: s.fileId })) continue; // la foto resta se usata in un preventivo
+      const f = await store.get<FileRecord & { storageKey: string }>('files', s.fileId);
+      if (f) { await storage.delete(f.storageKey).catch(() => {}); await store.remove('files', { id: s.fileId }); }
+    }
+  }
+  router.delete('/api/materials/collections/:id', async c => {
+    requireUser(c, 'admin', 'manager');
+    const sw = await store.all<MaterialSwatch>('materialSwatches', { collectionId: c.params.id });
+    await store.remove('materialCollections', { id: c.params.id });
+    await store.remove('materialSwatches', { collectionId: c.params.id });
+    await dropSwatchFiles(sw);
+    for (const p of await store.all<Product>('products')) if (p.materialCollectionIds?.includes(c.params.id)) await store.update('products', p.id, { materialCollectionIds: p.materialCollectionIds.filter(x => x !== c.params.id) });
+    return json({ ok: true });
+  });
+  router.delete('/api/materials/swatches/:id', async c => {
+    requireUser(c, 'admin', 'manager');
+    const s = await store.get<MaterialSwatch>('materialSwatches', c.params.id);
+    if (!s) throw new HttpError(404, 'Campione non trovato');
+    await store.remove('materialSwatches', { id: s.id }); await dropSwatchFiles([s]);
     return json({ ok: true });
   });
 
@@ -492,12 +569,21 @@ export function createApp(deps: Deps) {
     const cfg = p.configs[idx];
     if (!cfg) throw new HttpError(400, 'Composizione non valida');
     if (cfg.price === undefined || cfg.price === null) throw new HttpError(400, 'Prezzo della composizione da verificare: non può essere aggiunta al preventivo');
-    const material = str(b.material, 'Materiale', { max: 80 }) || p.materials[0] || '';
-    const color = str(b.color, 'Colore', { max: 80 }) || p.colors[0] || '';
-    if (p.materials.length && !p.materials.includes(material)) throw new HttpError(400, 'Materiale non previsto per il prodotto');
-    if (p.colors.length && !p.colors.includes(color)) throw new HttpError(400, 'Colore non previsto per il prodotto');
+    let material: string, color: string, swatchFileId: string | null = null;
+    if (b.swatchId) {
+      const sw = await store.get<MaterialSwatch>('materialSwatches', str(b.swatchId, 'Campione', { max: 80 }));
+      const col = sw ? await store.get<MaterialCollection>('materialCollections', sw.collectionId) : null;
+      if (!sw || !col) throw new HttpError(400, 'Campione non trovato');
+      if (!collectionAllowed(p, col)) throw new HttpError(400, 'Materiale non previsto per il prodotto');
+      material = col.name; color = sw.name; swatchFileId = sw.fileId;
+    } else {
+      material = str(b.material, 'Materiale', { max: 80 }) || p.materials[0] || '';
+      color = str(b.color, 'Colore', { max: 80 }) || p.colors[0] || '';
+      if (p.materials.length && !p.materials.includes(material)) throw new HttpError(400, 'Materiale non previsto per il prodotto');
+      if (p.colors.length && !p.colors.includes(color)) throw new HttpError(400, 'Colore non previsto per il prodotto');
+    }
     const position = (await store.count('quoteItems', { quoteId: q.id })) + 1;
-    await store.insert('quoteItems', { id: uid(), quoteId: q.id, productId: p.id, brand: p.brand, productName: p.name, config: cfg.name, dims: cfg.dims, material, color, price: cfg.price, currency: p.currency, position });
+    await store.insert('quoteItems', { id: uid(), quoteId: q.id, productId: p.id, brand: p.brand, productName: p.name, config: cfg.name, dims: cfg.dims, material, color, price: cfg.price, currency: p.currency, position, swatchFileId });
     return json(await hydrateQuote(q), 201);
   });
   router.delete('/api/quotes/:id/items/:itemId', async c => {

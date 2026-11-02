@@ -1,5 +1,5 @@
 // Generazione PDF del preventivo con pdf-lib (puro JavaScript: Node e browser).
-import { PDFDocument, StandardFonts, rgb, setCharacterSpacing, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib';
+import { PDFDocument, StandardFonts, clip, endPath, popGraphicsState, pushGraphicsState, rectangle, rgb, setCharacterSpacing, type PDFFont, type PDFImage, type PDFPage } from 'pdf-lib';
 import { convert, formatMoney, type Client, type Quote, type User } from '../../shared/types';
 
 const INK = rgb(0.09, 0.09, 0.09);
@@ -10,6 +10,7 @@ const W = 595.28, H = 841.89, M = 48;
 export type QuotePdfInput = {
   quote: Quote; client: Client | null; author: User;
   images: Record<string, { data: Uint8Array; mime: string } | null>; // per productId
+  swatches?: Record<string, { data: Uint8Array; mime: string } | null>; // per fileId del campione
   sites: string;
   date: Date;
 };
@@ -48,6 +49,11 @@ export async function renderQuotePdf(input: QuotePdfInput): Promise<Uint8Array> 
   for (const [pid, im] of Object.entries(input.images)) {
     if (!im) continue;
     try { imgs[pid] = im.mime.includes('png') ? await doc.embedPng(im.data) : await doc.embedJpg(im.data); } catch { /* immagine non supportata: si omette */ }
+  }
+  const sws: Record<string, PDFImage> = {};
+  for (const [fid, im] of Object.entries(input.swatches ?? {})) {
+    if (!im) continue;
+    try { sws[fid] = im.mime.includes('png') ? await doc.embedPng(im.data) : await doc.embedJpg(im.data); } catch { /* omesso */ }
   }
 
   let page: PDFPage = doc.addPage([W, H]);
@@ -114,7 +120,16 @@ export async function renderQuotePdf(input: QuotePdfInput): Promise<Uint8Array> 
     text(page, `${idx + 1}. ${it.brand.toUpperCase()}`, x, top - 8, 7, { color: MUTED, spacing: 1 });
     text(page, it.productName, x, top - 23, 12);
     text(page, `${it.config} · ${it.dims}`, x, top - 37, 8.5, { color: MUTED });
-    text(page, `${it.material} / ${it.color}`, x, top - 49, 8.5, { color: MUTED });
+    const sw = it.swatchFileId ? sws[it.swatchFileId] : undefined;
+    if (sw) {
+      // campione del materiale: riquadro 22×14 ritagliato al centro
+      const bw = 22, bh = 14, s = Math.max(bw / sw.width, bh / sw.height);
+      page.pushOperators(pushGraphicsState(), rectangle(x, top - 52, bw, bh), clip(), endPath());
+      page.drawImage(sw, { x: x + (bw - sw.width * s) / 2, y: top - 52 + (bh - sw.height * s) / 2, width: sw.width * s, height: sw.height * s });
+      page.pushOperators(popGraphicsState());
+      page.drawRectangle({ x, y: top - 52, width: bw, height: bh, borderColor: LINE, borderWidth: 0.5 });
+      text(page, `${it.material} / ${it.color}`, x + bw + 6, top - 49, 8.5, { color: MUTED });
+    } else text(page, `${it.material} / ${it.color}`, x, top - 49, 8.5, { color: MUTED });
     if (quote.showPrices) text(page, formatMoney(convert(it.price, it.currency, quote.currency, quote.rate), quote.currency), W - M, top - 23, 11, { align: 'right' });
     y -= rowH;
     page.drawLine({ start: { x: M, y }, end: { x: W - M, y }, thickness: 0.5, color: LINE });

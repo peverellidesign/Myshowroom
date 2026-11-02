@@ -7,7 +7,7 @@ export type Where = Record<string, string | number | boolean | null>;
 export const TABLES = {
   users: { json: [] },
   sessions: { json: [] },
-  products: { json: ['images', 'materials', 'colors', 'configs'] },
+  products: { json: ['images', 'materials', 'colors', 'configs', 'materialCollectionIds'] },
   files: { json: [] },
   documents: { json: [] },
   documentProducts: { json: [] },
@@ -19,6 +19,8 @@ export const TABLES = {
   reservations: { json: [] },
   emails: { json: ['attachments'] },
   settings: { json: [] },
+  materialCollections: { json: [] },
+  materialSwatches: { json: [] },
 } as const;
 export type Table = keyof typeof TABLES;
 
@@ -29,6 +31,8 @@ export const UNIQUE: Partial<Record<Table, string[][]>> = {
   appointments: [['site', 'date', 'time']],
   reservations: [['productId']],
   quotes: [['number']],
+  materialCollections: [['brand', 'name']],
+  materialSwatches: [['collectionId', 'code']],
 };
 
 export class UniqueViolation extends Error {
