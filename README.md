@@ -122,8 +122,8 @@ Il permesso applicativo `Mail.Send` vale per tutte le caselle dell'organizzazion
 - Ogni prodotto mostra in *Materiali & Colori* i rivestimenti del proprio marchio (es. tutti i prodotti Flexform → PELLE 411). Nella scheda prodotto (*Modifica scheda → Rivestimenti dal campionario*) si possono limitare a collezioni specifiche.
 - Toccando un campione lo si sceglie: entra nel preventivo come materiale/colore con la sua foto, visibile anche nel PDF.
 - **Importa campionario** (responsabili e amministratori): ZIP con le foto dei campioni e, facoltativo, `materiali.csv` con colonne `brand, macrocategoria, collezione, codice, nome, file_immagine` (come lo ZIP Flexform PELLE 411). Reimportare la stessa collezione aggiorna i campioni esistenti.
-- Pelli Flexform: un catalogo per pelle (PELLE 400–411, 413, 850: 14 cataloghi), ciascuno con le sue 24 varianti; la fotografia principale del catalogo è la copertina. Nella scheda prodotto si sceglie prima il catalogo, poi la variante. Pacchetti in `server/import/flexform-pelle*` (`flexform-pelle-cataloghi/catalogs.json` crea i 14 cataloghi riusando le foto già caricate).
-- Import ZIP con colonna `catalogo`/`catalog`: ogni catalogo diventa una collezione con i suoi campioni; la foto principale (`featured_path`) diventa la copertina; le foto identiche vengono caricate una volta sola.
+- Pelle Flexform: un'unica collezione **Pelle** con 24 tipologie (400–413, 850–859), una per fotografia (`server/import/flexform-pelle-unica`). Le foto originali dei cataloghi PDF restano archiviate.
+- Import ZIP con colonna `catalogo`/`catalog`: i codici ripetuti in più cataloghi diventano una sola tipologia della categoria (es. Pelle); le foto identiche vengono caricate una volta sola.
 - Scelta in due passi: prima la collezione (schede con anteprima dei colori, raggruppate per categoria), poi il colore; la ricerca per codice cerca in tutte le collezioni.
 
 ## Caricare i contenuti

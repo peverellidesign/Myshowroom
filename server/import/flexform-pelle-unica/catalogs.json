@@ -1,0 +1,150 @@
+{
+ "key": "flexform-pelle-unica",
+ "brand": "Flexform",
+ "category": "Pelle",
+ "notes": "24 tipologie disponibili. Colori indicativi: verificare sempre sul campione fisico.",
+ "removeCollections": [
+  "PELLE 400",
+  "PELLE 401",
+  "PELLE 402",
+  "PELLE 403",
+  "PELLE 404",
+  "PELLE 405",
+  "PELLE 406",
+  "PELLE 407",
+  "PELLE 408",
+  "PELLE 409",
+  "PELLE 410",
+  "PELLE 411",
+  "PELLE 413",
+  "PELLE 850"
+ ],
+ "catalogs": [
+  {
+   "name": "Pelle",
+   "cover": null,
+   "swatches": [
+    {
+     "code": "400",
+     "name": "PELLE 400",
+     "fileId": "flexform-pelle-400"
+    },
+    {
+     "code": "401",
+     "name": "PELLE 401",
+     "fileId": "flexform-pelle-401"
+    },
+    {
+     "code": "402",
+     "name": "PELLE 402",
+     "fileId": "flexform-pelle-402"
+    },
+    {
+     "code": "403",
+     "name": "PELLE 403",
+     "fileId": "flexform-pelle-403"
+    },
+    {
+     "code": "404",
+     "name": "PELLE 404",
+     "fileId": "flexform-pelle-404"
+    },
+    {
+     "code": "405",
+     "name": "PELLE 405",
+     "fileId": "flexform-pelle-405"
+    },
+    {
+     "code": "406",
+     "name": "PELLE 406",
+     "fileId": "flexform-pelle-406"
+    },
+    {
+     "code": "407",
+     "name": "PELLE 407",
+     "fileId": "flexform-pelle-407"
+    },
+    {
+     "code": "408",
+     "name": "PELLE 408",
+     "fileId": "flexform-pelle-408"
+    },
+    {
+     "code": "409",
+     "name": "PELLE 409",
+     "fileId": "flexform-pelle-409"
+    },
+    {
+     "code": "410",
+     "name": "PELLE 410",
+     "fileId": "flexform-pelle-410"
+    },
+    {
+     "code": "411",
+     "name": "PELLE 411",
+     "fileId": "flexform-pelle-411"
+    },
+    {
+     "code": "412",
+     "name": "PELLE 412",
+     "fileId": "flexform-pelle-412"
+    },
+    {
+     "code": "413",
+     "name": "PELLE 413",
+     "fileId": "flexform-pelle-413"
+    },
+    {
+     "code": "850",
+     "name": "PELLE 850",
+     "fileId": "flexform-pelle-850"
+    },
+    {
+     "code": "851",
+     "name": "PELLE 851",
+     "fileId": "flexform-pelle-851"
+    },
+    {
+     "code": "852",
+     "name": "PELLE 852",
+     "fileId": "flexform-pelle-852"
+    },
+    {
+     "code": "853",
+     "name": "PELLE 853",
+     "fileId": "flexform-pelle-853"
+    },
+    {
+     "code": "854",
+     "name": "PELLE 854",
+     "fileId": "flexform-pelle-854"
+    },
+    {
+     "code": "855",
+     "name": "PELLE 855",
+     "fileId": "flexform-pelle-855"
+    },
+    {
+     "code": "856",
+     "name": "PELLE 856",
+     "fileId": "flexform-pelle-856"
+    },
+    {
+     "code": "857",
+     "name": "PELLE 857",
+     "fileId": "flexform-pelle-857"
+    },
+    {
+     "code": "858",
+     "name": "PELLE 858",
+     "fileId": "flexform-pelle-858"
+    },
+    {
+     "code": "859",
+     "name": "PELLE 859",
+     "fileId": "flexform-pelle-859"
+    }
+   ]
+  }
+ ]
+}

@@ -32,8 +32,8 @@ export function SwatchPicker({ collections, selected, onSelect, canManage, onDel
     <span className="swatchZoom" role="button" aria-label="Ingrandisci" onClick={e => { e.stopPropagation(); setZoom({ s, c }); }}><ZoomIn size={13} /></span>
   </button>;
   return <div className="swatchLibrary">
-    <div className="swatchStep"><span>1</span> Scegli il catalogo</div>
-    {byCat.map(([cat, list]) => <div key={cat} className="collectionGroup">
+    {collections.length > 1 && <div className="swatchStep"><span>1</span> Scegli il catalogo</div>}
+    {collections.length > 1 && byCat.map(([cat, list]) => <div key={cat} className="collectionGroup">
       {byCat.length > 1 && <small className="collectionCat">{cat.toUpperCase()}</small>}
       <div className="collectionTabs" role="tablist">{list.map(c => {
         const on = !term && c.id === active?.id, has = selected?.collectionId === c.id;
@@ -43,8 +43,8 @@ export function SwatchPicker({ collections, selected, onSelect, canManage, onDel
         </button>;
       })}</div>
     </div>)}
-    <div className="swatchStep"><span>2</span> Scegli la variante{active && !term ? <em> · {active.brand} {active.name}</em> : null}
-      <input value={q} onChange={e => setQ(e.target.value)} placeholder="Cerca codice in tutte le collezioni" aria-label="Cerca campione" /></div>
+    <div className="swatchStep">{collections.length > 1 && <span>2</span>}{collections.length > 1 ? 'Scegli la variante' : `${active?.name ?? ''} · ${active?.swatches.length ?? 0} tipologie`}{active && !term && collections.length > 1 ? <em> · {active.brand} {active.name}</em> : null}
+      <input value={q} onChange={e => setQ(e.target.value)} placeholder={collections.length > 1 ? "Cerca codice in tutte le collezioni" : "Cerca codice, es. 856"} aria-label="Cerca campione" /></div>
     {active?.notes && !term && <p className="hint">{active.notes}</p>}
     {results.map(({ c, list }) => <div className="swatchCollection" key={c.id}>
       {term && <div className="swatchHead"><div><small>{c.brand.toUpperCase()} · {c.category.toUpperCase()}</small><strong>{c.name}</strong></div></div>}
@@ -89,9 +89,9 @@ export function MaterialImport({ defaultBrand, onDone, onClose }: { defaultBrand
   const [meta, setMeta] = useState({ brand: defaultBrand, category: 'Pelle', collection: '' });
   const [progress, setProgress] = useState<string>('');
   const [error, setError] = useState('');
-  // con la colonna "catalogo" ogni catalogo diventa una collezione con i suoi campioni (es. PELLE 411 → 24 varianti)
+  // con la colonna "catalogo" gli stessi codici ripetuti in più cataloghi diventano una sola variante (es. Pelle → 24 tipologie)
   const byCatalog = !!rows?.some(r => r.catalog);
-  const colName = (r: Row) => byCatalog ? (r.catalog || r.collection || meta.collection) : (r.collection || meta.collection);
+  const colName = (r: Row) => byCatalog ? (r.collection || r.category || meta.category) : (r.collection || meta.collection);
   const groups = useMemo(() => { const g = new Map<string, Row[]>(); for (const r of rows ?? []) { const k = `${r.brand || meta.brand}|${colName(r)}`; g.set(k, [...(g.get(k) ?? []), r]); } return g; }, [rows, meta]);
   const fromList = !!rows?.some(r => r.collection || r.catalog);
 
