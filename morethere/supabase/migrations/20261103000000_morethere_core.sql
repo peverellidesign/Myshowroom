@@ -119,7 +119,7 @@ create table public.items (
 create index items_owner_created on public.items (owner_id, created_at desc);
 create index items_collection on public.items (collection_id);
 -- idempotent import of on-device data
-create unique index items_owner_client_ref on public.items (owner_id, client_ref) where client_ref is not null;
+create unique index items_owner_client_ref on public.items (owner_id, client_ref); -- NULLs stay distinct
 create trigger items_touch before update on public.items
   for each row execute function private.touch_updated_at();
 
