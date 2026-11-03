@@ -84,6 +84,17 @@ APP_URL=http://127.0.0.1:5173 npm run test:e2e  # Playwright, two browsers
 After `npx supabase db reset`, wait a few seconds for Realtime to restart
 before you run the realtime test.
 
+## Live deployment
+
+| | |
+|---|---|
+| App | https://morethere-production.up.railway.app |
+| Railway | project **morethere** (separate from myshowroom), service `morethere`, root directory `/morethere`, branch `claude/myshowroom-app`, redeploys on changes under `morethere/` |
+| Supabase | project **morethere** (`ptcexacciemeiykavbpb`, eu-west-3) |
+| Build-time variables | `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (publishable key) |
+
+The app is served by `server.mjs` (static files, SPA fallback, CSP and security headers, `/health`).
+
 ## Deploy to production
 
 1. **Create a Supabase project** for morethere. Don't reuse another app's project.
