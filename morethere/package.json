@@ -10,7 +10,8 @@
     "db:start": "supabase start",
     "db:reset": "supabase db reset",
     "test:authz": "node --test --test-concurrency=1 tests/authz.test.mjs",
-    "test:e2e": "node --test tests/e2e.test.mjs"
+    "test:e2e": "node --test tests/e2e.test.mjs",
+    "start": "node server.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.118.0",
