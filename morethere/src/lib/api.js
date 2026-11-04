@@ -18,6 +18,7 @@ const ERRORS = {
   invite_not_found: 'Invito non trovato.',
   thought_not_found: 'Pensiero non trovato.',
   not_authenticated: 'Accedi per continuare.',
+  photos_unavailable: 'Le foto non sono ancora attive su questo server.',
   image_unreadable: 'Questa immagine non si può leggere. Prova con una foto JPEG o PNG.',
   'exceeded the maximum allowed size': 'La foto è troppo grande (massimo 5 MB).',
 };
@@ -67,7 +68,17 @@ const toItem = (row, collectionsById) => ({
   created: Date.parse(row.created_at),
 });
 
-const ITEM_COLS = 'id, owner_id, collection_id, title, url, note, category, image_path, created_at';
+const BASE_COLS = 'id, owner_id, collection_id, title, url, note, category, created_at';
+// Photo columns arrive with the second migration; until a database has it,
+// the app keeps working without photos.
+let photosSupported = true;
+const itemCols = () => (photosSupported ? BASE_COLS + ', image_path' : BASE_COLS);
+const missingPhotoColumn = (error) => error && /image_path/.test(error.message || '') && (error.code === '42703' || /column/i.test(error.message || ''));
+async function selectItems(build) {
+  let res = await build(itemCols());
+  if (missingPhotoColumn(res.error)) { photosSupported = false; res = await build(itemCols()); }
+  return res;
+}
 
 async function profilesById(ids) {
   const unique = [...new Set(ids.filter(Boolean))];
@@ -97,16 +108,16 @@ export function createRemoteApi(user) {
     async loadArchive() {
       const [cols, items] = await Promise.all([
         supabase.from('collections').select('id, name, position').eq('owner_id', me).order('position').order('created_at'),
-        supabase.from('items').select(ITEM_COLS).eq('owner_id', me).order('created_at', { ascending: false }),
+        selectItems(c => supabase.from('items').select(c).eq('owner_id', me).order('created_at', { ascending: false })),
       ]);
       const collections = must(cols);
       const byId = Object.fromEntries(collections.map(c => [c.id, c]));
       return { collections, items: must(items).map(r => toItem(r, byId)) };
     },
     async addItem({ title, url, note, category, collection_id, image_path }) {
-      return must(await supabase.from('items')
-        .insert({ title, url: url || null, note: note || '', category, collection_id: collection_id || null, image_path: image_path || null })
-        .select(ITEM_COLS).single());
+      const row = { title, url: url || null, note: note || '', category, collection_id: collection_id || null };
+      if (image_path) row.image_path = image_path;
+      return must(await supabase.from('items').insert(row).select(itemCols()).single());
     },
     async updateItem(id, patch) {
       const row = {};
@@ -131,6 +142,7 @@ export function createRemoteApi(user) {
 
     // ---- photos -------------------------------------------------------------
     async uploadPhoto(file) {
+      if (!photosSupported) throw new Error('photos_unavailable');
       const blob = await resizeImage(file);
       const path = `${me}/${crypto.randomUUID()}.jpg`;
       must(await supabase.storage.from('media').upload(path, blob, { contentType: 'image/jpeg', cacheControl: '3600' }));
@@ -274,7 +286,7 @@ export function createRemoteApi(user) {
       const [share, cols, items] = await Promise.all([
         supabase.from('world_shares').select('*').eq('owner_id', ownerId).eq('grantee_id', me).maybeSingle(),
         supabase.from('collections').select('id, name, position').eq('owner_id', ownerId).order('position'),
-        supabase.from('items').select(ITEM_COLS).eq('owner_id', ownerId).order('created_at', { ascending: false }),
+        selectItems(c => supabase.from('items').select(c).eq('owner_id', ownerId).order('created_at', { ascending: false })),
       ]);
       const collections = must(cols);
       const byId = Object.fromEntries(collections.map(c => [c.id, c]));
