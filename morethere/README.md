@@ -27,6 +27,10 @@ Builder.
 | Our little world | Shared collections: invite connections, they accept, everyone contributes; owner manages members | `world_members` status/role, `add_item_to_world()` |
 | AI Context Builder | Copy your own content as AI context (same format as the prototype). Shared content is included only when its owner allowed it: per grant, per thought, and per world member for their own contributions | `ai_export_shared`, `ai_export_thoughts`, `ai_export_world` |
 | Sync | Changes appear live on every device and for every person who may see them | Supabase Realtime (`postgres_changes`, filtered by RLS) |
+| Photos | The camera button saves a photo (resized on the device) to a private Storage bucket, one folder per person. Photos are shown through short-lived signed URLs, wherever the item is visible | Storage policies + `private.can_view_media()`; rows may only reference files in their author's folder |
+| Link previews | Pasting a link replaces the hostname with the real page title and description | `/api/preview` (server): signed-in users only, public addresses only, pinned DNS, redirects re-checked, size/time limits, rate limit |
+| Editing | Edit title, link, note; add/change a photo; rename and delete collections | RLS: owner only |
+| Installable app | Manifest, icons, service worker (caches only the app shell, never private data) | — |
 | Data portability | Download all your data as JSON | `export_my_data()` |
 | Local data import | Data saved by the earlier prototype (`localStorage` `mt_*`) is offered for import after sign-in. Nothing is uploaded without the person tapping **Importa** | client-side, idempotent via `items.client_ref` |
 
@@ -50,9 +54,11 @@ src/
 supabase/
   config.toml
   migrations/20261103000000_morethere_core.sql   schema, RLS, RPCs, realtime
+  migrations/20261104000000_photos_and_performance.sql   photos bucket + policies, faster policies, FK indexes
 tests/
   authz.test.mjs     16 API-level authorization tests (real users, real stack)
-  e2e.test.mjs       9 browser tests: two people using the app end to end
+  media.test.mjs     5 authorization tests for photos
+  e2e.test.mjs       12 browser tests: two people using the app end to end
 ```
 
 ## Run locally
@@ -78,6 +84,7 @@ export SUPABASE_URL=$API_URL SUPABASE_ANON_KEY=$ANON_KEY SUPABASE_SERVICE_ROLE_K
 
 npm run test:authz                              # authorization (RLS + RPCs + realtime filtering)
 npm run dev &                                   # with .env.local pointing at the same stack
+PREVIEW_ALLOW_PRIVATE=1 npm run dev &           # lets the preview test reach a local page
 APP_URL=http://127.0.0.1:5173 npm run test:e2e  # Playwright, two browsers
 ```
 
@@ -121,5 +128,6 @@ The app is served by `server.mjs` (static files, SPA fallback, CSP and security 
 
 - AI-export consent is enforced on the export path (the server returns only permitted rows). Someone who can *read* shared content can still copy it by hand, as with any sharing.
 - Realtime `DELETE` events carry only the primary key and aren't filtered by RLS (a Supabase Realtime limitation). The client reacts by re-reading through RLS, so no content leaks, but a subscriber can learn that *some* row id was deleted.
-- Link previews (title/image metadata) and image upload aren't implemented yet. Links are stored with the hostname as their title, as in the prototype.
+- Link previews use the page title and description only. Preview images are not fetched, to avoid sending visitors' requests to third-party sites.
+- The app works with or without the second migration; photos activate once it is applied.
 - Thoughts shared *outside* morethere (device share sheet) are recorded only on that device, as before.
