@@ -28,6 +28,7 @@ export function clearLegacy() {
 }
 
 // Local-only implementation of the personal-archive part of the API.
+// Photos are stored as small data URLs (localStorage holds only a few MB).
 export function createLocalApi() {
   const seed = [{ id: uid(), title: 'Scritto a mano', url: '', note: 'Una nuova idea da ricordare.', category: 'Appunti', created: Date.now(), collection: 'Idee' }];
   let items = read('mt_items', seed);
@@ -36,24 +37,48 @@ export function createLocalApi() {
   persist();
   const toUi = () => ({
     collections: collections.map(name => ({ id: name, name })),
-    items: items.map(i => ({ ...i, collection_id: i.collection })),
+    items: items.map(i => ({ ...i, collection_id: i.collection, image_path: i.image || null })),
   });
   return {
     social: false,
     async loadArchive() { return toUi(); },
     async addItem(it) {
-      const item = { id: uid(), title: it.title, url: it.url || '', note: it.note || '', category: it.category, created: Date.now(), collection: it.collection };
-      items = [item, ...items]; persist(); return { ...item, collection_id: item.collection };
+      const item = { id: uid(), title: it.title, url: it.url || '', note: it.note || '', category: it.category, created: Date.now(), collection: it.collection, image: it.image_path || undefined };
+      items = [item, ...items]; persist(); return item;
     },
     async updateItem(id, patch) {
-      items = items.map(i => (i.id === id ? { ...i, ...(patch.collection !== undefined ? { collection: patch.collection } : {}) } : i));
+      items = items.map(i => {
+        if (i.id !== id) return i;
+        const n = { ...i };
+        if (patch.collection !== undefined) n.collection = patch.collection;
+        for (const k of ['title', 'note', 'url', 'category']) if (k in patch) n[k] = patch[k];
+        if ('image_path' in patch) n.image = patch.image_path || undefined;
+        return n;
+      });
       persist();
     },
-    async deleteItem(id) { items = items.filter(i => i.id !== id); persist(); },
+    async deleteItem(item) { items = items.filter(i => i.id !== item.id); persist(); },
     async addCollection(name) {
       if (!collections.includes(name)) collections = [...collections, name];
       persist(); return { id: name, name };
     },
+    async renameCollection(id, name) {
+      collections = collections.map(c => (c === id ? name : c));
+      items = items.map(i => (i.collection === id ? { ...i, collection: name } : i));
+      persist();
+    },
+    async deleteCollection(id) {
+      collections = collections.filter(c => c !== id);
+      items = items.map(i => (i.collection === id ? { ...i, collection: '' } : i));
+      persist();
+    },
+    async uploadPhoto(file) {
+      const { resizeImage } = await import('./api.js');
+      const blob = await resizeImage(file, 900, 0.72);
+      return new Promise((resolve, reject) => { const r = new FileReader(); r.onload = () => resolve(r.result); r.onerror = reject; r.readAsDataURL(blob); });
+    },
+    async photoUrls(paths) { return Object.fromEntries(paths.filter(Boolean).map(p => [p, p])); },
+    async linkPreview() { return null; },
     subscribe() { return () => {}; },
   };
 }

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   UsersRound, Camera, Search, ArrowLeft, Plus, Heart, KeyRound, Sparkles, Trash2, ExternalLink, Copy,
   FolderHeart, Send, Settings2, Check, Bookmark, PenLine, X, Link2, UserRoundPlus, ChevronRight,
-  ShieldCheck, Download, LogOut, Inbox, UserRoundCheck,
+  ShieldCheck, Download, LogOut, Inbox, UserRoundCheck, ImagePlus, Pencil,
 } from 'lucide-react';
 import { buildAIContext, fromExportRows } from './lib/ai.js';
 import { friendlyError } from './lib/api.js';
@@ -22,6 +22,11 @@ function Toggle({ checked, onChange, label, hint }) {
       <i aria-hidden="true" />
     </label>
   );
+}
+
+function Photo({ url, alt = '', className = '' }) {
+  if (!url) return null;
+  return <img className={className} src={url} alt={alt} loading="lazy" decoding="async" />;
 }
 
 export default function App({ api, pendingInvite, onInviteHandled }) {
@@ -70,12 +75,17 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
   const [legacy, setLegacy] = useState(() => (social ? readLegacy() : null));
   const [invite, setInvite] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [photoUrls, setPhotoUrls] = useState({});
+  const [edit, setEdit] = useState(null); // detail edit draft
+  const [collectionDialog, setCollectionDialog] = useState(null); // { mode: 'rename', id, name }
+  const fileInput = useRef();
+  const photoTarget = useRef(null); // item id when replacing a photo, else null
 
   const toastTimer = useRef();
   const toast = t => { setNotice(t); clearTimeout(toastTimer.current); toastTimer.current = setTimeout(() => setNotice(''), 3200); };
   const run = async (fn, ok) => {
     setBusy(true);
-    try { const r = await fn(); if (ok) toast(ok); return r; } catch (e) { console.error(e); toast(friendlyError(e)); return undefined; } finally { setBusy(false); }
+    try { const r = await fn(); if (ok) toast(ok); return r === undefined ? true : r; } catch (e) { console.error(e); toast(friendlyError(e)); return undefined; } finally { setBusy(false); }
   };
 
   // ---- loading & synchronisation ----------------------------------------------
@@ -131,6 +141,21 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
 
   useEffect(() => writeNotes(notes), [notes]);
 
+  // Signed, short-lived URLs for every photo currently on screen.
+  const visiblePhotos = useMemo(() => [
+    ...items.map(i => i.image_path),
+    ...(friendData?.items || []).map(i => i.image_path),
+    ...thoughts.received.map(t => t.item_image_path),
+    ...thoughts.sent.map(t => t.item_image_path),
+    ...(worldData?.items || []).map(i => i.image_path),
+  ].filter(Boolean), [items, friendData, thoughts, worldData]);
+  useEffect(() => {
+    if (!visiblePhotos.length || !api.photoUrls) return;
+    let alive = true;
+    api.photoUrls(visiblePhotos).then(m => alive && setPhotoUrls(prev => ({ ...prev, ...m }))).catch(() => {});
+    return () => { alive = false; };
+  }, [api, visiblePhotos]);
+
   // Invitation link opened before/while signing in.
   useEffect(() => {
     if (!social || !pendingInvite) return;
@@ -153,11 +178,65 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
     const url = safeUrl(raw);
     const draft = { title: url ? new URL(url).hostname.replace(/^www\./, '') : raw.slice(0, 70), url: url || '', note: url ? '' : raw, category: url ? 'Pagine' : 'Appunti', collection: 'Idee', collection_id: collectionId('Idee') };
     const saved = await run(() => api.addItem(draft), 'Salvato nel tuo mondo');
-    if (saved) { setEntry(''); await refreshArchive(); }
+    if (!saved) return;
+    setEntry(''); await refreshArchive();
+    // Enrich links with the real page title, in the background.
+    if (url) {
+      try {
+        const p = await api.linkPreview(url);
+        if (p?.title) {
+          await api.updateItem(saved.id, { title: p.title.slice(0, 300), ...(p.description ? { note: p.description.slice(0, 600) } : {}) });
+          await refreshArchive();
+        }
+      } catch { /* preview is best effort */ }
+    }
   };
-  const removeItem = async (id) => {
-    const prev = items; setItems(v => v.filter(x => x.id !== id));
-    try { await api.deleteItem(id); } catch (e) { setItems(prev); toast(friendlyError(e)); }
+  const pickPhoto = (itemId = null) => { photoTarget.current = itemId; fileInput.current?.click(); };
+  const onPhotoChosen = async (e) => {
+    const file = e.target.files?.[0]; e.target.value = '';
+    if (!file) return;
+    const targetId = photoTarget.current; photoTarget.current = null;
+    await run(async () => {
+      const path = await api.uploadPhoto(file);
+      if (targetId) {
+        const old = items.find(i => i.id === targetId)?.image_path;
+        await api.updateItem(targetId, { image_path: path });
+        if (old && api.releasePhoto) await api.releasePhoto(old);
+        setSelected(sel => (sel?.id === targetId ? { ...sel, image_path: path } : sel));
+      } else {
+        const when = new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
+        await api.addItem({ title: entry.trim().slice(0, 70) || `Foto del ${when}`, url: '', note: '', category: 'Foto', collection: 'Idee', collection_id: collectionId('Idee'), image_path: path });
+        setEntry('');
+      }
+      await refreshArchive();
+    }, targetId ? 'Foto aggiornata' : 'Foto salvata nel tuo mondo');
+  };
+  const removeItem = async (item) => {
+    const prev = items; setItems(v => v.filter(x => x.id !== item.id));
+    try { await api.deleteItem(item); } catch (e) { setItems(prev); toast(friendlyError(e)); }
+  };
+  const saveEdit = async () => {
+    const title = edit.title.trim();
+    if (!title) return toast('Dai un titolo a questa scoperta');
+    const url = edit.url.trim() ? safeUrl(edit.url.trim()) : '';
+    if (edit.url.trim() && !url) return toast('Il link deve iniziare con http:// o https://');
+    const patch = { title: title.slice(0, 300), note: edit.note.slice(0, 10000), url: url || '' };
+    const ok = await run(() => api.updateItem(selected.id, patch), 'Modifiche salvate');
+    if (ok !== undefined) { setSelected({ ...selected, ...patch }); setEdit(null); refreshArchive(); }
+  };
+  const activeCollection = collectionRows.find(c => c.name === filter);
+  const renameCollection = async () => {
+    const name = collectionDialog.name.trim();
+    if (!name) return;
+    const ok = await run(() => api.renameCollection(collectionDialog.id, name), 'Raccolta rinominata');
+    if (ok !== undefined) { setCollectionDialog(null); setFilter(name); refreshArchive(); }
+  };
+  const deleteCollection = async () => {
+    if (!activeCollection) return;
+    const n = items.filter(i => i.collection_id === activeCollection.id).length;
+    if (!window.confirm(`Eliminare la raccolta "${activeCollection.name}"?${n ? ` Le ${n} scoperte che contiene restano nel tuo archivio, senza raccolta.` : ''}`)) return;
+    const ok = await run(() => api.deleteCollection(activeCollection.id), 'Raccolta eliminata');
+    if (ok !== undefined) { setFilter('Tutti'); refreshArchive(); }
   };
   const filtered = useMemo(() => items.filter(i => (filter === 'Tutti' || i.category === filter || i.collection === filter) && [i.title, i.note, i.url].join(' ').toLowerCase().includes(search.toLowerCase())), [items, filter, search]);
   const cats = ['Tutti', ...new Set([...items.map(i => i.category), ...collections])];
@@ -315,13 +394,13 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
 
     {screen === 'home' && <main>
       {legacy && <div className="panel"><strong>Hai {legacy.items.length} {legacy.items.length === 1 ? 'scoperta salvata' : 'scoperte salvate'} su questo dispositivo</strong><small>Vuoi portarle nel tuo account privato? Resteranno visibili solo a te. Dopo l'importazione verranno rimosse da questo dispositivo.</small><div className="choices"><button className="chosen" disabled={busy} onClick={importLegacy}>Importa</button><button onClick={() => setLegacy(null)}>Non ora</button></div></div>}
-      <div className="eyebrow">NUOVO INGRESSO</div><div className="entry"><input value={entry} onChange={e => setEntry(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()} placeholder="Incolla un link o scrivi..." /><button className="square" title="Salva una nota o un link" aria-label="Salva" onClick={add}>{entry ? <Plus /> : <Camera />}</button></div><div className="search"><Search size={21} /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca nell'archivio..." /></div><div className="chips">{cats.map(c => <button key={c} className={'chip ' + (filter === c ? 'active' : '')} onClick={() => setFilter(c)}>{c}</button>)}<button className="chip" aria-label="Nuova raccolta" onClick={() => setShowAddCollection(true)}><Plus size={15} /></button></div><div className="sectionLabel">La tua raccolta</div><div className="cards">{filtered.map(i => <article className="item" key={i.id}><button className="preview" onClick={() => { setSelected(i); setScreen('detail'); }}><span>{i.url ? <Link2 size={26} /> : <PenLine size={26} />}</span></button><div className="itembody"><div className="eyebrow">{i.category}</div><button className="itemtitle" onClick={() => { setSelected(i); setScreen('detail'); }}>{i.title}</button><div className="itemactions"><button onClick={() => share(i)} aria-label="Condividi"><Heart size={17} /></button><button onClick={() => exportAI([i])} aria-label="Usa con AI"><Sparkles size={17} /></button><button onClick={() => removeItem(i.id)} aria-label="Elimina"><Trash2 size={17} /></button></div></div></article>)}</div>{loaded && !filtered.length && <div className="empty">Il tuo mondo comincia da una scoperta. Salva qualcosa che vale la pena ricordare.</div>}<button className="socialCta" onClick={() => setScreen('circle')}><div><strong>Le persone di cui ti fidi</strong><small>{social ? (accepted.length ? `${accepted.length} ${accepted.length === 1 ? 'persona' : 'persone'} nel tuo Circle` : 'Scopri le loro raccolte condivise') : 'Scopri le loro raccolte condivise'}</small></div><ChevronRight /></button><div className="homeactions"><button onClick={() => setScreen('settings')}><UserRoundPlus size={18} /> Invita un amico</button><button onClick={() => setScreen('circle')}><FolderHeart size={18} /> Condivise con te</button></div></main>}
+      <div className="eyebrow">NUOVO INGRESSO</div><div className="entry"><input value={entry} onChange={e => setEntry(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()} placeholder="Incolla un link o scrivi..." /><button className="square" title={entry ? 'Salva una nota o un link' : 'Aggiungi una foto'} aria-label={entry ? 'Salva' : 'Aggiungi una foto'} disabled={busy} onClick={() => (entry ? add() : pickPhoto())}>{entry ? <Plus /> : <Camera />}</button><input ref={fileInput} type="file" accept="image/*" hidden aria-hidden="true" onChange={onPhotoChosen} /></div><div className="search"><Search size={21} /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca nell'archivio..." /></div><div className="chips">{cats.map(c => <button key={c} className={'chip ' + (filter === c ? 'active' : '')} onClick={() => setFilter(c)}>{c}</button>)}<button className="chip" aria-label="Nuova raccolta" onClick={() => setShowAddCollection(true)}><Plus size={15} /></button></div>{activeCollection && <div className="collectionTools"><button className="textlink" onClick={() => setCollectionDialog({ id: activeCollection.id, name: activeCollection.name })}><Pencil size={13} /> Rinomina</button><button className="textlink danger" onClick={deleteCollection}><Trash2 size={13} /> Elimina raccolta</button></div>}<div className="sectionLabel">{activeCollection ? activeCollection.name : 'La tua raccolta'}</div><div className="cards">{filtered.map(i => <article className="item" key={i.id}><button className={'preview' + (photoUrls[i.image_path] ? ' hasphoto' : '')} aria-label={`Apri ${i.title}`} onClick={() => { setSelected(i); setEdit(null); setScreen('detail'); }}>{photoUrls[i.image_path] ? <Photo url={photoUrls[i.image_path]} /> : <span>{i.image_path ? <Camera size={26} /> : i.url ? <Link2 size={26} /> : <PenLine size={26} />}</span>}</button><div className="itembody"><div className="eyebrow">{i.category}</div><button className="itemtitle" onClick={() => { setSelected(i); setEdit(null); setScreen('detail'); }}>{i.title}</button><div className="itemactions"><button onClick={() => share(i)} aria-label="Condividi"><Heart size={17} /></button><button onClick={() => exportAI([i])} aria-label="Usa con AI"><Sparkles size={17} /></button><button onClick={() => { if (window.confirm(`Eliminare "${i.title}"?`)) removeItem(i); }} aria-label="Elimina"><Trash2 size={17} /></button></div></div></article>)}</div>{loaded && !filtered.length && <div className="empty">Il tuo mondo comincia da una scoperta. Salva qualcosa che vale la pena ricordare.</div>}<button className="socialCta" onClick={() => setScreen('circle')}><div><strong>Le persone di cui ti fidi</strong><small>{social ? (accepted.length ? `${accepted.length} ${accepted.length === 1 ? 'persona' : 'persone'} nel tuo Circle` : 'Scopri le loro raccolte condivise') : 'Scopri le loro raccolte condivise'}</small></div><ChevronRight /></button><div className="homeactions"><button onClick={() => setScreen('settings')}><UserRoundPlus size={18} /> Invita un amico</button><button onClick={() => setScreen('circle')}><FolderHeart size={18} /> Condivise con te</button></div></main>}
 
     {screen === 'circle' && <main><div className="eyebrow">YOUR CIRCLE</div><h1>The people who make your world bigger.</h1><p className="muted">Scopri ciò che le persone di cui ti fidi hanno scelto di condividere con te.</p>
       <div className="stack"><button className="feature" onClick={() => setScreen('settings')}><KeyRound /><span><strong>Enter my world</strong><small>Apri il tuo mondo alle persone giuste</small></span><ChevronRight /></button><button className="feature" onClick={() => { setSelected(null); setRecipientId(accepted[0]?.other.id || ''); setThoughtAi(false); setScreen('thought'); }}><Heart /><span><strong>Thought of you</strong><small>Lascia una scoperta a qualcuno</small></span><ChevronRight /></button><button className="feature" onClick={() => setScreen('worlds')}><UsersRound /><span><strong>Our little world</strong><small>{worldInvites.length ? `${worldInvites.length} ${worldInvites.length === 1 ? 'invito' : 'inviti'} da accettare` : 'Costruite una raccolta insieme'}</small></span><ChevronRight /></button>{social && <button className="feature" onClick={openProfile}><Settings2 /><span><strong>Il mio profilo</strong><small>{profile ? '@' + profile.handle : 'Nome, esportazione, account'}</small></span><ChevronRight /></button>}</div>
       {!social && signInHint}
       {social && incoming.length > 0 && <><h2>Vogliono entrare nel tuo Circle</h2><div className="people">{incoming.map(c => <div key={c.id} className="person"><div className="avatar">{nameOf(c.other)[0]}</div><span><strong>{nameOf(c.other)}</strong><small>@{c.other.handle}</small></span><button className="pill dark small" disabled={busy} onClick={() => respond(c.id, true)}>Accetta</button><button className="iconbtn" aria-label="Rifiuta" disabled={busy} onClick={() => respond(c.id, false)}><X size={18} /></button></div>)}</div></>}
-      {social && thoughts.received.length > 0 && <><h2>Thoughts for you</h2>{thoughts.received.map(t => <div className={'note' + (t.read_at ? '' : ' unread')} key={t.id}><strong>Da {nameOf(t.sender)}</strong><p>{t.message || 'Ho pensato a te.'}</p><small>{t.item_title}</small><div className="noteactions">{safeUrl(t.item_url || '') && <a className="textlink" href={t.item_url} target="_blank" rel="noopener noreferrer" onClick={() => api.markThoughtRead(t.id).then(refreshThoughts).catch(() => {})}>Apri <ExternalLink size={12} /></a>}<button className="textlink" disabled={busy} onClick={async () => { const r = await run(() => api.saveThought(t.id), 'Salvato nel tuo mondo'); if (r) { refreshArchive(); refreshThoughts(); } }}>+ Salva nel mio mondo</button>{!t.read_at && <button className="textlink" onClick={() => api.markThoughtRead(t.id).then(refreshThoughts).catch(() => {})}>Segna come letto</button>}{t.allow_ai_export && <button className="textlink" onClick={() => exportShared([{ title: t.item_title, url: t.item_url, note: t.message ? `${t.item_note}\nDedication: ${t.message}` : t.item_note, category: t.item_category, collection: 'Thought of you', added_by_name: nameOf(t.sender) }], 'MORETHERE — SHARED CONTEXT', nameOf(t.sender))}>Use with AI</button>}</div></div>)}</>}
+      {social && thoughts.received.length > 0 && <><h2>Thoughts for you</h2>{thoughts.received.map(t => <div className={'note' + (t.read_at ? '' : ' unread')} key={t.id}><strong>Da {nameOf(t.sender)}</strong><p>{t.message || 'Ho pensato a te.'}</p>{photoUrls[t.item_image_path] && <Photo className="notephoto" url={photoUrls[t.item_image_path]} alt={t.item_title} />}<small>{t.item_title}</small><div className="noteactions">{safeUrl(t.item_url || '') && <a className="textlink" href={t.item_url} target="_blank" rel="noopener noreferrer" onClick={() => api.markThoughtRead(t.id).then(refreshThoughts).catch(() => {})}>Apri <ExternalLink size={12} /></a>}<button className="textlink" disabled={busy} onClick={async () => { const r = await run(() => api.saveThought(t), 'Salvato nel tuo mondo'); if (r) { refreshArchive(); refreshThoughts(); } }}>+ Salva nel mio mondo</button>{!t.read_at && <button className="textlink" onClick={() => api.markThoughtRead(t.id).then(refreshThoughts).catch(() => {})}>Segna come letto</button>}{t.allow_ai_export && <button className="textlink" onClick={() => exportShared([{ title: t.item_title, url: t.item_url, note: t.message ? `${t.item_note}\nDedication: ${t.message}` : t.item_note, category: t.item_category, collection: 'Thought of you', added_by_name: nameOf(t.sender) }], 'MORETHERE — SHARED CONTEXT', nameOf(t.sender))}>Use with AI</button>}</div></div>)}</>}
       <h2>Their worlds</h2>
       {social ? <>{accepted.length ? <div className="people">{accepted.map(c => { const s = circle.sharesIn.find(x => x.owner_id === c.other.id); return <button key={c.id} className="person" onClick={() => openFriend(c.other)}><div className="avatar">{nameOf(c.other)[0]}</div><span><strong>{nameOf(c.other)}</strong><small>{s ? (c.other.subtitle || 'Ha aperto il suo mondo con te') : 'Non ha ancora aperto il suo mondo con te'}</small></span><ChevronRight size={18} /></button>; })}</div> : <div className="empty compact">Il tuo Circle è ancora vuoto. Invita qualcuno di cui ti fidi.</div>}
         {outgoing.length > 0 && <div className="people pendinglist">{outgoing.map(c => <div key={c.id} className="person muted-row"><div className="avatar">{nameOf(c.other)[0]}</div><span><strong>{nameOf(c.other)}</strong><small>Richiesta in attesa</small></span><button className="iconbtn" aria-label="Annulla richiesta" onClick={async () => { await run(() => api.removeConnection(c.other.id), 'Richiesta annullata'); refreshCircle(); }}><X size={18} /></button></div>)}</div>}
@@ -331,7 +410,7 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
 
     {screen === 'friend' && friend && <main><div className="eyebrow">THEIR WORLD</div><h1>{nameOf(friend)}'s world</h1><p className="muted">A little part of what {nameOf(friend)} loves, collects and dreams about.</p>
       {!friendData ? <div className="empty compact">Caricamento…</div> : !friendShare ? <div className="empty">{nameOf(friend)} non ha ancora aperto il suo mondo con te.</div> : <>
-        <div className="cards">{friendGroups.map(c => <article className="item" key={c.id}><div className="preview"><span><FolderHeart size={26} /></span></div><div className="itembody"><div className="eyebrow">COLLECTION</div><strong>{c.name}</strong><small>{c.items.length} {c.items.length === 1 ? 'elemento' : 'elementi'}</small>{c.items.map(i => friendShare.can_save ? <button key={i.id} className="textlink" disabled={busy} onClick={async () => { const r = await run(() => api.saveSharedItem(i.id, collectionId('Idee')), 'Salvato nel tuo mondo'); if (r) refreshArchive(); }}>+ Save {i.title}</button> : (safeUrl(i.url) ? <a key={i.id} className="textlink" href={i.url} target="_blank" rel="noopener noreferrer">{i.title}</a> : <span key={i.id} className="textlink">{i.title}</span>))}</div></article>)}</div>
+        <div className="cards">{friendGroups.map(c => { const cover = photoUrls[c.items.find(i => i.image_path && photoUrls[i.image_path])?.image_path]; return <article className="item" key={c.id}><div className={'preview' + (cover ? ' hasphoto' : '')}>{cover ? <Photo url={cover} /> : <span><FolderHeart size={26} /></span>}</div><div className="itembody"><div className="eyebrow">COLLECTION</div><strong>{c.name}</strong><small>{c.items.length} {c.items.length === 1 ? 'elemento' : 'elementi'}</small>{c.items.map(i => <div key={i.id} className="shared">{photoUrls[i.image_path] && <Photo className="thumb" url={photoUrls[i.image_path]} alt={i.title} />}{friendShare.can_save ? <button className="textlink" disabled={busy} onClick={async () => { const r = await run(() => api.saveSharedItem(i, collectionId('Idee')), 'Salvato nel tuo mondo'); if (r) refreshArchive(); }}>+ Save {i.title}</button> : (safeUrl(i.url) ? <a className="textlink" href={i.url} target="_blank" rel="noopener noreferrer">{i.title}</a> : <span className="textlink">{i.title}</span>)}</div>)}</div></article>; })}</div>
         {!friendGroups.length && <div className="empty compact">Nessun elemento condiviso per ora.</div>}
         {friendShare.allow_ai_export && <button className="pill dark wide" disabled={busy} onClick={async () => exportShared(await run(() => api.aiExportShared(friend.id)), 'MORETHERE — SHARED CONTEXT', nameOf(friend))}><Sparkles size={18} /> Use with AI</button>}
         <p className="hint"><ShieldCheck size={13} className="inline" /> {friendShare.can_save ? 'Lettura e copia' : 'Solo lettura'} · {friendShare.allow_ai_export ? 'Uso con AI consentito' : 'Uso con AI non consentito'}. {nameOf(friend)} può modificare o revocare questo accesso in qualsiasi momento.</p></>}
@@ -345,7 +424,7 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
     {screen === 'world' && selected && <main><div className="eyebrow">OUR LITTLE WORLD</div><h1>{worldData?.world.name || selected.name}</h1>
       {!worldData ? <div className="empty compact">Caricamento…</div> : <>
         <p className="muted">{worldData.members.filter(m => m.status === 'active' && m.user_id !== api.me).length ? 'Con ' + worldData.members.filter(m => m.status === 'active' && m.user_id !== api.me).map(m => nameOf(m.profile)).join(', ') : 'Il tuo mondo'} · {worldData.items.length} {worldData.items.length === 1 ? 'elemento' : 'elementi'}</p>
-        <h2>Nel vostro mondo</h2>{worldData.items.length ? <div className="stack">{worldData.items.map(i => <div key={i.id} className="feature"><Bookmark /><span><strong>{safeUrl(i.url) ? <a href={i.url} target="_blank" rel="noopener noreferrer">{i.title}</a> : i.title}</strong><small>{i.note ? i.note.slice(0, 90) + ' · ' : ''}{i.added_by === api.me ? 'Aggiunto da te' : 'Aggiunto da ' + nameOf(i.adder)}</small></span>{(i.added_by === api.me || isWorldOwner) && <button className="iconbtn" aria-label="Rimuovi dal mondo" onClick={async () => { await run(() => api.removeWorldItem(i.id)); reloadWorld(selected.id); refreshWorlds(); }}><X size={18} /></button>}</div>)}</div> : <div className="empty compact">Ancora vuoto. Aggiungete la prima scoperta.</div>}
+        <h2>Nel vostro mondo</h2>{worldData.items.length ? <div className="stack">{worldData.items.map(i => <div key={i.id} className="feature">{photoUrls[i.image_path] ? <Photo className="rowthumb" url={photoUrls[i.image_path]} alt="" /> : <Bookmark />}<span><strong>{safeUrl(i.url) ? <a href={i.url} target="_blank" rel="noopener noreferrer">{i.title}</a> : i.title}</strong><small>{i.note ? i.note.slice(0, 90) + ' · ' : ''}{i.added_by === api.me ? 'Aggiunto da te' : 'Aggiunto da ' + nameOf(i.adder)}</small></span>{(i.added_by === api.me || isWorldOwner) && <button className="iconbtn" aria-label="Rimuovi dal mondo" onClick={async () => { await run(() => api.removeWorldItem(i.id)); reloadWorld(selected.id); refreshWorlds(); }}><X size={18} /></button>}</div>)}</div> : <div className="empty compact">Ancora vuoto. Aggiungete la prima scoperta.</div>}
         <h2>Aggiungi dal tuo archivio</h2><div className="stack">{items.map(i => { const added = worldSourceIds.has(i.id); return <button key={i.id} className="feature" disabled={busy} onClick={async () => { if (added) return; const r = await run(() => api.addItemToWorld(selected.id, i.id), 'Aggiunto al vostro mondo'); if (r !== undefined) { reloadWorld(selected.id); refreshWorlds(); } }}><Bookmark /><span><strong>{i.title}</strong><small>{added ? 'Già aggiunto' : 'Aggiungi'}</small></span>{added ? <Check /> : <Plus />}</button>; })}</div>
         <h2>Persone</h2><div className="people">{worldData.members.map(m => <div key={m.user_id} className="person"><div className="avatar">{nameOf(m.profile)[0]}</div><span><strong>{m.user_id === api.me ? 'Tu' : nameOf(m.profile)}</strong><small>{m.role === 'owner' ? 'Ha creato questo mondo' : m.status === 'invited' ? 'Invito in attesa' : 'Partecipa'}{m.status === 'active' ? (m.allow_ai_export ? ' · AI consentita' : ' · AI non consentita') : ''}</small></span>{isWorldOwner && m.role !== 'owner' && <button className="iconbtn" aria-label="Rimuovi persona" onClick={async () => { if (!window.confirm('Rimuovere questa persona dal mondo?')) return; await run(() => api.removeWorldMember(selected.id, m.user_id)); reloadWorld(selected.id); }}><X size={18} /></button>}</div>)}</div>
         {accepted.some(c => !memberIds.has(c.other.id)) && <div className="panel"><label htmlFor="winv">INVITA QUALCUNO</label><select id="winv" value={worldInvitee} onChange={e => setWorldInvitee(e.target.value)}><option value="">Scegli dal tuo Circle...</option>{accepted.filter(c => !memberIds.has(c.other.id)).map(c => <option key={c.other.id} value={c.other.id}>{nameOf(c.other)}</option>)}</select><button className="pill dark wide" disabled={busy || !worldInvitee} onClick={async () => { await run(() => api.inviteToWorld(selected.id, worldInvitee), 'Invito inviato'); setWorldInvitee(''); reloadWorld(selected.id); }}><Send size={18} /> Invita</button></div>}
@@ -354,7 +433,12 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
         <p className="hint">L'esportazione include i tuoi contributi e quelli di chi lo ha consentito.</p>
         {isWorldOwner ? <button className="textlink danger" onClick={async () => { if (!window.confirm('Eliminare questo mondo per tutti?')) return; await run(() => api.deleteWorld(selected.id), 'Mondo eliminato'); await refreshWorlds(); setScreen('worlds'); }}>Elimina questo mondo</button> : <button className="textlink danger" onClick={async () => { if (!window.confirm('Lasciare questo mondo?')) return; await run(() => api.removeWorldMember(selected.id, api.me), 'Hai lasciato il mondo'); await refreshWorlds(); setScreen('worlds'); }}>Lascia questo mondo</button>}</>}</main>}
 
-    {screen === 'detail' && selected && <main><div className="eyebrow">{selected.category}</div><h1>{selected.title}</h1>{safeUrl(selected.url || '') && <a className="outlink" href={selected.url} target="_blank" rel="noopener noreferrer">Apri la fonte <ExternalLink size={17} /></a>}{selected.note && <p>{selected.note}</p>}<div className="panel"><label htmlFor="col">RACCOLTA</label><select id="col" value={selected.collection || ''} onChange={async e => { const v = e.target.value; const id = collectionId(v); setItems(arr => arr.map(i => i.id === selected.id ? { ...i, collection: v, collection_id: id } : i)); setSelected({ ...selected, collection: v, collection_id: id }); try { await api.updateItem(selected.id, { collection_id: id, collection: v }); } catch (err) { toast(friendlyError(err)); refreshArchive(); } }}>{!selected.collection && <option value="">—</option>}{collections.map(c => <option key={c}>{c}</option>)}</select></div><div className="stack"><button className="feature" onClick={() => share(selected)}><Heart /><span><strong>Thought of you</strong><small>Condividi con una dedica</small></span><ChevronRight /></button><button className="feature" onClick={() => exportAI([selected])}><Sparkles /><span><strong>Use with AI</strong><small>Copia il contesto</small></span><ChevronRight /></button></div></main>}
+    {screen === 'detail' && selected && <main><div className="eyebrow">{selected.category}</div>
+      {photoUrls[selected.image_path] && <Photo className="hero" url={photoUrls[selected.image_path]} alt={selected.title} />}
+      {edit ? <div className="panel"><label htmlFor="e-title">TITOLO</label><input id="e-title" maxLength={300} value={edit.title} onChange={e => setEdit({ ...edit, title: e.target.value })} /><label htmlFor="e-url">LINK</label><input id="e-url" inputMode="url" autoCapitalize="none" placeholder="https://…" value={edit.url} onChange={e => setEdit({ ...edit, url: e.target.value })} /><label htmlFor="e-note">NOTA</label><textarea id="e-note" rows="5" maxLength={10000} value={edit.note} onChange={e => setEdit({ ...edit, note: e.target.value })} /><button className="pill dark wide" disabled={busy} onClick={saveEdit}><Check size={18} /> Salva</button><button className="pill outline wide" onClick={() => setEdit(null)}>Annulla</button></div>
+        : <><h1>{selected.title}</h1>{safeUrl(selected.url || '') && <a className="outlink" href={selected.url} target="_blank" rel="noopener noreferrer">Apri la fonte <ExternalLink size={17} /></a>}{selected.note && <p className="notebody">{selected.note}</p>}
+          <div className="detailtools"><button className="textlink" onClick={() => setEdit({ title: selected.title, url: selected.url || '', note: selected.note || '' })}><Pencil size={14} /> Modifica</button><button className="textlink" disabled={busy} onClick={() => pickPhoto(selected.id)}><ImagePlus size={14} /> {selected.image_path ? 'Cambia foto' : 'Aggiungi foto'}</button><button className="textlink danger" onClick={async () => { if (!window.confirm(`Eliminare "${selected.title}"?`)) return; await removeItem(selected); back(); }}><Trash2 size={14} /> Elimina</button></div></>}
+      <div className="panel"><label htmlFor="col">RACCOLTA</label><select id="col" value={selected.collection || ''} onChange={async e => { const v = e.target.value; const id = collectionId(v); setItems(arr => arr.map(i => i.id === selected.id ? { ...i, collection: v, collection_id: id } : i)); setSelected({ ...selected, collection: v, collection_id: id }); try { await api.updateItem(selected.id, { collection_id: id, collection: v }); } catch (err) { toast(friendlyError(err)); refreshArchive(); } }}>{!selected.collection && <option value="">—</option>}{collections.map(c => <option key={c}>{c}</option>)}</select></div><div className="stack"><button className="feature" onClick={() => share(selected)}><Heart /><span><strong>Thought of you</strong><small>Condividi con una dedica</small></span><ChevronRight /></button><button className="feature" onClick={() => exportAI([selected])}><Sparkles /><span><strong>Use with AI</strong><small>Copia il contesto</small></span><ChevronRight /></button></div></main>}
 
     {screen === 'thought' && <main><div className="eyebrow">A LITTLE SOMETHING FOR SOMEONE</div><h1>Who are you thinking of?</h1><p className="muted">Lascia un piccolo pensiero a qualcuno.</p>{!selected && <div className="panel"><label htmlFor="pick">SCEGLI UNA SCOPERTA</label><select id="pick" value="" onChange={e => setSelected(items.find(i => i.id === e.target.value) || null)}><option value="">Seleziona un elemento...</option>{items.map(i => <option value={i.id} key={i.id}>{i.title}</option>)}</select></div>}{selected && <div className="panel"><strong>{selected.title}</strong><small>{selected.url || selected.note}</small></div>}
       <div className="panel"><label htmlFor="to">PER CHI?</label>{social && accepted.length > 0 && <select id="to" value={recipientId} onChange={e => setRecipientId(e.target.value)}>{accepted.map(c => <option key={c.other.id} value={c.other.id}>{nameOf(c.other)}</option>)}<option value="__external">Qualcun altro, fuori da morethere</option></select>}{(!social || !accepted.length || recipientId === '__external') && <input id={social && accepted.length ? 'to-ext' : 'to'} placeholder="Nome o contatto" value={recipient} onChange={e => setRecipient(e.target.value)} />}<label htmlFor="msg">LA TUA DEDICA</label><textarea id="msg" rows="4" maxLength={1000} placeholder="Ho visto questo e ho pensato subito a te..." value={message} onChange={e => setMessage(e.target.value)} />{social && accepted.length > 0 && recipientId !== '__external' && <Toggle checked={thoughtAi} onChange={setThoughtAi} label="Può usarlo con AI" hint="Consenti di includere questo pensiero nel suo contesto AI." />}<button className="pill dark wide" disabled={!selected || busy} onClick={sendThought}><Send size={18} /> Send a thought</button></div>
@@ -383,6 +467,8 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
     {screen === 'export' && <main><h1>AI Context</h1><textarea readOnly rows="16" value={selected?.text || ''} /><button className="pill dark wide" onClick={() => navigator.clipboard?.writeText(selected.text).then(() => toast('Copiato'))}><Copy size={18} /> Copia</button></main>}
 
     {showAddCollection && <div className="overlay" role="presentation" onClick={() => setShowAddCollection(false)}><div className="modal" role="dialog" aria-modal="true" aria-label="Nuova raccolta" onClick={e => e.stopPropagation()}><button className="close" aria-label="Chiudi" onClick={() => setShowAddCollection(false)}><X /></button><h2>Nuova raccolta</h2><input placeholder="Nome della raccolta" maxLength={60} value={newCollection} onChange={e => setNewCollection(e.target.value)} /><button className="pill dark wide" disabled={busy} onClick={async () => { const n = newCollection.trim(); if (n && !collections.some(c => c.toLowerCase() === n.toLowerCase())) { const r = await run(() => api.addCollection(n, collectionRows.length)); if (r) await refreshArchive(); } setNewCollection(''); setShowAddCollection(false); }}>Crea</button></div></div>}
+
+    {collectionDialog && <div className="overlay" role="presentation" onClick={() => setCollectionDialog(null)}><div className="modal" role="dialog" aria-modal="true" aria-label="Rinomina raccolta" onClick={e => e.stopPropagation()}><button className="close" aria-label="Chiudi" onClick={() => setCollectionDialog(null)}><X /></button><h2>Rinomina raccolta</h2><input aria-label="Nuovo nome" maxLength={60} value={collectionDialog.name} onChange={e => setCollectionDialog({ ...collectionDialog, name: e.target.value })} onKeyDown={e => e.key === 'Enter' && renameCollection()} /><button className="pill dark wide" disabled={busy} onClick={renameCollection}>Salva</button></div></div>}
 
     {invite && <div className="overlay" role="presentation"><div className="modal" role="dialog" aria-modal="true" aria-label="Invito"><UserRoundCheck size={28} />{invite.invalid ? <><h2>Invito non disponibile</h2><p className="muted">Questo link non è valido, è scaduto o è già stato usato. Chiedi un nuovo invito.</p><button className="pill dark wide" onClick={() => { setInvite(null); onInviteHandled?.(); }}>Ok</button></> : <><h2>{invite.inviter_name} ti invita nel suo Circle</h2><p className="muted">Accettando diventerete connessi. Nessuno dei due vedrà nulla dell'altro finché non sceglierete di condividerlo.</p><button className="pill dark wide" disabled={busy} onClick={acceptInvite}>Accetta</button><button className="pill outline wide" onClick={() => { setInvite(null); onInviteHandled?.(); }}>Non ora</button></>}</div></div>}
 

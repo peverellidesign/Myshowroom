@@ -42,3 +42,18 @@ a.textlink:hover,button.textlink:hover{color:#252525}
 main>textarea{width:100%;border:1px solid #e2e2e2;border-radius:16px;padding:14px;font-size:14px}
 @media(prefers-reduced-motion:reduce){.toggle i,.toggle i::after{transition:none}}
 .itembody>strong,.itembody>small{display:block}.itembody>small{color:#888;margin:4px 0 6px;font-size:12px}
+/* ---- photos, editing, collections ---- */
+.square:disabled{opacity:.5}
+.preview.hasphoto{padding:0;overflow:hidden;position:relative}
+.preview img{width:100%;height:100%;object-fit:cover;display:block}
+.hero{display:block;width:100%;max-height:440px;object-fit:cover;border-radius:20px;margin:16px 0 6px;background:#f4f4f2}
+.notebody{white-space:pre-wrap;overflow-wrap:anywhere}
+.detailtools{display:flex;flex-wrap:wrap;gap:4px 18px;margin:4px 0 8px}
+.detailtools .textlink,.collectionTools .textlink{display:inline-flex;align-items:center;gap:5px;font-size:13px;margin:0}
+.collectionTools{display:flex;gap:18px;margin:-10px 0 6px}
+.shared{display:flex;align-items:center;gap:8px}
+.thumb{width:34px;height:34px;border-radius:8px;object-fit:cover;flex-shrink:0;background:#f4f4f2}
+.rowthumb{width:44px;height:44px;border-radius:12px;object-fit:cover;flex-shrink:0;background:#f4f4f2}
+.notephoto{display:block;width:100%;max-height:260px;object-fit:cover;border-radius:16px;margin:6px 0 8px;background:#f4f4f2}
+/* installed app: respect the notch and home indicator */
+@supports(padding:env(safe-area-inset-top)){header{padding-top:max(29px,env(safe-area-inset-top))}main{padding-bottom:max(75px,calc(env(safe-area-inset-bottom) + 40px))}.toast{bottom:max(24px,calc(env(safe-area-inset-bottom) + 12px))}}

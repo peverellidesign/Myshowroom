@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { handlePreview } from './preview.mjs';
 
 const root = join(fileURLToPath(new URL('.', import.meta.url)), 'dist');
 const port = Number(process.env.PORT) || 8080;
@@ -12,7 +13,7 @@ const wss = supabase.replace(/^https:/, 'wss:');
 
 const types = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8',
-  '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.webmanifest': 'application/manifest+json',
+  '.svg': 'image/svg+xml', '.txt': 'text/plain; charset=utf-8', '.png': 'image/png', '.ico': 'image/x-icon', '.json': 'application/json', '.webmanifest': 'application/manifest+json',
 };
 const headers = {
   'Content-Security-Policy': [
@@ -21,7 +22,8 @@ const headers = {
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src https://fonts.gstatic.com",
-    "img-src 'self' data:",
+    `img-src 'self' data: blob: ${supabase}`.trim(),
+    "manifest-src 'self'", "worker-src 'self'",
     "frame-ancestors 'none'", "base-uri 'self'", "form-action 'self'",
   ].join('; '),
   'X-Content-Type-Options': 'nosniff',
@@ -40,9 +42,11 @@ createServer(async (req, res) => {
   try {
     const path = decodeURIComponent(new URL(req.url, 'http://x').pathname);
     if (path === '/health') { res.writeHead(200, { 'Content-Type': 'text/plain' }); return res.end('ok'); }
+    if (path === '/api/preview' && req.method === 'GET') return await handlePreview(req, res);
     const file = normalize(join(root, path));
     if (file.startsWith(root) && path !== '/' && (await stat(file).catch(() => null))?.isFile()) {
-      return await send(res, file, path.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : 'public, max-age=300');
+      const cache = path.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : path === '/sw.js' ? 'no-cache' : 'public, max-age=300';
+      return await send(res, file, cache);
     }
     return await send(res, join(root, 'index.html'), 'no-cache');
   } catch {

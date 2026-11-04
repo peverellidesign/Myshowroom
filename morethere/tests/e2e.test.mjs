@@ -8,6 +8,8 @@ import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { mkdirSync } from 'node:fs';
+import { createServer } from 'node:http';
+import { fileURLToPath } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
 
 const require = createRequire(import.meta.url);
@@ -24,6 +26,8 @@ const people = {
 };
 let browser;
 const ctx = {};
+const PHOTO = fileURLToPath(new URL('../public/icon-512.png', import.meta.url));
+let pageServer; let pageUrl;
 
 const shot = async (page, name) => {
   if (!SHOTS) return;
@@ -44,6 +48,13 @@ async function signUp(page, p) {
 }
 
 before(async () => {
+  // A small page to test link previews (the dev server runs with PREVIEW_ALLOW_PRIVATE=1).
+  pageServer = createServer((_req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+    res.end('<html><head><title>fallback</title><meta property="og:title" content="Trattoria da Mario — Milano"><meta name="description" content="Cucina lombarda dal 1962"></head><body></body></html>');
+  });
+  await new Promise(r => pageServer.listen(0, '127.0.0.1', r));
+  pageUrl = `http://127.0.0.1:${pageServer.address().port}/trattoria`;
   browser = await playwright.chromium.launch();
   for (const n of Object.keys(people)) {
     ctx[n] = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, permissions: ['clipboard-read', 'clipboard-write'] });
@@ -53,6 +64,7 @@ before(async () => {
 });
 
 after(async () => {
+  pageServer?.close();
   await browser?.close();
   const { data } = await admin.auth.admin.listUsers({ perPage: 200 });
   for (const u of data?.users || []) if (u.email?.endsWith(`${run}@e2e.morethere.local`)) await admin.auth.admin.deleteUser(u.id);
@@ -100,6 +112,52 @@ test('saving a link and a note works as in the prototype', async () => {
   await shot(page, '03-home');
 });
 
+test('link preview replaces the hostname with the real page title', async () => {
+  const { page } = people.alice;
+  await page.getByPlaceholder('Incolla un link o scrivi...').fill(pageUrl);
+  await page.getByPlaceholder('Incolla un link o scrivi...').press('Enter');
+  await toast(page, 'Salvato nel tuo mondo');
+  await page.locator('.item', { hasText: 'Trattoria da Mario — Milano' }).waitFor({ timeout: 15000 });
+});
+
+test('camera button saves a private photo, shown on the card and in detail', async () => {
+  const { page } = people.alice;
+  await page.locator('input[type=file]').setInputFiles(PHOTO);
+  await toast(page, 'Foto salvata nel tuo mondo');
+  const card = page.locator('.item', { hasText: 'Foto del' });
+  await card.locator('.preview img').waitFor();
+  assert.ok(await card.locator('.preview img').evaluate(img => img.complete && img.naturalWidth > 0), 'thumbnail loads');
+  assert.match(await card.locator('.preview img').getAttribute('src'), /\/storage\/v1\/object\/sign\/media\//, 'served by a signed URL');
+  await card.locator('.itemtitle').click();
+  await page.locator('img.hero').waitFor();
+  // Put it in the "Viaggi" collection so it can be shared later.
+  await page.getByLabel('RACCOLTA').selectOption('Viaggi');
+  await shot(page, '03b-photo-detail');
+  await close(page);
+});
+
+test('edit an item, rename and delete a collection', async () => {
+  const { page } = people.alice;
+  await page.locator('.item', { hasText: 'Idea segreta' }).locator('.itemtitle').click();
+  await page.getByRole('button', { name: 'Modifica' }).click();
+  await page.getByLabel('TITOLO').fill('Idea segreta (rivista)');
+  await page.getByLabel('NOTA').fill('Solo per me, aggiornata');
+  await page.getByRole('button', { name: 'Salva' }).click();
+  await toast(page, 'Modifiche salvate');
+  await page.getByRole('heading', { name: 'Idea segreta (rivista)' }).waitFor();
+  await close(page);
+  await page.getByRole('button', { name: 'Design', exact: true }).click();
+  await page.getByRole('button', { name: 'Rinomina' }).click();
+  await page.getByLabel('Nuovo nome').fill('Design e casa');
+  await page.getByLabel('Rinomina raccolta').getByRole('button', { name: 'Salva' }).click();
+  await toast(page, 'Raccolta rinominata');
+  await page.getByRole('button', { name: 'Design e casa', exact: true }).waitFor();
+  page.once('dialog', d => d.accept());
+  await page.getByRole('button', { name: 'Elimina raccolta' }).click();
+  await toast(page, 'Raccolta eliminata');
+  assert.equal(await page.getByRole('button', { name: 'Design e casa', exact: true }).count(), 0);
+});
+
 test('invitation link connects two people', async () => {
   const alice = people.alice.page;
   const bob = people.bob.page;
@@ -143,6 +201,9 @@ test('Enter my world: grantee sees exactly the granted collection', async () => 
   await bob.getByRole('button', { name: /Apri Your Circle/ }).click();
   await bob.getByRole('button', { name: /Alice/ }).click();
   await bob.getByText('+ Save Kyoto inspiration').waitFor();
+  // The photo in the shared collection is visible to Bob, through a signed URL.
+  await bob.locator('.shared img.thumb').first().waitFor();
+  assert.ok(await bob.locator('.shared img.thumb').first().evaluate(img => img.complete && img.naturalWidth > 0), 'shared photo loads');
   assert.equal(await bob.getByText('Idea segreta').count(), 0, 'private item not visible');
   assert.equal(await bob.getByText('example.org').count(), 0, 'item outside the grant not visible');
   await shot(bob, '07-their-world');

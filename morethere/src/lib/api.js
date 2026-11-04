@@ -18,6 +18,8 @@ const ERRORS = {
   invite_not_found: 'Invito non trovato.',
   thought_not_found: 'Pensiero non trovato.',
   not_authenticated: 'Accedi per continuare.',
+  image_unreadable: 'Questa immagine non si può leggere. Prova con una foto JPEG o PNG.',
+  'exceeded the maximum allowed size': 'La foto è troppo grande (massimo 5 MB).',
 };
 
 export function friendlyError(error) {
@@ -36,6 +38,22 @@ const must = ({ data, error }) => {
   return data;
 };
 
+// ---- photos ----------------------------------------------------------------
+// Resized on the device before upload (max 1600px, JPEG), stored privately.
+export async function resizeImage(file, max = 1600, quality = 0.82) {
+  const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => null);
+  if (!bitmap) throw new Error('image_unreadable');
+  const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(bitmap.width * scale);
+  canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close?.();
+  return new Promise((resolve, reject) => canvas.toBlob(b => (b ? resolve(b) : reject(new Error('image_unreadable'))), 'image/jpeg', quality));
+}
+
+const signed = new Map(); // path -> { url, exp }
+
 const toItem = (row, collectionsById) => ({
   id: row.id,
   owner_id: row.owner_id,
@@ -45,10 +63,11 @@ const toItem = (row, collectionsById) => ({
   category: row.category,
   collection_id: row.collection_id,
   collection: row.collection_id ? collectionsById[row.collection_id]?.name || '' : '',
+  image_path: row.image_path || null,
   created: Date.parse(row.created_at),
 });
 
-const ITEM_COLS = 'id, owner_id, collection_id, title, url, note, category, created_at';
+const ITEM_COLS = 'id, owner_id, collection_id, title, url, note, category, image_path, created_at';
 
 async function profilesById(ids) {
   const unique = [...new Set(ids.filter(Boolean))];
@@ -84,21 +103,74 @@ export function createRemoteApi(user) {
       const byId = Object.fromEntries(collections.map(c => [c.id, c]));
       return { collections, items: must(items).map(r => toItem(r, byId)) };
     },
-    async addItem({ title, url, note, category, collection_id }) {
+    async addItem({ title, url, note, category, collection_id, image_path }) {
       return must(await supabase.from('items')
-        .insert({ title, url: url || null, note: note || '', category, collection_id: collection_id || null })
+        .insert({ title, url: url || null, note: note || '', category, collection_id: collection_id || null, image_path: image_path || null })
         .select(ITEM_COLS).single());
     },
     async updateItem(id, patch) {
       const row = {};
       if ('collection_id' in patch) row.collection_id = patch.collection_id || null;
+      for (const k of ['title', 'note', 'url', 'category', 'image_path']) if (k in patch) row[k] = patch[k];
+      if ('url' in row) row.url = row.url || null;
       must(await supabase.from('items').update(row).eq('id', id));
     },
-    async deleteItem(id) {
-      must(await supabase.from('items').delete().eq('id', id));
+    async deleteItem(item) {
+      must(await supabase.from('items').delete().eq('id', item.id));
+      if (item.image_path) await this.releasePhoto(item.image_path);
     },
     async addCollection(name, position) {
       return must(await supabase.from('collections').insert({ name, position }).select('id, name, position').single());
+    },
+    async renameCollection(id, name) {
+      must(await supabase.from('collections').update({ name }).eq('id', id).eq('owner_id', me));
+    },
+    async deleteCollection(id) {
+      must(await supabase.from('collections').delete().eq('id', id).eq('owner_id', me));
+    },
+
+    // ---- photos -------------------------------------------------------------
+    async uploadPhoto(file) {
+      const blob = await resizeImage(file);
+      const path = `${me}/${crypto.randomUUID()}.jpg`;
+      must(await supabase.storage.from('media').upload(path, blob, { contentType: 'image/jpeg', cacheControl: '3600' }));
+      return path;
+    },
+    // Delete a file unless a thought or a world still shows it.
+    async releasePhoto(path) {
+      if (!path?.startsWith(me + '/')) return;
+      const [t, w, i] = await Promise.all([
+        supabase.from('thoughts').select('id', { count: 'exact', head: true }).eq('sender_id', me).eq('item_image_path', path),
+        supabase.from('world_items').select('id', { count: 'exact', head: true }).eq('added_by', me).eq('image_path', path),
+        supabase.from('items').select('id', { count: 'exact', head: true }).eq('owner_id', me).eq('image_path', path),
+      ]);
+      if ((t.count || 0) + (w.count || 0) + (i.count || 0) === 0) await supabase.storage.from('media').remove([path]);
+    },
+    // Copy a photo someone shared into my own folder (for saved copies).
+    async copyPhoto(path) {
+      if (!path) return null;
+      const dest = `${me}/${crypto.randomUUID()}.jpg`;
+      const { error } = await supabase.storage.from('media').copy(path, dest);
+      return error ? null : dest;
+    },
+    async photoUrls(paths) {
+      const now = Date.now();
+      const missing = [...new Set(paths.filter(Boolean))].filter(p => !(signed.get(p)?.exp > now + 60_000));
+      if (missing.length) {
+        const { data } = await supabase.storage.from('media').createSignedUrls(missing, 3600);
+        (data || []).forEach(d => { if (d.signedUrl) signed.set(d.path, { url: d.signedUrl, exp: now + 3500_000 }); });
+      }
+      return Object.fromEntries(paths.filter(p => signed.has(p)).map(p => [p, signed.get(p).url]));
+    },
+
+    // ---- link previews (server-side fetch, signed-in users only) ------------
+    async linkPreview(url) {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) return null;
+      const res = await fetch(`/api/preview?url=${encodeURIComponent(url)}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) return null;
+      return res.json();
     },
 
     // ---- consent-based import of on-device data --------------------------
@@ -208,8 +280,11 @@ export function createRemoteApi(user) {
       const byId = Object.fromEntries(collections.map(c => [c.id, c]));
       return { share: must(share), collections, items: must(items).map(r => toItem(r, byId)) };
     },
-    async saveSharedItem(itemId, collectionId) {
-      return must(await supabase.rpc('save_shared_item', { p_item: itemId, p_collection: collectionId || null }));
+    async saveSharedItem(item, collectionId) {
+      const id = must(await supabase.rpc('save_shared_item', { p_item: item.id, p_collection: collectionId || null }));
+      const copy = await this.copyPhoto(item.image_path);
+      if (copy) await supabase.from('items').update({ image_path: copy }).eq('id', id);
+      return id;
     },
 
     // ---- thought of you --------------------------------------------------
@@ -228,7 +303,12 @@ export function createRemoteApi(user) {
       }));
     },
     async markThoughtRead(id) { must(await supabase.rpc('mark_thought_read', { p_thought: id })); },
-    async saveThought(id) { return must(await supabase.rpc('save_thought', { p_thought: id })); },
+    async saveThought(thought) {
+      const id = must(await supabase.rpc('save_thought', { p_thought: thought.id }));
+      const copy = await this.copyPhoto(thought.item_image_path);
+      if (copy) await supabase.from('items').update({ image_path: copy }).eq('id', id);
+      return id;
+    },
     async deleteThought(id) { must(await supabase.from('thoughts').delete().eq('id', id)); },
 
     // ---- our little world ------------------------------------------------
@@ -303,6 +383,8 @@ export function createRemoteApi(user) {
     // ---- account ----------------------------------------------------------
     async exportMyData() { return must(await supabase.rpc('export_my_data')); },
     async deleteAccount() {
+      const { data: files } = await supabase.storage.from('media').list(me, { limit: 1000 });
+      if (files?.length) await supabase.storage.from('media').remove(files.map(f => `${me}/${f.name}`));
       must(await supabase.rpc('delete_my_account'));
       await supabase.auth.signOut({ scope: 'local' });
     },

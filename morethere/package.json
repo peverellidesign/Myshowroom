@@ -9,7 +9,7 @@
     "preview": "vite preview --host 0.0.0.0",
     "db:start": "supabase start",
     "db:reset": "supabase db reset",
-    "test:authz": "node --test --test-concurrency=1 tests/authz.test.mjs",
+    "test:authz": "node --test --test-concurrency=1 tests/authz.test.mjs tests/media.test.mjs",
     "test:e2e": "node --test tests/e2e.test.mjs",
     "start": "node server.mjs"
   },
