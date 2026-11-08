@@ -79,6 +79,7 @@ export function createLocalApi() {
     },
     async photoUrls(paths) { return Object.fromEntries(paths.filter(Boolean).map(p => [p, p])); },
     async linkPreview() { return null; },
+    async previewImage() { return null; },
     subscribe() { return () => {}; },
   };
 }

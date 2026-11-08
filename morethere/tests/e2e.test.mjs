@@ -7,7 +7,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
@@ -49,9 +49,13 @@ async function signUp(page, p) {
 
 before(async () => {
   // A small page to test link previews (the dev server runs with PREVIEW_ALLOW_PRIVATE=1).
-  pageServer = createServer((_req, res) => {
+  pageServer = createServer((req, res) => {
+    if (req.url.startsWith('/cover.png')) {
+      res.writeHead(200, { 'Content-Type': 'image/png' });
+      return res.end(readFileSync(PHOTO));
+    }
     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-    res.end('<html><head><title>fallback</title><meta property="og:title" content="Trattoria da Mario — Milano"><meta name="description" content="Cucina lombarda dal 1962"></head><body></body></html>');
+    res.end('<html><head><title>fallback</title><meta property="og:title" content="Trattoria da Mario — Milano"><meta name="description" content="Cucina lombarda dal 1962"><meta property="og:image" content="/cover.png"></head><body></body></html>');
   });
   await new Promise(r => pageServer.listen(0, '127.0.0.1', r));
   pageUrl = `http://127.0.0.1:${pageServer.address().port}/trattoria`;
@@ -112,12 +116,17 @@ test('saving a link and a note works as in the prototype', async () => {
   await shot(page, '03-home');
 });
 
-test('link preview replaces the hostname with the real page title', async () => {
+test('link preview: real page title and cover image, stored as a private photo', async () => {
   const { page } = people.alice;
   await page.getByPlaceholder('Incolla un link o scrivi...').fill(pageUrl);
   await page.getByPlaceholder('Incolla un link o scrivi...').press('Enter');
   await toast(page, 'Salvato nel tuo mondo');
-  await page.locator('.item', { hasText: 'Trattoria da Mario — Milano' }).waitFor({ timeout: 15000 });
+  const card = page.locator('.item', { hasText: 'Trattoria da Mario — Milano' });
+  await card.waitFor({ timeout: 15000 });
+  await card.locator('.preview img').waitFor({ timeout: 15000 });
+  assert.ok(await card.locator('.preview img').evaluate(img => img.complete && img.naturalWidth > 0), 'cover image loads');
+  assert.match(await card.locator('.preview img').getAttribute('src'), /\/storage\/v1\/object\/sign\/media\//, 'served from private storage, not the original site');
+  await shot(page, '03a-link-preview');
 });
 
 test('camera button saves a private photo, shown on the card and in detail', async () => {

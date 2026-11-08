@@ -184,6 +184,17 @@ export function createRemoteApi(user) {
       if (!res.ok) return null;
       return res.json();
     },
+    // The page's cover image, fetched by our server and returned as a Blob.
+    async previewImage(imageUrl) {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token || !imageUrl) return null;
+      const res = await fetch(`/api/preview-image?url=${encodeURIComponent(imageUrl)}`, { headers: { Authorization: `Bearer ${token}` } });
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return blob.type.startsWith('image/') && blob.size > 0 ? blob : null;
+    },
+    get photosEnabled() { return photosSupported; },
 
     // ---- consent-based import of on-device data --------------------------
     async importLegacy({ items, collections, worlds }) {

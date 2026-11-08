@@ -6,8 +6,9 @@ function previewApi() {
   return {
     name: 'morethere-preview-api',
     async configureServer(server) {
-      const { handlePreview } = await import('./preview.mjs');
+      const { handlePreview, handlePreviewImage } = await import('./preview.mjs');
       // Connect strips the mount path; the handler only reads the query string.
+      server.middlewares.use('/api/preview-image', (req, res) => handlePreviewImage(req, res));
       server.middlewares.use('/api/preview', (req, res) => handlePreview(req, res));
     },
   };

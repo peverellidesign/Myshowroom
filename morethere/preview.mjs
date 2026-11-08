@@ -18,6 +18,8 @@ const SUPABASE_URL = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL 
 const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
 const ALLOW_PRIVATE = process.env.PREVIEW_ALLOW_PRIVATE === '1'; // tests only
 const MAX_BYTES = 512 * 1024;
+const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
+const IMAGE_TYPES = /^image\/(jpeg|png|webp|gif|avif)\b/i;
 const TIMEOUT_MS = 5000;
 
 const tokenCache = new Map(); // token -> { userId, exp }
@@ -53,7 +55,7 @@ async function resolvePublic(hostname) {
   return addrs[0];
 }
 
-function fetchOnce(url) {
+function fetchOnce(url, kind = 'html') {
   return new Promise(async (resolve, reject) => {
     let target;
     try { target = await resolvePublic(url.hostname); } catch (e) { return reject(e); }
@@ -63,17 +65,24 @@ function fetchOnce(url) {
       timeout: TIMEOUT_MS,
       // Pin the connection to the address we checked. Node may ask for the list form.
       lookup: (_h, o, cb) => (o?.all ? cb(null, [{ address: target.address, family: target.family }]) : cb(null, target.address, target.family)),
-      headers: { 'User-Agent': 'morethere-preview/1.0 (+link preview)', Accept: 'text/html,application/xhtml+xml', 'Accept-Language': 'it,en;q=0.8' },
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; morethere-preview/1.0; +link preview)',
+        Accept: kind === 'image' ? 'image/avif,image/webp,image/png,image/jpeg,image/gif;q=0.9' : 'text/html,application/xhtml+xml',
+        'Accept-Language': 'it,en;q=0.8',
+      },
     }, res => {
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         res.resume();
         return resolve({ redirect: new URL(res.headers.location, url) });
       }
       const type = String(res.headers['content-type'] || '');
-      if (res.statusCode !== 200 || !/text\/html|application\/xhtml/i.test(type)) { res.resume(); return reject(new Error('not_html')); }
-      const chunks = []; let size = 0;
-      res.on('data', c => { size += c.length; if (size > MAX_BYTES) { res.destroy(); } else chunks.push(c); });
-      res.on('close', () => resolve({ body: Buffer.concat(chunks), type }));
+      const okType = kind === 'image' ? IMAGE_TYPES.test(type) : /text\/html|application\/xhtml/i.test(type);
+      if (res.statusCode !== 200 || !okType) { res.resume(); return reject(new Error(kind === 'image' ? 'not_image' : 'not_html')); }
+      const limit = kind === 'image' ? MAX_IMAGE_BYTES : MAX_BYTES;
+      if (Number(res.headers['content-length'] || 0) > limit && kind === 'image') { res.destroy(); return reject(new Error('too_large')); }
+      const chunks = []; let size = 0; let truncated = false;
+      res.on('data', c => { size += c.length; if (size > limit) { truncated = true; res.destroy(); } else chunks.push(c); });
+      res.on('close', () => (kind === 'image' && truncated ? reject(new Error('too_large')) : resolve({ body: Buffer.concat(chunks), type })));
       res.on('error', reject);
     });
     req.on('timeout', () => req.destroy(new Error('timeout')));
@@ -110,7 +119,9 @@ export function parsePreview(html) {
   const title = meta(head, ['og:title', 'twitter:title']) || decode(head.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '');
   const description = meta(head, ['og:description', 'twitter:description', 'description']);
   const site = meta(head, ['og:site_name', 'application-name']);
-  return { title: title.slice(0, 300), description: description.slice(0, 600), site: site.slice(0, 80) };
+  const image = meta(head, ['og:image:secure_url', 'og:image', 'og:image:url', 'twitter:image', 'twitter:image:src'])
+    || decode(head.match(/<link\b[^>]*rel\s*=\s*["']image_src["'][^>]*>/i)?.[0]?.match(/href\s*=\s*("([^"]*)"|'([^']*)')/i)?.slice(2).find(Boolean) || '');
+  return { title: title.slice(0, 300), description: description.slice(0, 600), site: site.slice(0, 80), image };
 }
 
 export async function fetchPreview(raw) {
@@ -125,10 +136,24 @@ export async function fetchPreview(raw) {
     const charset = r.type.match(/charset=([\w-]+)/i)?.[1] || 'utf-8';
     let text;
     try { text = new TextDecoder(charset).decode(r.body); } catch { text = new TextDecoder('utf-8').decode(r.body); }
-    const value = { ...parsePreview(text), url: url.href };
+    const parsed = parsePreview(text);
+    let image = '';
+    if (parsed.image) try { const u = new URL(parsed.image, url); if (['http:', 'https:'].includes(u.protocol) && u.href.length <= 2048) image = u.href; } catch { /* no image */ }
+    const value = { ...parsed, image, url: url.href };
     if (resultCache.size > 500) resultCache.delete(resultCache.keys().next().value);
     resultCache.set(key, { value, exp: Date.now() + 3600_000 });
     return value;
+  }
+  throw new Error('too_many_redirects');
+}
+
+export async function fetchImage(raw) {
+  let url = new URL(raw);
+  for (let hop = 0; hop <= 3; hop++) {
+    checkUrl(url);
+    const r = await fetchOnce(url, 'image');
+    if (r.redirect) { url = r.redirect; continue; }
+    return r;
   }
   throw new Error('too_many_redirects');
 }
@@ -170,5 +195,29 @@ export async function handlePreview(req, res) {
     return json(res, 200, await fetchPreview(target));
   } catch {
     return json(res, 200, { title: '', description: '', site: '' });
+  }
+}
+
+// GET /api/preview-image?url=... — the page's cover image, fetched with the same
+// safeguards, so the browser can store it as a private photo of the item.
+export async function handlePreviewImage(req, res) {
+  try {
+    const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    const userId = token && await userFromToken(token);
+    if (!userId) return json(res, 401, { error: 'unauthorized' });
+    if (rateLimited(userId)) return json(res, 429, { error: 'rate_limited' });
+    const target = new URL(req.url, 'http://x').searchParams.get('url') || '';
+    if (!/^https?:\/\//i.test(target) || target.length > 2048) return json(res, 400, { error: 'bad_url' });
+    const img = await fetchImage(target);
+    res.writeHead(200, {
+      'Content-Type': img.type.split(';')[0],
+      'Content-Length': img.body.length,
+      'Cache-Control': 'private, no-store',
+      'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "default-src 'none'",
+    });
+    return res.end(img.body);
+  } catch {
+    return json(res, 422, { error: 'image_unavailable' });
   }
 }

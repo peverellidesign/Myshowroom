@@ -156,6 +156,27 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
     return () => { alive = false; };
   }, [api, visiblePhotos]);
 
+  // Complete links saved before cover images existed (a few per visit, once each).
+  const enriching = useRef(false);
+  useEffect(() => {
+    if (!social || !loaded || enriching.current) return;
+    let tried = [];
+    try { tried = JSON.parse(localStorage.getItem('mt_enriched') || '[]'); } catch { /* ignore */ }
+    const todo = items.filter(i => i.url && !i.image_path && !tried.includes(i.id)).slice(0, 5);
+    if (!todo.length) return;
+    enriching.current = true;
+    (async () => {
+      let changed = false;
+      for (const it of todo) {
+        changed = (await enrichLink(it)) || changed;
+        tried.push(it.id);
+        try { localStorage.setItem('mt_enriched', JSON.stringify(tried.slice(-500))); } catch { /* ignore */ }
+      }
+      enriching.current = false;
+      if (changed) refreshArchive();
+    })();
+  }, [social, loaded, items]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Invitation link opened before/while signing in.
   useEffect(() => {
     if (!social || !pendingInvite) return;
@@ -180,16 +201,31 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
     const saved = await run(() => api.addItem(draft), 'Salvato nel tuo mondo');
     if (!saved) return;
     setEntry(''); await refreshArchive();
-    // Enrich links with the real page title, in the background.
-    if (url) {
-      try {
-        const p = await api.linkPreview(url);
-        if (p?.title) {
-          await api.updateItem(saved.id, { title: p.title.slice(0, 300), ...(p.description ? { note: p.description.slice(0, 600) } : {}) });
-          await refreshArchive();
-        }
-      } catch { /* preview is best effort */ }
-    }
+    // Enrich links with the real page title and cover image, in the background.
+    if (url) { await enrichLink({ ...draft, id: saved.id, image_path: null }); await refreshArchive(); }
+  };
+  // Title, description and cover image from the page. Never overwrites what
+  // the person wrote: the title only while it is still the bare hostname,
+  // the note only while empty, the photo only while there is none.
+  const enrichLink = async (item) => {
+    const url = safeUrl(item.url || '');
+    if (!url) return false;
+    try {
+      const p = await api.linkPreview(url);
+      if (!p) return false;
+      const patch = {};
+      const host = new URL(url).hostname.replace(/^www\./, '');
+      if (p.title && (!item.title || item.title === host)) patch.title = p.title.slice(0, 300);
+      if (p.description && !item.note) patch.note = p.description.slice(0, 600);
+      if (p.image && !item.image_path && api.photosEnabled !== false) {
+        const blob = await api.previewImage(p.image);
+        if (blob) patch.image_path = await api.uploadPhoto(blob);
+      }
+      if (!Object.keys(patch).length) return false;
+      await api.updateItem(item.id, patch);
+      setSelected(sel => (sel?.id === item.id ? { ...sel, ...patch } : sel));
+      return true;
+    } catch { return false; } // previews are best effort
   };
   const pickPhoto = (itemId = null) => { photoTarget.current = itemId; fileInput.current?.click(); };
   const onPhotoChosen = async (e) => {
@@ -437,7 +473,7 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
       {photoUrls[selected.image_path] && <Photo className="hero" url={photoUrls[selected.image_path]} alt={selected.title} />}
       {edit ? <div className="panel"><label htmlFor="e-title">TITOLO</label><input id="e-title" maxLength={300} value={edit.title} onChange={e => setEdit({ ...edit, title: e.target.value })} /><label htmlFor="e-url">LINK</label><input id="e-url" inputMode="url" autoCapitalize="none" placeholder="https://…" value={edit.url} onChange={e => setEdit({ ...edit, url: e.target.value })} /><label htmlFor="e-note">NOTA</label><textarea id="e-note" rows="5" maxLength={10000} value={edit.note} onChange={e => setEdit({ ...edit, note: e.target.value })} /><button className="pill dark wide" disabled={busy} onClick={saveEdit}><Check size={18} /> Salva</button><button className="pill outline wide" onClick={() => setEdit(null)}>Annulla</button></div>
         : <><h1>{selected.title}</h1>{safeUrl(selected.url || '') && <a className="outlink" href={selected.url} target="_blank" rel="noopener noreferrer">Apri la fonte <ExternalLink size={17} /></a>}{selected.note && <p className="notebody">{selected.note}</p>}
-          <div className="detailtools"><button className="textlink" onClick={() => setEdit({ title: selected.title, url: selected.url || '', note: selected.note || '' })}><Pencil size={14} /> Modifica</button><button className="textlink" disabled={busy} onClick={() => pickPhoto(selected.id)}><ImagePlus size={14} /> {selected.image_path ? 'Cambia foto' : 'Aggiungi foto'}</button><button className="textlink danger" onClick={async () => { if (!window.confirm(`Eliminare "${selected.title}"?`)) return; await removeItem(selected); back(); }}><Trash2 size={14} /> Elimina</button></div></>}
+          <div className="detailtools"><button className="textlink" onClick={() => setEdit({ title: selected.title, url: selected.url || '', note: selected.note || '' })}><Pencil size={14} /> Modifica</button><button className="textlink" disabled={busy} onClick={() => pickPhoto(selected.id)}><ImagePlus size={14} /> {selected.image_path ? 'Cambia foto' : 'Aggiungi foto'}</button>{social && safeUrl(selected.url || '') && !selected.image_path && <button className="textlink" disabled={busy} onClick={async () => { setBusy(true); const ok = await enrichLink(selected); setBusy(false); toast(ok ? 'Anteprima aggiornata' : 'Questa pagina non offre un\'anteprima'); if (ok) refreshArchive(); }}><Link2 size={14} /> Aggiorna anteprima</button>}<button className="textlink danger" onClick={async () => { if (!window.confirm(`Eliminare "${selected.title}"?`)) return; await removeItem(selected); back(); }}><Trash2 size={14} /> Elimina</button></div></>}
       <div className="panel"><label htmlFor="col">RACCOLTA</label><select id="col" value={selected.collection || ''} onChange={async e => { const v = e.target.value; const id = collectionId(v); setItems(arr => arr.map(i => i.id === selected.id ? { ...i, collection: v, collection_id: id } : i)); setSelected({ ...selected, collection: v, collection_id: id }); try { await api.updateItem(selected.id, { collection_id: id, collection: v }); } catch (err) { toast(friendlyError(err)); refreshArchive(); } }}>{!selected.collection && <option value="">—</option>}{collections.map(c => <option key={c}>{c}</option>)}</select></div><div className="stack"><button className="feature" onClick={() => share(selected)}><Heart /><span><strong>Thought of you</strong><small>Condividi con una dedica</small></span><ChevronRight /></button><button className="feature" onClick={() => exportAI([selected])}><Sparkles /><span><strong>Use with AI</strong><small>Copia il contesto</small></span><ChevronRight /></button></div></main>}
 
     {screen === 'thought' && <main><div className="eyebrow">A LITTLE SOMETHING FOR SOMEONE</div><h1>Who are you thinking of?</h1><p className="muted">Lascia un piccolo pensiero a qualcuno.</p>{!selected && <div className="panel"><label htmlFor="pick">SCEGLI UNA SCOPERTA</label><select id="pick" value="" onChange={e => setSelected(items.find(i => i.id === e.target.value) || null)}><option value="">Seleziona un elemento...</option>{items.map(i => <option value={i.id} key={i.id}>{i.title}</option>)}</select></div>}{selected && <div className="panel"><strong>{selected.title}</strong><small>{selected.url || selected.note}</small></div>}
