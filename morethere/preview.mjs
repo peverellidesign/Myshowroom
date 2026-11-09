@@ -67,7 +67,7 @@ function fetchOnce(url, kind = 'html') {
       lookup: (_h, o, cb) => (o?.all ? cb(null, [{ address: target.address, family: target.family }]) : cb(null, target.address, target.family)),
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; morethere-preview/1.0; +link preview)',
-        Accept: kind === 'image' ? 'image/avif,image/webp,image/png,image/jpeg,image/gif;q=0.9' : 'text/html,application/xhtml+xml',
+        Accept: kind === 'image' ? 'image/avif,image/webp,image/png,image/jpeg,image/gif;q=0.9' : kind === 'json' ? 'application/json' : 'text/html,application/xhtml+xml',
         'Accept-Language': 'it,en;q=0.8',
       },
     }, res => {
@@ -76,8 +76,8 @@ function fetchOnce(url, kind = 'html') {
         return resolve({ redirect: new URL(res.headers.location, url) });
       }
       const type = String(res.headers['content-type'] || '');
-      const okType = kind === 'image' ? IMAGE_TYPES.test(type) : /text\/html|application\/xhtml/i.test(type);
-      if (res.statusCode !== 200 || !okType) { res.resume(); return reject(new Error(kind === 'image' ? 'not_image' : 'not_html')); }
+      const okType = kind === 'image' ? IMAGE_TYPES.test(type) : kind === 'json' ? /json/i.test(type) : /text\/html|application\/xhtml/i.test(type);
+      if (res.statusCode !== 200 || !okType) { res.resume(); return reject(new Error(`not_${kind}`)); }
       const limit = kind === 'image' ? MAX_IMAGE_BYTES : MAX_BYTES;
       if (Number(res.headers['content-length'] || 0) > limit && kind === 'image') { res.destroy(); return reject(new Error('too_large')); }
       const chunks = []; let size = 0; let truncated = false;
@@ -124,11 +124,54 @@ export function parsePreview(html) {
   return { title: title.slice(0, 300), description: description.slice(0, 600), site: site.slice(0, 80), image };
 }
 
-export async function fetchPreview(raw) {
+// Sites that serve automated visitors an empty page but publish oEmbed,
+// the official way to describe a link (title, author, thumbnail).
+const OEMBED = [
+  [/^(www\.|m\.|music\.)?youtube\.com$|^youtu\.be$/, 'https://www.youtube.com/oembed?format=json&url='],
+  [/^(www\.)?vimeo\.com$/, 'https://vimeo.com/api/oembed.json?url='],
+  [/^open\.spotify\.com$/, 'https://open.spotify.com/oembed?url='],
+  [/^(www\.)?soundcloud\.com$/, 'https://soundcloud.com/oembed?format=json&url='],
+  [/^(www\.)?flickr\.com$|^flic\.kr$/, 'https://www.flickr.com/services/oembed/?format=json&url='],
+  [/^(www\.)?tiktok\.com$/, 'https://www.tiktok.com/oembed?url='],
+];
+
+async function getJson(raw) {
   let url = new URL(raw);
-  const key = url.href;
-  const cached = resultCache.get(key);
-  if (cached && cached.exp > Date.now()) return cached.value;
+  for (let hop = 0; hop <= 3; hop++) {
+    checkUrl(url);
+    const r = await fetchOnce(url, 'json');
+    if (r.redirect) { url = r.redirect; continue; }
+    return JSON.parse(new TextDecoder('utf-8').decode(r.body));
+  }
+  throw new Error('too_many_redirects');
+}
+
+async function fromOembed(endpoint, pageUrl) {
+  const d = await getJson(endpoint);
+  const clean = v => (typeof v === 'string' ? decode(v) : '');
+  return {
+    title: clean(d.title).slice(0, 300),
+    description: (clean(d.description) || (d.author_name ? `${clean(d.author_name)}` : '')).slice(0, 600),
+    site: clean(d.provider_name).slice(0, 80),
+    image: typeof d.thumbnail_url === 'string' ? d.thumbnail_url : '',
+    url: pageUrl,
+  };
+}
+
+function absolute(src, base) {
+  if (!src) return '';
+  try { const u = new URL(src, base); return ['http:', 'https:'].includes(u.protocol) && u.href.length <= 2048 ? u.href : ''; } catch { return ''; }
+}
+
+async function previewUncached(raw) {
+  let url = new URL(raw);
+  const provider = OEMBED.find(([host]) => host.test(url.hostname));
+  if (provider) {
+    try {
+      const v = await fromOembed(provider[1] + encodeURIComponent(url.href), url.href);
+      if (v.title || v.image) return { ...v, image: absolute(v.image, url) };
+    } catch { /* fall back to the page itself */ }
+  }
   for (let hop = 0; hop <= 3; hop++) {
     checkUrl(url);
     const r = await fetchOnce(url);
@@ -137,14 +180,32 @@ export async function fetchPreview(raw) {
     let text;
     try { text = new TextDecoder(charset).decode(r.body); } catch { text = new TextDecoder('utf-8').decode(r.body); }
     const parsed = parsePreview(text);
-    let image = '';
-    if (parsed.image) try { const u = new URL(parsed.image, url); if (['http:', 'https:'].includes(u.protocol) && u.href.length <= 2048) image = u.href; } catch { /* no image */ }
-    const value = { ...parsed, image, url: url.href };
-    if (resultCache.size > 500) resultCache.delete(resultCache.keys().next().value);
-    resultCache.set(key, { value, exp: Date.now() + 3600_000 });
+    let value = { ...parsed, image: absolute(parsed.image, url), url: url.href };
+    // Missing title or image: try the oEmbed description the page links to.
+    if (!value.title || !value.image) {
+      const tag = text.slice(0, 200000).match(/<link\b[^>]*type\s*=\s*["']application\/json\+oembed["'][^>]*>/i)?.[0];
+      const href = tag?.match(/href\s*=\s*("([^"]*)"|'([^']*)')/i);
+      const endpoint = absolute(href ? decode(href[2] ?? href[3] ?? '') : '', url);
+      if (endpoint) {
+        try {
+          const o = await fromOembed(endpoint, url.href);
+          value = { ...value, title: value.title || o.title, description: value.description || o.description, site: value.site || o.site, image: value.image || absolute(o.image, url) };
+        } catch { /* keep what we have */ }
+      }
+    }
     return value;
   }
   throw new Error('too_many_redirects');
+}
+
+export async function fetchPreview(raw) {
+  const key = new URL(raw).href;
+  const cached = resultCache.get(key);
+  if (cached && cached.exp > Date.now()) return cached.value;
+  const value = await previewUncached(raw);
+  if (resultCache.size > 500) resultCache.delete(resultCache.keys().next().value);
+  resultCache.set(key, { value, exp: Date.now() + 3600_000 });
+  return value;
 }
 
 export async function fetchImage(raw) {
