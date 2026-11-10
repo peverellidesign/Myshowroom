@@ -12,6 +12,7 @@ export function buildAIContext(data, { heading = 'MORETHERE — PERSONAL CONTEXT
     const parts = [
       `${n + 1}. ${i.title}`,
       `Category: ${i.category}`,
+      ...(i.memory_date ? [`Date: ${i.memory_date}`] : []),
       `Collection: ${i.collection || '—'}`,
       `URL: ${i.url || '—'}`,
       `Note: ${i.note || '—'}`,

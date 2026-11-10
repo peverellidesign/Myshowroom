@@ -5,7 +5,7 @@ import {
   ShieldCheck, Download, LogOut, Inbox, UserRoundCheck, ImagePlus, Pencil,
 } from 'lucide-react';
 import { buildAIContext, fromExportRows } from './lib/ai.js';
-import { friendlyError } from './lib/api.js';
+import { friendlyError, photoTakenDate } from './lib/api.js';
 import { readLegacy, clearLegacy } from './lib/local.js';
 
 const safeUrl = (s) => { try { const u = new URL(s); return ['http:', 'https:'].includes(u.protocol) ? u.href : null; } catch { return null; } };
@@ -13,6 +13,12 @@ const readNotes = () => { try { return JSON.parse(localStorage.getItem('mt_notes
 const writeNotes = (v) => { try { localStorage.setItem('mt_notes', JSON.stringify(v)); } catch { /* ignore */ } };
 const nameOf = (p) => p?.display_name || 'Qualcuno';
 const fmtDate = (d) => new Date(d).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
+// memory_date is a calendar date (YYYY-MM-DD): format it without timezone shifts.
+const fmtMemory = (iso, short = false) => {
+  const [y, m, d] = String(iso).split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('it-IT', short ? { day: 'numeric', month: 'short', year: 'numeric' } : { day: 'numeric', month: 'long', year: 'numeric' });
+};
+const todayIso = () => { const t = new Date(); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`; };
 
 function Toggle({ checked, onChange, label, hint }) {
   return (
@@ -76,6 +82,8 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
   const [invite, setInvite] = useState(null);
   const [busy, setBusy] = useState(false);
   const [photoUrls, setPhotoUrls] = useState({});
+  const [view, setView] = useState(() => { try { return localStorage.getItem('mt_view') === 'date' ? 'date' : 'recent'; } catch { return 'recent'; } });
+  const chooseView = v => { setView(v); try { localStorage.setItem('mt_view', v); } catch { /* ignore */ } };
   const [edit, setEdit] = useState(null); // detail edit draft
   const [collectionDialog, setCollectionDialog] = useState(null); // { mode: 'rename', id, name }
   const fileInput = useRef();
@@ -239,13 +247,20 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
         await api.updateItem(targetId, { image_path: path });
         if (old && api.releasePhoto) await api.releasePhoto(old);
         setSelected(sel => (sel?.id === targetId ? { ...sel, image_path: path } : sel));
+        await refreshArchive();
       } else {
-        const when = new Date().toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
-        await api.addItem({ title: entry.trim().slice(0, 70) || `Foto del ${when}`, url: '', note: '', category: 'Foto', collection: 'Idee', collection_id: collectionId('Idee'), image_path: path });
+        // Saved right away (nothing is lost), then opened so it can be described.
+        const taken = (await photoTakenDate(file)) || todayIso();
+        const title = entry.trim().slice(0, 70) || `Foto del ${fmtMemory(taken)}`;
+        const saved = await api.addItem({ title, url: '', note: '', category: 'Foto', collection: 'Idee', collection_id: collectionId('Idee'), image_path: path, memory_date: taken });
         setEntry('');
+        await refreshArchive();
+        const item = { id: saved.id, title, url: '', note: '', category: 'Foto', collection: 'Idee', collection_id: collectionId('Idee'), image_path: path, memory_date: taken, created: Date.now() };
+        setSelected(item);
+        setEdit({ title, url: '', note: '', memory_date: taken, fresh: true });
+        setScreen('detail');
       }
-      await refreshArchive();
-    }, targetId ? 'Foto aggiornata' : 'Foto salvata nel tuo mondo');
+    }, targetId ? 'Foto aggiornata' : 'Foto salvata. Raccontala con un titolo e una nota.');
   };
   const removeItem = async (item) => {
     const prev = items; setItems(v => v.filter(x => x.id !== item.id));
@@ -256,7 +271,7 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
     if (!title) return toast('Dai un titolo a questa scoperta');
     const url = edit.url.trim() ? safeUrl(edit.url.trim()) : '';
     if (edit.url.trim() && !url) return toast('Il link deve iniziare con http:// o https://');
-    const patch = { title: title.slice(0, 300), note: edit.note.slice(0, 10000), url: url || '' };
+    const patch = { title: title.slice(0, 300), note: edit.note.slice(0, 10000), url: url || '', memory_date: edit.memory_date || null };
     const ok = await run(() => api.updateItem(selected.id, patch), 'Modifiche salvate');
     if (ok !== undefined) { setSelected({ ...selected, ...patch }); setEdit(null); refreshArchive(); }
   };
@@ -275,6 +290,23 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
     if (ok !== undefined) { setFilter('Tutti'); refreshArchive(); }
   };
   const filtered = useMemo(() => items.filter(i => (filter === 'Tutti' || i.category === filter || i.collection === filter) && [i.title, i.note, i.url].join(' ').toLowerCase().includes(search.toLowerCase())), [items, filter, search]);
+  // "Per data": by the date of the memory (or when it was saved), grouped by month.
+  const whenOf = i => i.memory_date || new Date(i.created).toISOString().slice(0, 10);
+  const sorted = useMemo(() => (view === 'date' ? [...filtered].sort((a, b) => whenOf(b).localeCompare(whenOf(a)) || b.created - a.created) : filtered), [filtered, view]); // eslint-disable-line react-hooks/exhaustive-deps
+  const byMonth = useMemo(() => {
+    if (view !== 'date') return [];
+    const groups = [];
+    for (const i of sorted) {
+      const key = whenOf(i).slice(0, 7);
+      if (groups[groups.length - 1]?.key !== key) {
+        const [y, m] = key.split('-').map(Number);
+        const label = new Date(y, m - 1, 1).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+        groups.push({ key, label: label.charAt(0).toUpperCase() + label.slice(1), items: [] });
+      }
+      groups[groups.length - 1].items.push(i);
+    }
+    return groups;
+  }, [sorted, view]); // eslint-disable-line react-hooks/exhaustive-deps
   const cats = ['Tutti', ...new Set([...items.map(i => i.category), ...collections])];
   const back = () => { setScreen('home'); setSelected(null); setFriend(null); setFriendData(null); setWorldData(null); };
 
@@ -409,6 +441,7 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
     await run(() => api.deleteAccount());
   };
 
+  const renderCard = i => (<article className="item" key={i.id}><button className={'preview' + (photoUrls[i.image_path] ? ' hasphoto' : '')} aria-label={`Apri ${i.title}`} onClick={() => { setSelected(i); setEdit(null); setScreen('detail'); }}>{photoUrls[i.image_path] ? <Photo url={photoUrls[i.image_path]} /> : <span>{i.image_path ? <Camera size={26} /> : i.url ? <Link2 size={26} /> : <PenLine size={26} />}</span>}</button><div className="itembody"><div className="eyebrow">{i.category}{i.memory_date ? <> · {fmtMemory(i.memory_date, true)}</> : null}</div><button className="itemtitle" onClick={() => { setSelected(i); setEdit(null); setScreen('detail'); }}>{i.title}</button><div className="itemactions"><button onClick={() => share(i)} aria-label="Condividi"><Heart size={17} /></button><button onClick={() => exportAI([i])} aria-label="Usa con AI"><Sparkles size={17} /></button><button onClick={() => { if (window.confirm(`Eliminare "${i.title}"?`)) removeItem(i); }} aria-label="Elimina"><Trash2 size={17} /></button></div></div></article>);
   const title = { home: 'morethere', circle: 'Your Circle', friend: nameOf(friend) + "'s world", worlds: 'Our little worlds', world: 'Our little world', thought: 'Thought of you', detail: 'La tua scoperta', settings: 'Il mio mondo', export: 'Use with AI', profile: 'Il mio profilo' }[screen] || 'morethere';
   const signInHint = <p className="hint">Questa versione funziona solo su questo dispositivo. Configura il backend Supabase e accedi per connetterti alle persone di cui ti fidi.</p>;
 
@@ -430,7 +463,7 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
 
     {screen === 'home' && <main>
       {legacy && <div className="panel"><strong>Hai {legacy.items.length} {legacy.items.length === 1 ? 'scoperta salvata' : 'scoperte salvate'} su questo dispositivo</strong><small>Vuoi portarle nel tuo account privato? Resteranno visibili solo a te. Dopo l'importazione verranno rimosse da questo dispositivo.</small><div className="choices"><button className="chosen" disabled={busy} onClick={importLegacy}>Importa</button><button onClick={() => setLegacy(null)}>Non ora</button></div></div>}
-      <div className="eyebrow">NUOVO INGRESSO</div><div className="entry"><input value={entry} onChange={e => setEntry(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()} placeholder="Incolla un link o scrivi..." /><button className="square" title={entry ? 'Salva una nota o un link' : 'Aggiungi una foto'} aria-label={entry ? 'Salva' : 'Aggiungi una foto'} disabled={busy} onClick={() => (entry ? add() : pickPhoto())}>{entry ? <Plus /> : <Camera />}</button><input ref={fileInput} type="file" accept="image/*" hidden aria-hidden="true" onChange={onPhotoChosen} /></div><div className="search"><Search size={21} /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca nell'archivio..." /></div><div className="chips">{cats.map(c => <button key={c} className={'chip ' + (filter === c ? 'active' : '')} onClick={() => setFilter(c)}>{c}</button>)}<button className="chip" aria-label="Nuova raccolta" onClick={() => setShowAddCollection(true)}><Plus size={15} /></button></div>{activeCollection && <div className="collectionTools"><button className="textlink" onClick={() => setCollectionDialog({ id: activeCollection.id, name: activeCollection.name })}><Pencil size={13} /> Rinomina</button><button className="textlink danger" onClick={deleteCollection}><Trash2 size={13} /> Elimina raccolta</button></div>}<div className="sectionLabel">{activeCollection ? activeCollection.name : 'La tua raccolta'}</div><div className="cards">{filtered.map(i => <article className="item" key={i.id}><button className={'preview' + (photoUrls[i.image_path] ? ' hasphoto' : '')} aria-label={`Apri ${i.title}`} onClick={() => { setSelected(i); setEdit(null); setScreen('detail'); }}>{photoUrls[i.image_path] ? <Photo url={photoUrls[i.image_path]} /> : <span>{i.image_path ? <Camera size={26} /> : i.url ? <Link2 size={26} /> : <PenLine size={26} />}</span>}</button><div className="itembody"><div className="eyebrow">{i.category}</div><button className="itemtitle" onClick={() => { setSelected(i); setEdit(null); setScreen('detail'); }}>{i.title}</button><div className="itemactions"><button onClick={() => share(i)} aria-label="Condividi"><Heart size={17} /></button><button onClick={() => exportAI([i])} aria-label="Usa con AI"><Sparkles size={17} /></button><button onClick={() => { if (window.confirm(`Eliminare "${i.title}"?`)) removeItem(i); }} aria-label="Elimina"><Trash2 size={17} /></button></div></div></article>)}</div>{loaded && !filtered.length && <div className="empty">Il tuo mondo comincia da una scoperta. Salva qualcosa che vale la pena ricordare.</div>}<button className="socialCta" onClick={() => setScreen('circle')}><div><strong>Le persone di cui ti fidi</strong><small>{social ? (accepted.length ? `${accepted.length} ${accepted.length === 1 ? 'persona' : 'persone'} nel tuo Circle` : 'Scopri le loro raccolte condivise') : 'Scopri le loro raccolte condivise'}</small></div><ChevronRight /></button><div className="homeactions"><button onClick={() => setScreen('settings')}><UserRoundPlus size={18} /> Invita un amico</button><button onClick={() => setScreen('circle')}><FolderHeart size={18} /> Condivise con te</button></div></main>}
+      <div className="eyebrow">NUOVO INGRESSO</div><div className="entry"><input value={entry} onChange={e => setEntry(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()} placeholder="Incolla un link o scrivi..." /><button className="square" title={entry ? 'Salva una nota o un link' : 'Aggiungi una foto'} aria-label={entry ? 'Salva' : 'Aggiungi una foto'} disabled={busy} onClick={() => (entry ? add() : pickPhoto())}>{entry ? <Plus /> : <Camera />}</button><input ref={fileInput} type="file" accept="image/*" hidden aria-hidden="true" onChange={onPhotoChosen} /></div><div className="search"><Search size={21} /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca nell'archivio..." /></div><div className="chips">{cats.map(c => <button key={c} className={'chip ' + (filter === c ? 'active' : '')} onClick={() => setFilter(c)}>{c}</button>)}<button className="chip" aria-label="Nuova raccolta" onClick={() => setShowAddCollection(true)}><Plus size={15} /></button></div>{activeCollection && <div className="collectionTools"><button className="textlink" onClick={() => setCollectionDialog({ id: activeCollection.id, name: activeCollection.name })}><Pencil size={13} /> Rinomina</button><button className="textlink danger" onClick={deleteCollection}><Trash2 size={13} /> Elimina raccolta</button></div>}<div className="sectionRow"><div className="sectionLabel">{activeCollection ? activeCollection.name : 'La tua raccolta'}</div><div className="viewToggle" role="group" aria-label="Ordina"><button className={view === 'recent' ? 'on' : ''} aria-pressed={view === 'recent'} onClick={() => chooseView('recent')}>Recenti</button><button className={view === 'date' ? 'on' : ''} aria-pressed={view === 'date'} onClick={() => chooseView('date')}>Per data</button></div></div>{view === 'date' ? byMonth.map(g => <section key={g.key} className="monthGroup"><h3 className="monthLabel">{g.label}</h3><div className="cards">{g.items.map(renderCard)}</div></section>) : <div className="cards">{sorted.map(renderCard)}</div>}{loaded && !filtered.length && <div className="empty">Il tuo mondo comincia da una scoperta. Salva qualcosa che vale la pena ricordare.</div>}<button className="socialCta" onClick={() => setScreen('circle')}><div><strong>Le persone di cui ti fidi</strong><small>{social ? (accepted.length ? `${accepted.length} ${accepted.length === 1 ? 'persona' : 'persone'} nel tuo Circle` : 'Scopri le loro raccolte condivise') : 'Scopri le loro raccolte condivise'}</small></div><ChevronRight /></button><div className="homeactions"><button onClick={() => setScreen('settings')}><UserRoundPlus size={18} /> Invita un amico</button><button onClick={() => setScreen('circle')}><FolderHeart size={18} /> Condivise con te</button></div></main>}
 
     {screen === 'circle' && <main><div className="eyebrow">YOUR CIRCLE</div><h1>The people who make your world bigger.</h1><p className="muted">Scopri ciò che le persone di cui ti fidi hanno scelto di condividere con te.</p>
       <div className="stack"><button className="feature" onClick={() => setScreen('settings')}><KeyRound /><span><strong>Enter my world</strong><small>Apri il tuo mondo alle persone giuste</small></span><ChevronRight /></button><button className="feature" onClick={() => { setSelected(null); setRecipientId(accepted[0]?.other.id || ''); setThoughtAi(false); setScreen('thought'); }}><Heart /><span><strong>Thought of you</strong><small>Lascia una scoperta a qualcuno</small></span><ChevronRight /></button><button className="feature" onClick={() => setScreen('worlds')}><UsersRound /><span><strong>Our little world</strong><small>{worldInvites.length ? `${worldInvites.length} ${worldInvites.length === 1 ? 'invito' : 'inviti'} da accettare` : 'Costruite una raccolta insieme'}</small></span><ChevronRight /></button>{social && <button className="feature" onClick={openProfile}><Settings2 /><span><strong>Il mio profilo</strong><small>{profile ? '@' + profile.handle : 'Nome, esportazione, account'}</small></span><ChevronRight /></button>}</div>
@@ -469,11 +502,11 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
         <p className="hint">L'esportazione include i tuoi contributi e quelli di chi lo ha consentito.</p>
         {isWorldOwner ? <button className="textlink danger" onClick={async () => { if (!window.confirm('Eliminare questo mondo per tutti?')) return; await run(() => api.deleteWorld(selected.id), 'Mondo eliminato'); await refreshWorlds(); setScreen('worlds'); }}>Elimina questo mondo</button> : <button className="textlink danger" onClick={async () => { if (!window.confirm('Lasciare questo mondo?')) return; await run(() => api.removeWorldMember(selected.id, api.me), 'Hai lasciato il mondo'); await refreshWorlds(); setScreen('worlds'); }}>Lascia questo mondo</button>}</>}</main>}
 
-    {screen === 'detail' && selected && <main><div className="eyebrow">{selected.category}</div>
+    {screen === 'detail' && selected && <main><div className="eyebrow">{selected.category}{selected.memory_date && !edit ? <> · {fmtMemory(selected.memory_date)}</> : null}</div>
       {photoUrls[selected.image_path] && <Photo className="hero" url={photoUrls[selected.image_path]} alt={selected.title} />}
-      {edit ? <div className="panel"><label htmlFor="e-title">TITOLO</label><input id="e-title" maxLength={300} value={edit.title} onChange={e => setEdit({ ...edit, title: e.target.value })} /><label htmlFor="e-url">LINK</label><input id="e-url" inputMode="url" autoCapitalize="none" placeholder="https://…" value={edit.url} onChange={e => setEdit({ ...edit, url: e.target.value })} /><label htmlFor="e-note">NOTA</label><textarea id="e-note" rows="5" maxLength={10000} value={edit.note} onChange={e => setEdit({ ...edit, note: e.target.value })} /><button className="pill dark wide" disabled={busy} onClick={saveEdit}><Check size={18} /> Salva</button><button className="pill outline wide" onClick={() => setEdit(null)}>Annulla</button></div>
+      {edit ? <div className="panel"><label htmlFor="e-title">TITOLO</label><input id="e-title" maxLength={300} autoFocus={!!edit.fresh} onFocus={e => edit.fresh && e.target.select()} value={edit.title} onChange={e => setEdit({ ...edit, title: e.target.value })} /><label htmlFor="e-url">LINK</label><input id="e-url" inputMode="url" autoCapitalize="none" placeholder="https://…" value={edit.url} onChange={e => setEdit({ ...edit, url: e.target.value })} /><label htmlFor="e-note">NOTA</label><textarea id="e-note" rows="5" maxLength={10000} placeholder={edit.fresh ? 'Dove eravate, con chi, cosa ricordi…' : ''} value={edit.note} onChange={e => setEdit({ ...edit, note: e.target.value })} /><label htmlFor="e-date">DATA DEL RICORDO</label><div className="dateRow"><input id="e-date" type="date" min="1800-01-01" max="2200-12-31" value={edit.memory_date || ''} onChange={e => setEdit({ ...edit, memory_date: e.target.value })} />{edit.memory_date ? <button type="button" className="textlink" onClick={() => setEdit({ ...edit, memory_date: '' })}>Togli</button> : <button type="button" className="textlink" onClick={() => setEdit({ ...edit, memory_date: todayIso() })}>Oggi</button>}</div><button className="pill dark wide" disabled={busy} onClick={saveEdit}><Check size={18} /> Salva</button><button className="pill outline wide" onClick={() => setEdit(null)}>Annulla</button></div>
         : <><h1>{selected.title}</h1>{safeUrl(selected.url || '') && <a className="outlink" href={selected.url} target="_blank" rel="noopener noreferrer">Apri la fonte <ExternalLink size={17} /></a>}{selected.note && <p className="notebody">{selected.note}</p>}
-          <div className="detailtools"><button className="textlink" onClick={() => setEdit({ title: selected.title, url: selected.url || '', note: selected.note || '' })}><Pencil size={14} /> Modifica</button><button className="textlink" disabled={busy} onClick={() => pickPhoto(selected.id)}><ImagePlus size={14} /> {selected.image_path ? 'Cambia foto' : 'Aggiungi foto'}</button>{social && safeUrl(selected.url || '') && !selected.image_path && <button className="textlink" disabled={busy} onClick={async () => { setBusy(true); const ok = await enrichLink(selected); setBusy(false); toast(ok ? 'Anteprima aggiornata' : 'Questa pagina non offre un\'anteprima'); if (ok) refreshArchive(); }}><Link2 size={14} /> Aggiorna anteprima</button>}<button className="textlink danger" onClick={async () => { if (!window.confirm(`Eliminare "${selected.title}"?`)) return; await removeItem(selected); back(); }}><Trash2 size={14} /> Elimina</button></div></>}
+          <div className="detailtools"><button className="textlink" onClick={() => setEdit({ title: selected.title, url: selected.url || '', note: selected.note || '', memory_date: selected.memory_date || '' })}><Pencil size={14} /> Modifica</button><button className="textlink" disabled={busy} onClick={() => pickPhoto(selected.id)}><ImagePlus size={14} /> {selected.image_path ? 'Cambia foto' : 'Aggiungi foto'}</button>{social && safeUrl(selected.url || '') && !selected.image_path && <button className="textlink" disabled={busy} onClick={async () => { setBusy(true); const ok = await enrichLink(selected); setBusy(false); toast(ok ? 'Anteprima aggiornata' : 'Questa pagina non offre un\'anteprima'); if (ok) refreshArchive(); }}><Link2 size={14} /> Aggiorna anteprima</button>}<button className="textlink danger" onClick={async () => { if (!window.confirm(`Eliminare "${selected.title}"?`)) return; await removeItem(selected); back(); }}><Trash2 size={14} /> Elimina</button></div></>}
       <div className="panel"><label htmlFor="col">RACCOLTA</label><select id="col" value={selected.collection || ''} onChange={async e => { const v = e.target.value; const id = collectionId(v); setItems(arr => arr.map(i => i.id === selected.id ? { ...i, collection: v, collection_id: id } : i)); setSelected({ ...selected, collection: v, collection_id: id }); try { await api.updateItem(selected.id, { collection_id: id, collection: v }); } catch (err) { toast(friendlyError(err)); refreshArchive(); } }}>{!selected.collection && <option value="">—</option>}{collections.map(c => <option key={c}>{c}</option>)}</select></div><div className="stack"><button className="feature" onClick={() => share(selected)}><Heart /><span><strong>Thought of you</strong><small>Condividi con una dedica</small></span><ChevronRight /></button><button className="feature" onClick={() => exportAI([selected])}><Sparkles /><span><strong>Use with AI</strong><small>Copia il contesto</small></span><ChevronRight /></button></div></main>}
 
     {screen === 'thought' && <main><div className="eyebrow">A LITTLE SOMETHING FOR SOMEONE</div><h1>Who are you thinking of?</h1><p className="muted">Lascia un piccolo pensiero a qualcuno.</p>{!selected && <div className="panel"><label htmlFor="pick">SCEGLI UNA SCOPERTA</label><select id="pick" value="" onChange={e => setSelected(items.find(i => i.id === e.target.value) || null)}><option value="">Seleziona un elemento...</option>{items.map(i => <option value={i.id} key={i.id}>{i.title}</option>)}</select></div>}{selected && <div className="panel"><strong>{selected.title}</strong><small>{selected.url || selected.note}</small></div>}

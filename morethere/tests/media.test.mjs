@@ -109,3 +109,17 @@ test('thoughts and worlds carry the photo to exactly the right people', async ()
   assert.ok(await canRead(u.carol, photo), 'member reads');
   assert.ok(!(await canRead(u.bob, photo)), 'non-member cannot');
 });
+
+test('the date of a memory travels with thoughts, worlds and saved copies', async () => {
+  const it = ok(await u.alice.client.from('items').insert({ title: 'Tramonto a Kyoto', category: 'Foto', collection_id: viaggi, memory_date: '2019-08-15' }).select().single());
+  assert.equal(it.memory_date, '2019-08-15');
+  const bad = await u.alice.client.from('items').insert({ title: 'x', memory_date: '1500-01-01' });
+  assert.ok(bad.error, 'implausible dates are refused');
+  const tid = ok(await u.alice.client.rpc('send_thought', { p_recipient: u.bob.id, p_item: it.id, p_message: '', p_allow_ai_export: false }));
+  assert.equal(ok(await u.bob.client.from('thoughts').select('item_memory_date').eq('id', tid).single()).item_memory_date, '2019-08-15');
+  const kept = ok(await u.bob.client.rpc('save_thought', { p_thought: tid }));
+  assert.equal(ok(await u.bob.client.from('items').select('memory_date').eq('id', kept).single()).memory_date, '2019-08-15');
+  const w = ok(await u.alice.client.from('worlds').insert({ name: 'Date' }).select().single());
+  const wi = ok(await u.alice.client.rpc('add_item_to_world', { p_world: w.id, p_item: it.id }));
+  assert.equal(ok(await u.alice.client.from('world_items').select('memory_date').eq('id', wi).single()).memory_date, '2019-08-15');
+});

@@ -27,6 +27,7 @@ const people = {
 let browser;
 const ctx = {};
 const PHOTO = fileURLToPath(new URL('../public/icon-512.png', import.meta.url));
+const EXIF_PHOTO = fileURLToPath(new URL('./fixtures/photo-exif.jpg', import.meta.url));
 let pageServer; let pageUrl;
 
 const shot = async (page, name) => {
@@ -129,16 +130,41 @@ test('link preview: real page title and cover image, stored as a private photo',
   await shot(page, '03a-link-preview');
 });
 
-test('camera button saves a private photo, shown on the card and in detail', async () => {
+test('a new photo opens its memory in edit mode, dated from the camera', async () => {
   const { page } = people.alice;
-  await page.locator('input[type=file]').setInputFiles(PHOTO);
-  await toast(page, 'Foto salvata nel tuo mondo');
-  const card = page.locator('.item', { hasText: 'Foto del' });
+  await page.locator('input[type=file]').setInputFiles(EXIF_PHOTO);
+  await toast(page, 'Foto salvata');
+  // The memory opens straight away, ready to be described.
+  await page.locator('img.hero').waitFor();
+  assert.equal(await page.getByLabel('DATA DEL RICORDO').inputValue(), '2019-08-15', 'date read from the camera data');
+  assert.equal(await page.getByLabel('TITOLO').inputValue(), 'Foto del 15 agosto 2019');
+  assert.ok(await page.getByLabel('TITOLO').evaluate(el => document.activeElement === el), 'title focused, ready to type');
+  await page.getByLabel('TITOLO').fill('Tramonto a Kyoto');
+  await page.getByLabel('NOTA').fill('Con Sofia, dopo il tempio. Il cielo era arancione.');
+  await shot(page, '05a-new-photo-edit');
+  await page.getByRole('button', { name: 'Salva' }).click();
+  await toast(page, 'Modifiche salvate');
+  await page.getByRole('heading', { name: 'Tramonto a Kyoto' }).waitFor();
+  await page.getByText('Foto · 15 agosto 2019').waitFor();
+  await close(page);
+  const card = page.locator('.item', { hasText: 'Tramonto a Kyoto' });
   await card.locator('.preview img').waitFor();
   assert.ok(await card.locator('.preview img').evaluate(img => img.complete && img.naturalWidth > 0), 'thumbnail loads');
   assert.match(await card.locator('.preview img').getAttribute('src'), /\/storage\/v1\/object\/sign\/media\//, 'served by a signed URL');
-  await card.locator('.itemtitle').click();
+  // "Per data" groups memories by month, oldest month last.
+  await page.getByRole('button', { name: 'Per data' }).click();
+  await page.locator('.monthLabel', { hasText: 'Agosto 2019' }).waitFor();
+  const labels = await page.locator('.monthLabel').allInnerTexts();
+  assert.equal(labels[labels.length - 1].toLowerCase(), 'agosto 2019');
+  assert.ok(await page.locator('.monthGroup', { hasText: 'Agosto 2019' }).getByText('Tramonto a Kyoto').isVisible());
+  await shot(page, '05b-by-date');
+  await page.getByRole('button', { name: 'Recenti' }).click();
+  // A second photo, to share later.
+  await page.locator('input[type=file]').setInputFiles(PHOTO);
+  await toast(page, 'Foto salvata');
   await page.locator('img.hero').waitFor();
+  await page.getByRole('button', { name: 'Salva' }).click();
+  await toast(page, 'Modifiche salvate');
   // Put it in the "Viaggi" collection so it can be shared later.
   await page.getByLabel('RACCOLTA').selectOption('Viaggi');
   await shot(page, '03b-photo-detail');

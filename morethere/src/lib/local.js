@@ -37,13 +37,13 @@ export function createLocalApi() {
   persist();
   const toUi = () => ({
     collections: collections.map(name => ({ id: name, name })),
-    items: items.map(i => ({ ...i, collection_id: i.collection, image_path: i.image || null })),
+    items: items.map(i => ({ ...i, collection_id: i.collection, image_path: i.image || null, memory_date: i.memory_date || null })),
   });
   return {
     social: false,
     async loadArchive() { return toUi(); },
     async addItem(it) {
-      const item = { id: uid(), title: it.title, url: it.url || '', note: it.note || '', category: it.category, created: Date.now(), collection: it.collection, image: it.image_path || undefined };
+      const item = { id: uid(), title: it.title, url: it.url || '', note: it.note || '', category: it.category, created: Date.now(), collection: it.collection, image: it.image_path || undefined, memory_date: it.memory_date || undefined };
       items = [item, ...items]; persist(); return item;
     },
     async updateItem(id, patch) {
@@ -52,6 +52,7 @@ export function createLocalApi() {
         const n = { ...i };
         if (patch.collection !== undefined) n.collection = patch.collection;
         for (const k of ['title', 'note', 'url', 'category']) if (k in patch) n[k] = patch[k];
+        if ('memory_date' in patch) n.memory_date = patch.memory_date || undefined;
         if ('image_path' in patch) n.image = patch.image_path || undefined;
         return n;
       });

@@ -53,6 +53,46 @@ export async function resizeImage(file, max = 1600, quality = 0.82) {
   return new Promise((resolve, reject) => canvas.toBlob(b => (b ? resolve(b) : reject(new Error('image_unreadable'))), 'image/jpeg', quality));
 }
 
+// When was this photo taken? Reads DateTimeOriginal from the JPEG's EXIF
+// (resizing drops EXIF, so this runs on the original file). Falls back to the
+// file's date. Returns 'YYYY-MM-DD' or null.
+export async function photoTakenDate(file) {
+  const iso = (y, m, d) => (y > 1800 && m >= 1 && m <= 12 && d >= 1 && d <= 31 ? `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}` : null);
+  try {
+    const buf = await file.slice(0, 256 * 1024).arrayBuffer();
+    const v = new DataView(buf);
+    if (v.getUint16(0) === 0xffd8) {
+      let off = 2;
+      while (off + 4 < v.byteLength) {
+        const marker = v.getUint16(off); const len = v.getUint16(off + 2);
+        if (marker === 0xffe1 && v.getUint32(off + 4) === 0x45786966) { // "Exif"
+          const t = off + 10; const le = v.getUint16(t) === 0x4949;
+          const u16 = o => v.getUint16(t + o, le); const u32 = o => v.getUint32(t + o, le);
+          const readAscii = (o, n) => { let out = ''; for (let k = 0; k < n; k++) { const c = v.getUint8(t + o + k); if (!c) break; out += String.fromCharCode(c); } return out; };
+          const scan = (ifd, wanted) => {
+            const n = u16(ifd); const found = {};
+            for (let k = 0; k < n; k++) {
+              const e = ifd + 2 + k * 12; const tag = u16(e);
+              if (wanted.includes(tag)) found[tag] = tag === 0x8769 ? u32(e + 8) : readAscii(u32(e + 8), 19);
+            }
+            return found;
+          };
+          const ifd0 = scan(u32(4), [0x8769, 0x0132]);
+          const exif = ifd0[0x8769] ? scan(ifd0[0x8769], [0x9003, 0x9004]) : {};
+          const raw = exif[0x9003] || exif[0x9004] || ifd0[0x0132];
+          const m = raw?.match(/^(\d{4}):(\d{2}):(\d{2})/);
+          if (m) { const r = iso(+m[1], +m[2], +m[3]); if (r) return r; }
+          break;
+        }
+        if ((marker & 0xff00) !== 0xff00) break;
+        off += 2 + len;
+      }
+    }
+  } catch { /* not a JPEG with EXIF */ }
+  if (file.lastModified) { const d = new Date(file.lastModified); return iso(d.getFullYear(), d.getMonth() + 1, d.getDate()); }
+  return null;
+}
+
 const signed = new Map(); // path -> { url, exp }
 
 const toItem = (row, collectionsById) => ({
@@ -65,18 +105,26 @@ const toItem = (row, collectionsById) => ({
   collection_id: row.collection_id,
   collection: row.collection_id ? collectionsById[row.collection_id]?.name || '' : '',
   image_path: row.image_path || null,
+  memory_date: row.memory_date || null,
   created: Date.parse(row.created_at),
 });
 
 const BASE_COLS = 'id, owner_id, collection_id, title, url, note, category, created_at';
 // Photo columns arrive with the second migration; until a database has it,
 // the app keeps working without photos.
+// The same applies to memory_date (third migration).
 let photosSupported = true;
-const itemCols = () => (photosSupported ? BASE_COLS + ', image_path' : BASE_COLS);
-const missingPhotoColumn = (error) => error && /image_path/.test(error.message || '') && (error.code === '42703' || /column/i.test(error.message || ''));
+let datesSupported = true;
+const itemCols = () => BASE_COLS + (photosSupported ? ', image_path' : '') + (datesSupported ? ', memory_date' : '');
+const missingColumn = (error, col) => error && error.code === '42703' && (error.message || '').includes(col);
 async function selectItems(build) {
   let res = await build(itemCols());
-  if (missingPhotoColumn(res.error)) { photosSupported = false; res = await build(itemCols()); }
+  for (let k = 0; k < 2 && res.error?.code === '42703'; k++) {
+    if (missingColumn(res.error, 'image_path')) photosSupported = false;
+    else if (missingColumn(res.error, 'memory_date')) datesSupported = false;
+    else break;
+    res = await build(itemCols());
+  }
   return res;
 }
 
@@ -114,15 +162,17 @@ export function createRemoteApi(user) {
       const byId = Object.fromEntries(collections.map(c => [c.id, c]));
       return { collections, items: must(items).map(r => toItem(r, byId)) };
     },
-    async addItem({ title, url, note, category, collection_id, image_path }) {
+    async addItem({ title, url, note, category, collection_id, image_path, memory_date }) {
       const row = { title, url: url || null, note: note || '', category, collection_id: collection_id || null };
       if (image_path) row.image_path = image_path;
+      if (memory_date && datesSupported) row.memory_date = memory_date;
       return must(await supabase.from('items').insert(row).select(itemCols()).single());
     },
     async updateItem(id, patch) {
       const row = {};
       if ('collection_id' in patch) row.collection_id = patch.collection_id || null;
       for (const k of ['title', 'note', 'url', 'category', 'image_path']) if (k in patch) row[k] = patch[k];
+      if ('memory_date' in patch && datesSupported) row.memory_date = patch.memory_date || null;
       if ('url' in row) row.url = row.url || null;
       must(await supabase.from('items').update(row).eq('id', id));
     },
