@@ -396,6 +396,16 @@ test('More of us: as many shared spaces as you like, started from a person', asy
   // Alice sees Bob's contribution.
   await alice.locator('.item', { hasText: 'Aggiunto da Bob' }).waitFor({ timeout: 10000 });
   await shot(alice, '10-space');
+  // Filter by who added it, then order by date.
+  await alice.getByRole('button', { name: 'Da Bob', exact: true }).click();
+  await alice.locator('.item', { hasText: 'example.org' }).waitFor();
+  assert.equal(await alice.locator('.item', { hasText: 'Kyoto inspiration' }).count(), 0, 'filtered out');
+  await alice.getByRole('button', { name: 'Tutti', exact: true }).click();
+  await alice.getByRole('button', { name: 'Per data', exact: true }).click();
+  await alice.locator('.spacePage .monthLabel').first().waitFor();
+  assert.equal(await alice.locator('.spacePage .item').count(), 2, 'both back');
+  await shot(alice, '10f-space-by-date');
+  await alice.getByRole('button', { name: 'Recenti', exact: true }).click();
   // Tapping a discovery opens it.
   await alice.locator('.item', { hasText: 'Aggiunto da Bob' }).locator('.itemtitle').click();
   await alice.getByRole('dialog').getByText('Aggiunto da Bob').waitFor();

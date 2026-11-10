@@ -332,3 +332,4 @@ main>textarea{width:100%;border:1px solid #e2e2e2;border-radius:16px;padding:14p
 .coverBtn.iconOnly{padding:8px}
 .coverBtn:disabled{opacity:.6}
 .heroMosaic.n1{grid-template-columns:1fr}
+.spaceChips{padding:0 0 14px}

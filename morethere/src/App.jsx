@@ -96,6 +96,8 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
   const [usStep, setUsStep] = useState(1); const [usCreating, setUsCreating] = useState(false);
   const [showSpaceAdd, setShowSpaceAdd] = useState(false);
   const [spaceSearch, setSpaceSearch] = useState('');
+  const [spaceFilter, setSpaceFilter] = useState('all'); // 'all' | 'cat:<category>' | 'by:<user id>'
+  const [spaceView, setSpaceView] = useState('recent');
   const [spaceItem, setSpaceItem] = useState(null);
   const [renameSpace, setRenameSpace] = useState(null);
   const [showAddCollection, setShowAddCollection] = useState(false);
@@ -414,7 +416,7 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
   };
   const startMoreOfMe = (personId = '') => { pickShareTarget(personId); setMeStep(personId ? 2 : 1); setMeDone(false); setScreen('settings'); };
   const startMoreOfUs = (memberIds = []) => { setSpaceMembers(memberIds); setWorldName(''); setUsStep(memberIds.length ? 2 : 1); setUsCreating(memberIds.length > 0 || !worlds.length); setScreen('worlds'); };
-  const openWorld = (w) => { setSelected(w); setWorldData(null); setSpaceTab('items'); setShowSpaceAdd(false); setSpaceItem(null); setScreen('world'); };
+  const openWorld = (w) => { setSelected(w); setWorldData(null); setSpaceTab('items'); setSpaceFilter('all'); setShowSpaceAdd(false); setSpaceItem(null); setScreen('world'); };
   const reloadWorld = useCallback(async (id) => setWorldData(await api.loadWorld(id)), [api]);
   useEffect(() => {
     if (screen !== 'world' || !selected?.id || !social) return;
@@ -634,7 +636,24 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
           <div className="spaceActions"><button className="pill dark" onClick={() => { setSpaceSearch(''); setShowSpaceAdd(true); }}><Plus size={18} /> Aggiungi</button><button className="pill outline" onClick={() => setSpaceTab('people')}><UserRoundPlus size={18} /> Invita</button><button className="pill outline iconOnly" aria-label="Use with AI" disabled={busy} onClick={async () => exportShared(await run(() => api.aiExportWorld(selected.id)), 'MORETHERE — SHARED SPACE CONTEXT', worldData.world.name)}><Sparkles size={18} /></button></div>
           <div className="viewToggle tabs" role="tablist"><button role="tab" aria-selected={spaceTab === 'items'} className={spaceTab === 'items' ? 'on' : ''} onClick={() => setSpaceTab('items')}>Scoperte · {worldData.items.length}</button><button role="tab" aria-selected={spaceTab === 'people'} className={spaceTab === 'people' ? 'on' : ''} onClick={() => setSpaceTab('people')}>Persone · {active.length}</button></div>
 
-          {spaceTab === 'items' && (worldData.items.length ? <div className="cards">{worldData.items.map(i => <article className="item" key={i.id}><button className={'preview' + (photoUrls[i.image_path] ? ' hasphoto' : '')} aria-label={`Apri ${i.title}`} onClick={() => setSpaceItem(i)}>{photoUrls[i.image_path] ? <Photo url={photoUrls[i.image_path]} /> : <span>{i.url ? <Link2 size={26} /> : <PenLine size={26} />}</span>}</button><div className="itembody"><div className="eyebrow">{i.category}{i.memory_date ? <> · {fmtMemory(i.memory_date, true)}</> : null}</div><button className="itemtitle" onClick={() => setSpaceItem(i)}>{i.title}</button><small className="byline">{i.added_by === api.me ? 'Aggiunto da te' : 'Aggiunto da ' + nameOf(i.adder)}</small></div></article>)}</div>
+          {spaceTab === 'items' && (worldData.items.length ? (() => {
+            // Filter by category or by who added it; order by recency or by the date of the memory.
+            const cats = [...new Set(worldData.items.map(i => i.category))];
+            const adders = [...new Map(worldData.items.map(i => [i.added_by, i.adder])).entries()];
+            const shown = worldData.items.filter(i => spaceFilter === 'all' || (spaceFilter.startsWith('cat:') ? i.category === spaceFilter.slice(4) : i.added_by === spaceFilter.slice(3)));
+            const when = i => i.memory_date || String(i.created_at).slice(0, 10);
+            const ordered = spaceView === 'date' ? [...shown].sort((x, y) => when(y).localeCompare(when(x)) || String(y.created_at).localeCompare(String(x.created_at))) : shown;
+            const groups = [];
+            if (spaceView === 'date') for (const i of ordered) { const key = when(i).slice(0, 7); if (groups[groups.length - 1]?.key !== key) { const [y, m] = key.split('-').map(Number); const label = new Date(y, m - 1, 1).toLocaleDateString('it-IT', { month: 'long', year: 'numeric' }); groups.push({ key, label: label.charAt(0).toUpperCase() + label.slice(1), items: [] }); } groups[groups.length - 1].items.push(i); }
+            const spaceCard = i => (<article className="item" key={i.id}><button className={'preview' + (photoUrls[i.image_path] ? ' hasphoto' : '')} aria-label={`Apri ${i.title}`} onClick={() => setSpaceItem(i)}>{photoUrls[i.image_path] ? <Photo url={photoUrls[i.image_path]} /> : <span>{i.url ? <Link2 size={26} /> : <PenLine size={26} />}</span>}</button><div className="itembody"><div className="eyebrow">{i.category}{i.memory_date ? <> · {fmtMemory(i.memory_date, true)}</> : null}</div><button className="itemtitle" onClick={() => setSpaceItem(i)}>{i.title}</button><small className="byline">{i.added_by === api.me ? 'Aggiunto da te' : 'Aggiunto da ' + nameOf(i.adder)}</small></div></article>);
+            return <>
+              <div className="chips spaceChips"><button className={'chip ' + (spaceFilter === 'all' ? 'active' : '')} onClick={() => setSpaceFilter('all')}>Tutti</button>{adders.length > 1 && adders.map(([id, p]) => <button key={id} className={'chip ' + (spaceFilter === 'by:' + id ? 'active' : '')} onClick={() => setSpaceFilter('by:' + id)}>{id === api.me ? 'Da te' : 'Da ' + nameOf(p)}</button>)}{cats.length > 1 && cats.map(c => <button key={c} className={'chip ' + (spaceFilter === 'cat:' + c ? 'active' : '')} onClick={() => setSpaceFilter('cat:' + c)}>{c}</button>)}</div>
+              <div className="sectionRow"><div className="sectionLabel">{shown.length} {shown.length === 1 ? 'scoperta' : 'scoperte'}</div><div className="viewToggle" role="group" aria-label="Ordina"><button className={spaceView === 'recent' ? 'on' : ''} aria-pressed={spaceView === 'recent'} onClick={() => setSpaceView('recent')}>Recenti</button><button className={spaceView === 'date' ? 'on' : ''} aria-pressed={spaceView === 'date'} onClick={() => setSpaceView('date')}>Per data</button></div></div>
+              {!shown.length ? <div className="empty compact">Nessuna scoperta con questo filtro.</div>
+                : spaceView === 'date' ? groups.map(g => <section key={g.key} className="monthGroup"><h3 className="monthLabel">{g.label}</h3><div className="cards">{g.items.map(spaceCard)}</div></section>)
+                : <div className="cards">{ordered.map(spaceCard)}</div>}
+            </>;
+          })()
             : <div className="spaceEmpty"><FolderHeart size={28} /><strong>Lo spazio è ancora vuoto</strong><small>Aggiungete la prima scoperta: un posto, un link, una foto, un'idea.</small><button className="pill dark" onClick={() => { setSpaceSearch(''); setShowSpaceAdd(true); }}><Plus size={18} /> Aggiungi dal tuo archivio</button></div>)}
 
           {spaceTab === 'people' && <>
