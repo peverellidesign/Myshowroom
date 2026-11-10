@@ -199,7 +199,7 @@ test('invitation link connects two people', async () => {
   await signUp(bob, people.bob);
 
   await alice.getByRole('button', { name: /Apri Your Circle/ }).click();
-  await alice.getByRole('button', { name: /Enter my world/ }).click();
+  await alice.getByRole('button', { name: /More of me/ }).click();
   await alice.getByRole('button', { name: 'Crea e copia invito' }).click();
   const link = await alice.getByLabel("Link d'invito").inputValue();
   assert.match(link, /#invite=[A-Za-z0-9_-]{40,}/);
@@ -291,7 +291,7 @@ test('Our little world: invite, accept, contribute together', async () => {
   const bob = people.bob.page;
   await alice.goto(APP);
   await alice.getByRole('button', { name: /Apri Your Circle/ }).click();
-  await alice.getByRole('button', { name: /Our little world/ }).click();
+  await alice.getByRole('button', { name: /More of us/ }).click();
   await alice.getByLabel('COME LO CHIAMIAMO?').fill('Japan 2027');
   await alice.getByLabel('CON CHI?').selectOption({ label: 'Bob' });
   await alice.getByRole('button', { name: 'Crea un mondo' }).click();
@@ -301,7 +301,7 @@ test('Our little world: invite, accept, contribute together', async () => {
   await toast(alice, 'Aggiunto al vostro mondo');
 
   await bob.getByRole('button', { name: /Apri Your Circle/ }).click();
-  await bob.getByRole('button', { name: /Our little world/ }).click();
+  await bob.getByRole('button', { name: /More of us/ }).click();
   await bob.getByRole('button', { name: 'Entra' }).click();
   await toast(bob, 'Benvenuto nel vostro mondo');
   await bob.getByRole('button', { name: /Japan 2027/ }).click();
