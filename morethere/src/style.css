@@ -176,3 +176,6 @@ main>textarea{width:100%;border:1px solid #e2e2e2;border-radius:16px;padding:14p
 .sheetNote{color:#888;font-size:12px}
 @media(max-width:380px){.personActions{gap:7px}.pa{padding:13px 9px}.tile{padding:18px}}
 @media(prefers-reduced-motion:reduce){.pick .av{transition:none}}
+/* panels never grow wider than the screen because of long text */
+.panel{grid-template-columns:minmax(0,1fr)}
+.panel>*{min-width:0}
