@@ -253,3 +253,8 @@ main>textarea{width:100%;border:1px solid #e2e2e2;border-radius:16px;padding:14p
 .avatarLinks{display:flex;gap:16px}
 .avatarLinks .textlink{padding:6px 0 0;margin:0}
 .mav.own{width:30px;height:30px;margin:0;box-shadow:none}
+/* profile button in the home header */
+.headActions{display:flex;gap:10px;align-items:center}
+.round.me{padding:0;overflow:hidden;font-size:19px;font-weight:700;background:#f1f0ee;box-shadow:0 0 0 2px #fff,0 0 0 3px #e6e6e6}
+.round.me .faceImg{width:100%;height:100%}
+.usernameHint{margin-top:30px;padding-top:16px;border-top:1px solid #eee}

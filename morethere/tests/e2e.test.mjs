@@ -392,8 +392,8 @@ test('More of us: as many shared spaces as you like, started from a person', asy
 test('profile: edit, export data, sign out', async () => {
   const alice = people.alice.page;
   await alice.goto(APP);
-  await alice.getByRole('button', { name: /Apri Your Circle/ }).click();
-  await alice.getByRole('button', { name: /Il mio profilo/ }).click();
+  // The profile is one tap away from the home page.
+  await alice.getByRole('button', { name: 'Il mio profilo' }).click();
   // Profile photo: square, private, seen by her people.
   await alice.getByTestId('avatar-input').setInputFiles(EXIF_PHOTO);
   await toast(alice, 'Foto profilo aggiornata');
@@ -409,6 +409,11 @@ test('profile: edit, export data, sign out', async () => {
   await alice.getByRole('button', { name: 'Salva' }).click();
   await toast(alice, 'Profilo aggiornato');
   await shot(alice, '11-profile');
+  // Back from the profile returns home, where the header shows her photo.
+  await alice.getByRole('button', { name: /^Indietro/ }).click();
+  await alice.locator('.round.me img.faceImg').waitFor();
+  await shot(alice, '11c-home-with-profile');
+  await alice.getByRole('button', { name: 'Il mio profilo' }).click();
   const [download] = await Promise.all([
     alice.waitForEvent('download'),
     alice.getByRole('button', { name: /Esporta i miei dati/ }).click(),
