@@ -204,7 +204,7 @@ test('More of me without anyone yet: add a person right there, by invite link', 
   await noWorld(alice);
   await alice.getByRole('button', { name: /More of me/ }).click();
   // No dead end: the first step is offered in place.
-  await alice.getByText('Per prima cosa aggiungi la persona a cui vuoi mostrare qualcosa di te.').waitFor();
+  await alice.getByText('Prima aggiungi un amico: tocca Aggiungi.').waitFor();
   await alice.getByRole('button', { name: 'Aggiungi', exact: true }).click();
   const sheet = alice.getByRole('dialog', { name: 'Aggiungi una persona' });
   await sheet.getByRole('button', { name: 'Invita con un link' }).click();
@@ -238,15 +238,15 @@ test('More of me: the person sees exactly the chosen collection', async () => {
   await alice.getByRole('checkbox', { name: /Viaggi/ }).click();
   await shot(alice, '06a-more-of-me-step2');
   await alice.getByRole('button', { name: /Avanti/ }).click();
-  await alice.getByRole('heading', { name: 'Cosa può farne Bob?' }).waitFor();
+  await alice.getByRole('heading', { name: 'Cosa può fare Bob?' }).waitFor();
   await alice.getByRole('radio', { name: /Guardare e salvare/ }).click();
   await alice.locator('.toggle', { hasText: "Può usarle con l'AI" }).click();
   await alice.getByRole('button', { name: /Avanti/ }).click();
-  await alice.getByRole('heading', { name: 'Tutto giusto?' }).waitFor();
+  await alice.getByRole('heading', { name: 'Va bene così?' }).waitFor();
   await alice.locator('.summary').getByText('Viaggi').waitFor();
-  await alice.locator('.summary').getByText('Guardare e salvare una copia').waitFor();
+  await alice.locator('.summary').getByText('Guardare e salvare').waitFor();
   await shot(alice, '06b-more-of-me-summary');
-  await alice.getByRole('button', { name: 'Condividi con Bob' }).click();
+  await alice.getByRole('button', { name: 'Aggiungi Bob' }).click();
   await alice.getByRole('heading', { name: 'Fatto.' }).waitFor();
   await shot(alice, '06-share-saved');
 
@@ -277,9 +277,9 @@ test('revoking access is immediate', async () => {
   const bob = people.bob.page;
   await alice.getByRole('button', { name: 'Torna a Your Circle' }).click();
   await alice.getByRole('button', { name: /More of me/ }).click();
-  await alice.getByText('Chi vede già qualcosa di te').waitFor();
-  await alice.getByRole('button', { name: 'Revoca' }).first().click();
-  await toast(alice, 'Accesso revocato');
+  await alice.getByText('Amici nella tua raccolta').waitFor();
+  await alice.getByRole('button', { name: 'Togli' }).first().click();
+  await toast(alice, 'Tolto dalla tua raccolta');
   await bob.reload();
   await bob.getByRole('button', { name: /Apri Your Circle/ }).click();
   await bob.getByRole('button', { name: /Alice/ }).click();
