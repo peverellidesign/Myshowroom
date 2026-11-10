@@ -400,7 +400,7 @@ test('More of us: as many shared spaces as you like, started from a person', asy
   await alice.getByRole('button', { name: 'Da Bob', exact: true }).click();
   await alice.locator('.item', { hasText: 'example.org' }).waitFor();
   assert.equal(await alice.locator('.item', { hasText: 'Kyoto inspiration' }).count(), 0, 'filtered out');
-  await alice.getByRole('button', { name: 'Tutti', exact: true }).click();
+  await alice.locator('.spaceChips').getByRole('button', { name: /^Tutti/ }).click();
   await alice.getByRole('button', { name: 'Per data', exact: true }).click();
   await alice.locator('.spacePage .monthLabel').first().waitFor();
   assert.equal(await alice.locator('.spacePage .item').count(), 2, 'both back');

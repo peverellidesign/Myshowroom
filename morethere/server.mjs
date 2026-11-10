@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { brotliCompressSync, gzipSync, constants as zlib } from 'node:zlib';
 import { handlePreview, handlePreviewImage } from './preview.mjs';
 
 const root = join(fileURLToPath(new URL('.', import.meta.url)), 'dist');
@@ -32,10 +33,36 @@ const headers = {
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
 };
 
-async function send(res, file, cache) {
-  const body = await readFile(file);
-  res.writeHead(200, { ...headers, 'Content-Type': types[extname(file)] || 'application/octet-stream', 'Cache-Control': cache });
-  res.end(body);
+// Files are read and compressed once, then served from memory (the build is immutable).
+const COMPRESSIBLE = new Set(['.html', '.js', '.css', '.svg', '.json', '.webmanifest', '.txt']);
+const memo = new Map(); // file -> { raw, br, gz }
+async function load(file) {
+  let entry = memo.get(file);
+  if (!entry) {
+    const raw = await readFile(file);
+    entry = { raw };
+    if (COMPRESSIBLE.has(extname(file)) && raw.length > 1024) {
+      entry.br = brotliCompressSync(raw, { params: { [zlib.BROTLI_PARAM_QUALITY]: 11, [zlib.BROTLI_PARAM_SIZE_HINT]: raw.length } });
+      entry.gz = gzipSync(raw, { level: 9 });
+    }
+    memo.set(file, entry);
+  }
+  return entry;
+}
+
+async function send(req, res, file, cache) {
+  const { raw, br, gz } = await load(file);
+  const accept = String(req.headers['accept-encoding'] || '');
+  const [body, encoding] = br && /\bbr\b/.test(accept) ? [br, 'br'] : gz && /\bgzip\b/.test(accept) ? [gz, 'gzip'] : [raw, null];
+  res.writeHead(200, {
+    ...headers,
+    'Content-Type': types[extname(file)] || 'application/octet-stream',
+    'Cache-Control': cache,
+    'Content-Length': body.length,
+    ...(br || gz ? { Vary: 'Accept-Encoding' } : {}),
+    ...(encoding ? { 'Content-Encoding': encoding } : {}),
+  });
+  res.end(req.method === 'HEAD' ? undefined : body);
 }
 
 createServer(async (req, res) => {
@@ -47,9 +74,9 @@ createServer(async (req, res) => {
     const file = normalize(join(root, path));
     if (file.startsWith(root) && path !== '/' && (await stat(file).catch(() => null))?.isFile()) {
       const cache = path.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : path === '/sw.js' ? 'no-cache' : 'public, max-age=300';
-      return await send(res, file, cache);
+      return await send(req, res, file, cache);
     }
-    return await send(res, join(root, 'index.html'), 'no-cache');
+    return await send(req, res, join(root, 'index.html'), 'no-cache');
   } catch {
     res.writeHead(500); res.end();
   }

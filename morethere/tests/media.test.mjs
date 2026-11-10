@@ -161,3 +161,21 @@ test('a shared space cover is set by members and seen only by the space', async 
   ok(await u.alice.client.rpc('set_world_cover', { p_world: w.id, p_path: null }));
   assert.ok(!(await canRead(u.alice, cover)), 'removed cover is no longer shared');
 });
+
+test('editing a memory updates the copies its owner put in shared spaces', async () => {
+  const w = ok(await u.alice.client.from('worlds').insert({ name: 'Segue il ricordo' }).select().single());
+  ok(await u.alice.client.rpc('invite_to_world', { p_world: w.id, p_user: u.carol.id }));
+  ok(await u.carol.client.rpc('respond_world_invite', { p_world: w.id, p_accept: true }));
+  const mine = ok(await u.alice.client.from('items').insert({ title: 'Prima', category: 'Pagine' }).select().single());
+  ok(await u.alice.client.rpc('add_item_to_world', { p_world: w.id, p_item: mine.id }));
+  const photo = await upload(u.alice);
+  ok(await u.alice.client.from('items').update({ title: 'Dopo', note: 'nuova nota', image_path: photo, memory_date: '2024-05-03' }).eq('id', mine.id));
+  const copy = ok(await u.carol.client.from('world_items').select('title, note, image_path, memory_date').eq('world_id', w.id).single());
+  assert.deepEqual(copy, { title: 'Dopo', note: 'nuova nota', image_path: photo, memory_date: '2024-05-03' });
+  assert.ok(await canRead(u.carol, photo), 'the member sees the new photo');
+  // Someone else's contribution is not touched by Alice's edits.
+  const carolItem = ok(await u.carol.client.from('items').insert({ title: 'Di Carol' }).select().single());
+  ok(await u.carol.client.rpc('add_item_to_world', { p_world: w.id, p_item: carolItem.id }));
+  const before = ok(await u.alice.client.from('world_items').select('title').eq('source_item_id', carolItem.id).single());
+  assert.equal(before.title, 'Di Carol');
+});
