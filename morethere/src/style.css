@@ -318,3 +318,5 @@ main>textarea{width:100%;border:1px solid #e2e2e2;border-radius:16px;padding:14p
 .newSpace{margin:2px 0 6px}
 /* keep notices clear of the Indietro / Avanti bar */
 .app:has(.wizNav) .toast{bottom:calc(96px + env(safe-area-inset-bottom))}
+/* Your Circle opens straight on the people */
+.block.first{margin-top:0}
