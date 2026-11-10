@@ -316,3 +316,5 @@ main>textarea{width:100%;border:1px solid #e2e2e2;border-radius:16px;padding:14p
 .doneActions{display:grid;gap:10px;width:100%}
 .doneActions .wide{margin-top:0}
 .newSpace{margin:2px 0 6px}
+/* keep notices clear of the Indietro / Avanti bar */
+.app:has(.wizNav) .toast{bottom:calc(96px + env(safe-area-inset-bottom))}
