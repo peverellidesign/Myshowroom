@@ -221,39 +221,47 @@ test('invitations are single-use, revocable and never expose the token', async (
   assert.equal(ok(await dave.client.from('profiles').select('id').eq('id', alice.id)).length, 0);
 });
 
-test('Thought of you: only to connections, only your own items, snapshot only', async () => {
+test('More for you: open one memory to a friend — live, revocable, nothing else', async () => {
   const { alice, bob, carol, dave } = users;
   const trip = ok(await alice.client.from('items').select('id').eq('title', 'Alice trip').single());
-  denied(await alice.client.rpc('send_thought', { p_recipient: dave.id, p_item: trip.id, p_message: 'hi' }), 'not connected');
+  denied(await alice.client.rpc('open_item_to', { p_recipient: dave.id, p_item: trip.id }), 'not connected');
   denied(await alice.client.from('thoughts').insert({ sender_id: alice.id, recipient_id: dave.id, item_title: 'x' }));
   const bobItem = ok(await bob.client.from('items').select('id').eq('owner_id', bob.id).limit(1).single());
-  denied(await alice.client.rpc('send_thought', { p_recipient: carol.id, p_item: bobItem.id, p_message: '' }), 'not own item');
+  denied(await alice.client.rpc('open_item_to', { p_recipient: carol.id, p_item: bobItem.id }), 'not own item');
 
-  const tid = ok(await alice.client.rpc('send_thought', {
-    p_recipient: carol.id, p_item: trip.id, p_message: 'Ho pensato a te', p_allow_ai_export: false,
-  }));
-  const got = ok(await carol.client.from('thoughts').select('*').eq('id', tid).single());
-  assert.equal(got.item_title, 'Alice trip');
-  assert.equal(got.message, 'Ho pensato a te');
-  // The recipient gets the snapshot, not access to the archive.
+  // Before: Carol sees nothing of Alice's collection.
   assert.equal(ok(await carol.client.from('items').select('id').eq('owner_id', alice.id)).length, 0);
-  assert.equal(ok(await dave.client.from('thoughts').select('id')).length, 0);
-  noEffect(await carol.client.from('thoughts').update({ message: 'edited' }).eq('id', tid).select());
-  assert.equal(ok(await carol.client.rpc('ai_export_thoughts')).length, 0, 'AI export not permitted');
-
-  ok(await carol.client.rpc('mark_thought_read', { p_thought: tid }));
-  const saved = ok(await carol.client.rpc('save_thought', { p_thought: tid }));
-  assert.equal(ok(await carol.client.from('items').select('owner_id').eq('id', saved).single()).owner_id, carol.id);
-
-  const tid2 = ok(await alice.client.rpc('send_thought', {
-    p_recipient: carol.id, p_item: trip.id, p_message: 'per l\'AI', p_allow_ai_export: true,
+  const tid = ok(await alice.client.rpc('open_item_to', {
+    p_recipient: carol.id, p_item: trip.id, p_message: 'Ho pensato a te', p_allow_save: false, p_allow_ai_export: false,
   }));
+  // After: exactly that one memory, live.
+  const visible = ok(await carol.client.from('items').select('id, title').eq('owner_id', alice.id));
+  assert.deepEqual(visible.map(i => i.id), [trip.id], 'only the opened memory');
+  ok(await alice.client.from('items').update({ note: 'aggiornata' }).eq('id', trip.id));
+  assert.equal(ok(await carol.client.from('items').select('note').eq('id', trip.id).single()).note, 'aggiornata', 'sees edits');
+  assert.equal(ok(await dave.client.from('thoughts').select('id')).length, 0);
+  noEffect(await carol.client.from('thoughts').update({ message: 'edited', allow_save: true }).eq('id', tid).select());
+  noEffect(await carol.client.from('items').update({ title: 'mine now' }).eq('id', trip.id).select());
+  // Saving a copy needs permission.
+  denied(await carol.client.rpc('save_thought', { p_thought: tid }), 'save not permitted');
+  assert.equal(ok(await carol.client.rpc('ai_export_thoughts')).length, 0, 'AI export not permitted');
+  ok(await carol.client.rpc('mark_thought_read', { p_thought: tid }));
+  // The recipient cannot revoke the owner's permission; the owner can.
+  assert.equal(ok(await carol.client.from('thoughts').delete().eq('id', tid).select()).length, 0);
+  ok(await alice.client.from('thoughts').delete().eq('id', tid));
+  assert.equal(ok(await carol.client.from('items').select('id').eq('owner_id', alice.id)).length, 0, 'revoked');
+
+  // With permission to save and to use with AI.
+  const tid2 = ok(await alice.client.rpc('open_item_to', {
+    p_recipient: carol.id, p_item: trip.id, p_message: "per l'AI", p_allow_save: true, p_allow_ai_export: true,
+  }));
+  const saved = ok(await carol.client.rpc('save_thought', { p_thought: tid2 }));
+  const copy = ok(await carol.client.from('items').select('owner_id, note').eq('id', saved).single());
+  assert.equal(copy.owner_id, carol.id);
+  assert.equal(copy.note, 'aggiornata', 'copy of the live memory');
   const exp = ok(await carol.client.rpc('ai_export_thoughts'));
   assert.equal(exp.length, 1);
   assert.match(exp[0].note, /per l'AI/);
-  // Sender can unsend; recipient cannot delete the sender's record.
-  const del = ok(await carol.client.from('thoughts').delete().eq('id', tid2).select());
-  assert.equal(del.length, 0);
   ok(await alice.client.from('thoughts').delete().eq('id', tid2));
 });
 

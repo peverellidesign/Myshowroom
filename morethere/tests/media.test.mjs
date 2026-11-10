@@ -92,7 +92,7 @@ test('photo access follows the grant, and revocation removes it', async () => {
 });
 
 test('thoughts and worlds carry the photo to exactly the right people', async () => {
-  const tid = ok(await u.alice.client.rpc('send_thought', { p_recipient: u.bob.id, p_item: item.id, p_message: 'guarda', p_allow_ai_export: false }));
+  const tid = ok(await u.alice.client.rpc('open_item_to', { p_recipient: u.bob.id, p_item: item.id, p_message: 'guarda' }));
   const t = ok(await u.bob.client.from('thoughts').select('item_image_path').eq('id', tid).single());
   assert.equal(t.item_image_path, photo);
   assert.ok(await canRead(u.bob, photo), 'recipient reads');
@@ -115,7 +115,7 @@ test('the date of a memory travels with thoughts, worlds and saved copies', asyn
   assert.equal(it.memory_date, '2019-08-15');
   const bad = await u.alice.client.from('items').insert({ title: 'x', memory_date: '1500-01-01' });
   assert.ok(bad.error, 'implausible dates are refused');
-  const tid = ok(await u.alice.client.rpc('send_thought', { p_recipient: u.bob.id, p_item: it.id, p_message: '', p_allow_ai_export: false }));
+  const tid = ok(await u.alice.client.rpc('open_item_to', { p_recipient: u.bob.id, p_item: it.id, p_allow_save: true }));
   assert.equal(ok(await u.bob.client.from('thoughts').select('item_memory_date').eq('id', tid).single()).item_memory_date, '2019-08-15');
   const kept = ok(await u.bob.client.rpc('save_thought', { p_thought: tid }));
   assert.equal(ok(await u.bob.client.from('items').select('memory_date').eq('id', kept).single()).memory_date, '2019-08-15');

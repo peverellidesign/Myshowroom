@@ -322,3 +322,7 @@ main>textarea{width:100%;border:1px solid #e2e2e2;border-radius:16px;padding:14p
 .block.first{margin-top:0}
 .subHead{font-size:15px;letter-spacing:-.2px;margin:28px 0 4px}
 .railHint.lead{margin:-6px 0 14px}
+/* opened memories */
+.openedTitle{display:block;font-weight:700;font-size:16px;margin:6px 0 2px}
+.openedNote{display:block;color:#888;font-size:13px;line-height:1.45}
+.dedication{font-style:italic;color:#555;margin:6px 0 0}

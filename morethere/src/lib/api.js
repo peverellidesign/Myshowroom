@@ -392,21 +392,31 @@ export function createRemoteApi(user) {
     async loadThoughts() {
       const rows = must(await supabase.from('thoughts').select('*').order('created_at', { ascending: false }).limit(200));
       const people = await profilesById(rows.flatMap(t => [t.sender_id, t.recipient_id]));
-      const withPeople = rows.map(t => ({ ...t, sender: people[t.sender_id], recipient: people[t.recipient_id] }));
+      // A memory opened to a friend is read live from the owner's collection
+      // (RLS lets the recipient read exactly that item while access lasts).
+      const ids = [...new Set(rows.map(t => t.source_item_id).filter(Boolean))];
+      const live = ids.length ? await selectItems(c => supabase.from('items').select(c).in('id', ids)) : { data: [] };
+      const byId = Object.fromEntries((live.data || []).map(r => [r.id, toItem(r, {})]));
+      const withPeople = rows.map(t => ({ ...t, sender: people[t.sender_id], recipient: people[t.recipient_id], item: byId[t.source_item_id] || null }));
       return {
         sent: withPeople.filter(t => t.sender_id === me),
         received: withPeople.filter(t => t.recipient_id === me),
       };
     },
-    async sendThought({ recipientId, itemId, message, allowAi }) {
-      return must(await supabase.rpc('send_thought', {
-        p_recipient: recipientId, p_item: itemId, p_message: message, p_allow_ai_export: allowAi,
-      }));
+    // More for you: open one memory to a friend (a revocable permission).
+    async sendThought({ recipientId, itemId, message, allowAi, allowSave }) {
+      const res = await supabase.rpc('open_item_to', {
+        p_recipient: recipientId, p_item: itemId, p_message: message, p_allow_save: !!allowSave, p_allow_ai_export: !!allowAi,
+      });
+      if (res.error?.code === 'PGRST202') { // database without the fifth migration
+        return must(await supabase.rpc('send_thought', { p_recipient: recipientId, p_item: itemId, p_message: message, p_allow_ai_export: allowAi }));
+      }
+      return must(res);
     },
     async markThoughtRead(id) { must(await supabase.rpc('mark_thought_read', { p_thought: id })); },
     async saveThought(thought) {
       const id = must(await supabase.rpc('save_thought', { p_thought: thought.id }));
-      const copy = await this.copyPhoto(thought.item_image_path);
+      const copy = await this.copyPhoto(thought.item?.image_path || thought.item_image_path);
       if (copy) await supabase.from('items').update({ image_path: copy }).eq('id', id);
       return id;
     },

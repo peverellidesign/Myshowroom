@@ -295,14 +295,20 @@ test('More for you arrives in real time', async () => {
   await alice.getByRole('button', { name: 'Bob', exact: true }).click();
   assert.equal(await alice.getByRole('button', { name: 'Bob', exact: true }).getAttribute('aria-pressed'), 'true');
   await alice.getByRole('button', { name: /Avanti/ }).click();
+  // Opening a memory is a permission: Alice decides what Bob can do with it.
+  await alice.getByRole('heading', { name: 'Cosa può fare Bob?' }).waitFor();
+  await alice.getByRole('radio', { name: /Guardare e salvare/ }).click();
+  await alice.getByRole('button', { name: /Avanti/ }).click();
   await alice.getByLabel('LA TUA DEDICA').fill('Ci andiamo insieme?');
   await shot(alice, '08-more-for-you');
   await noWorld(alice);
-  await alice.getByRole('button', { name: 'Invia a Bob' }).click();
-  await alice.getByRole('heading', { name: 'Mandata.' }).waitFor();
+  await alice.getByRole('button', { name: 'Apri a Bob' }).click();
+  await alice.getByRole('heading', { name: 'Fatto.' }).waitFor();
+  await alice.getByText('Resta nella tua raccolta').waitFor();
   // Bob has not reloaded: the badge comes from realtime sync.
   await bob.locator('.round .badge').waitFor({ timeout: 10000 });
   await bob.getByRole('button', { name: /Apri Your Circle/ }).click();
+  await bob.getByText('Ricordi aperti per te').waitFor();
   await bob.getByText('Ci andiamo insieme?').waitFor();
   await shot(bob, '09-circle');
   await bob.getByRole('button', { name: '+ Salva nel mio archivio' }).click();
