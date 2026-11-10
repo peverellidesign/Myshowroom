@@ -14,7 +14,7 @@ const ERRORS = {
   item_not_found: 'Elemento non disponibile.',
   save_not_permitted: 'Questa persona non ha consentito di salvare copie.',
   collection_not_found: 'Raccolta non trovata.',
-  world_not_found: 'Mondo non disponibile.',
+  world_not_found: 'Spazio non disponibile.',
   invite_not_found: 'Invito non trovato.',
   thought_not_found: 'Pensiero non trovato.',
   not_authenticated: 'Accedi per continuare.',

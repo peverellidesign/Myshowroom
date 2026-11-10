@@ -37,6 +37,8 @@ const shot = async (page, name) => {
 };
 const toast = (page, text) => page.locator('.toast', { hasText: text }).waitFor({ timeout: 10000 });
 const close = page => page.getByRole('button', { name: 'CHIUDI' }).click();
+// The word "world" must not appear anywhere in the interface.
+const noWorld = async page => assert.doesNotMatch(await page.locator('body').innerText(), /world/i, 'no "world" on screen');
 
 async function signUp(page, p) {
   await page.goto(APP);
@@ -193,17 +195,21 @@ test('edit an item, rename and delete a collection', async () => {
   assert.equal(await page.getByRole('button', { name: 'Design e casa', exact: true }).count(), 0);
 });
 
-test('invitation link connects two people', async () => {
+test('More of me without anyone yet: add a person right there, by invite link', async () => {
   const alice = people.alice.page;
   const bob = people.bob.page;
   await signUp(bob, people.bob);
 
   await alice.getByRole('button', { name: /Apri Your Circle/ }).click();
+  await noWorld(alice);
   await alice.getByRole('button', { name: /More of me/ }).click();
-  await alice.getByRole('button', { name: 'Crea e copia invito' }).click();
+  // No dead end: the first step is offered in place.
+  await alice.getByText('Per prima cosa aggiungi la persona a cui vuoi mostrare qualcosa di te.').waitFor();
+  await alice.getByRole('button', { name: 'Invita con un link' }).click();
   const link = await alice.getByLabel("Link d'invito").inputValue();
   assert.match(link, /#invite=[A-Za-z0-9_-]{40,}/);
-  await shot(alice, '04-enter-my-world');
+  await shot(alice, '04-more-of-me-first-person');
+  await noWorld(alice);
 
   await bob.goto(link);
   await bob.getByText('Alice ti invita nel suo Circle').waitFor();
@@ -211,7 +217,7 @@ test('invitation link connects two people', async () => {
   await bob.getByRole('button', { name: 'Accetta' }).click();
   await toast(bob, 'Ora siete connessi');
   await bob.getByRole('button', { name: /Alice/ }).waitFor();
-  await bob.getByText('Non ha ancora aperto il suo mondo con te').waitFor();
+  await bob.getByText('Non condivide ancora nulla con te').waitFor();
 
   // Reusing the link fails.
   await bob.goto(link);
@@ -219,31 +225,32 @@ test('invitation link connects two people', async () => {
   await bob.getByRole('button', { name: 'Ok' }).click();
 });
 
-test('Enter my world: grantee sees exactly the granted collection', async () => {
+test('More of me: the person sees exactly the chosen collection', async () => {
   const alice = people.alice.page;
   const bob = people.bob.page;
-  // Alice's view updates by realtime sync: Bob is now in her Circle.
-  await alice.getByLabel('CON CHI?').selectOption({ label: 'Bob' });
+  // Alice's screen updates by realtime sync: Bob is now one of her people.
+  await alice.getByLabel('A CHI?').selectOption({ label: 'Bob' });
   await alice.getByRole('button', { name: 'Viaggi' }).click();
   await alice.getByLabel('PERMESSO').selectOption('save');
   await alice.locator('.toggle', { hasText: 'Uso con AI' }).click();
-  await alice.getByRole('button', { name: 'Apri il mio mondo' }).click();
-  await toast(alice, 'Il tuo mondo è aperto per questa persona');
-  await alice.getByText('Chi può entrare').waitFor();
+  await alice.getByRole('button', { name: 'Condividi', exact: true }).click();
+  await toast(alice, 'Fatto: ora vede ciò che hai scelto');
+  await alice.getByText('Chi vede qualcosa di te').waitFor();
   await shot(alice, '06-share-saved');
 
   await bob.goto(APP);
   await bob.getByRole('button', { name: /Apri Your Circle/ }).click();
   await bob.getByRole('button', { name: /Alice/ }).click();
+  await noWorld(bob);
   await bob.getByText('+ Save Kyoto inspiration').waitFor();
   // The photo in the shared collection is visible to Bob, through a signed URL.
   await bob.locator('.shared img.thumb').first().waitFor();
   assert.ok(await bob.locator('.shared img.thumb').first().evaluate(img => img.complete && img.naturalWidth > 0), 'shared photo loads');
   assert.equal(await bob.getByText('Idea segreta').count(), 0, 'private item not visible');
   assert.equal(await bob.getByText('example.org').count(), 0, 'item outside the grant not visible');
-  await shot(bob, '07-their-world');
+  await shot(bob, '07-person');
   await bob.getByText('+ Save Kyoto inspiration').click();
-  await toast(bob, 'Salvato nel tuo mondo');
+  await toast(bob, 'Salvato nel tuo archivio');
 
   await bob.getByRole('button', { name: 'Use with AI' }).click();
   await toast(bob, 'Contesto copiato');
@@ -261,57 +268,82 @@ test('revoking access is immediate', async () => {
   await bob.reload();
   await bob.getByRole('button', { name: /Apri Your Circle/ }).click();
   await bob.getByRole('button', { name: /Alice/ }).click();
-  await bob.getByText('Alice non ha ancora aperto il suo mondo con te.').waitFor();
+  await bob.getByText('Alice non condivide ancora nulla con te.').waitFor();
   await close(bob);
 });
 
-test('Thought of you arrives in real time', async () => {
+test('More for you arrives in real time', async () => {
   const alice = people.alice.page;
   const bob = people.bob.page;
   await close(alice);
   await alice.locator('.item', { hasText: 'example.org' }).getByRole('button', { name: 'Condividi' }).click();
   await alice.getByLabel('PER CHI?').selectOption({ label: 'Bob' });
   await alice.getByLabel('LA TUA DEDICA').fill('Ci andiamo insieme?');
-  await shot(alice, '08-thought');
-  await alice.getByRole('button', { name: 'Send a thought' }).click();
+  await shot(alice, '08-more-for-you');
+  await noWorld(alice);
+  await alice.getByRole('button', { name: 'Invia la scoperta' }).click();
   await toast(alice, 'Pensiero inviato');
   // Bob has not reloaded: the badge comes from realtime sync.
   await bob.locator('.round .badge').waitFor({ timeout: 10000 });
   await bob.getByRole('button', { name: /Apri Your Circle/ }).click();
   await bob.getByText('Ci andiamo insieme?').waitFor();
-  await shot(bob, '09-thought-received');
-  await bob.getByRole('button', { name: '+ Salva nel mio mondo' }).click();
-  await toast(bob, 'Salvato nel tuo mondo');
+  await shot(bob, '09-circle');
+  await bob.getByRole('button', { name: '+ Salva nel mio archivio' }).click();
+  await toast(bob, 'Salvato nel tuo archivio');
   await close(bob);
   await bob.locator('.item', { hasText: 'example.org' }).waitFor();
 });
 
-test('Our little world: invite, accept, contribute together', async () => {
+test('More of us: as many shared spaces as you like, started from a person', async () => {
   const alice = people.alice.page;
   const bob = people.bob.page;
   await alice.goto(APP);
   await alice.getByRole('button', { name: /Apri Your Circle/ }).click();
-  await alice.getByRole('button', { name: /More of us/ }).click();
+  await alice.getByRole('button', { name: /Bob/ }).click();
+  await alice.getByRole('button', { name: /Crea un nuovo spazio con Bob/ }).click();
+  // Bob is already chosen.
+  assert.equal(await alice.getByRole('button', { name: 'Bob', exact: true }).getAttribute('aria-pressed'), 'true');
+  await noWorld(alice);
   await alice.getByLabel('COME LO CHIAMIAMO?').fill('Japan 2027');
-  await alice.getByLabel('CON CHI?').selectOption({ label: 'Bob' });
-  await alice.getByRole('button', { name: 'Crea un mondo' }).click();
-  await toast(alice, 'Il vostro mondo è pronto');
-  await alice.getByRole('button', { name: /Japan 2027/ }).click();
+  await alice.getByRole('button', { name: 'Crea lo spazio' }).click();
+  await toast(alice, 'Lo spazio è pronto');
+  await alice.getByRole('heading', { name: 'Japan 2027' }).waitFor();
   await alice.locator('.feature', { hasText: 'Kyoto inspiration' }).click();
-  await toast(alice, 'Aggiunto al vostro mondo');
+  await toast(alice, 'Aggiunto al vostro spazio');
+  await noWorld(alice);
+
+  // A second space with the same person.
+  await alice.goto(APP);
+  await alice.getByRole('button', { name: /Apri Your Circle/ }).click();
+  await alice.getByRole('button', { name: /Bob/ }).click();
+  await alice.getByRole('button', { name: /Crea un nuovo spazio con Bob/ }).click();
+  await alice.getByLabel('COME LO CHIAMIAMO?').fill('Ristoranti a Milano');
+  await alice.getByRole('button', { name: 'Crea lo spazio' }).click();
+  await toast(alice, 'Lo spazio è pronto');
+  await alice.getByRole('heading', { name: 'Ristoranti a Milano' }).waitFor();
 
   await bob.getByRole('button', { name: /Apri Your Circle/ }).click();
   await bob.getByRole('button', { name: /More of us/ }).click();
-  await bob.getByRole('button', { name: 'Entra' }).click();
-  await toast(bob, 'Benvenuto nel vostro mondo');
+  await bob.locator('.person', { hasText: 'Japan 2027' }).getByRole('button', { name: 'Entra' }).click();
+  await toast(bob, 'Benvenuto nel vostro spazio');
+  await bob.locator('.person', { hasText: 'Ristoranti a Milano' }).getByRole('button', { name: 'Entra' }).click();
+  await toast(bob, 'Benvenuto nel vostro spazio');
   await bob.getByRole('button', { name: /Japan 2027/ }).click();
   await bob.locator('.feature', { hasText: 'Aggiunto da Alice' }).waitFor();
   await bob.locator('.stack').last().locator('.feature', { hasText: 'example.org' }).click();
-  await toast(bob, 'Aggiunto al vostro mondo');
+  await toast(bob, 'Aggiunto al vostro spazio');
 
-  // Alice sees Bob's contribution without reloading.
+  // Alice's page for Bob lists both spaces.
+  await alice.goto(APP);
+  await alice.getByRole('button', { name: /Apri Your Circle/ }).click();
+  await alice.getByRole('button', { name: /Bob/ }).click();
+  await alice.getByRole('button', { name: /Japan 2027/ }).waitFor();
+  await alice.getByRole('button', { name: /Ristoranti a Milano/ }).waitFor();
+  await shot(alice, '10a-person-spaces');
+  await alice.getByRole('button', { name: /Japan 2027/ }).click();
+  // Alice sees Bob's contribution.
   await alice.locator('.feature', { hasText: 'Aggiunto da Bob' }).waitFor({ timeout: 10000 });
-  await shot(alice, '10-world');
+  await shot(alice, '10-space');
 
   // AI export respects Bob's consent.
   await alice.getByRole('button', { name: 'Use with AI' }).click();

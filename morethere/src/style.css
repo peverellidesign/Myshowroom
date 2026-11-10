@@ -72,3 +72,10 @@ main>textarea{width:100%;border:1px solid #e2e2e2;border-radius:16px;padding:14p
 .brandEyebrow{letter-spacing:.2px;font-weight:700;color:#252525;font-size:14px}
 .featureEyebrow{display:block;font-style:normal;font-size:10px;letter-spacing:1.2px;color:#9a9a9a;font-weight:500;margin-bottom:6px}
 .feature small.pendingNote{color:#252525;font-weight:600}
+/* ---- Circle structure ---- */
+.panelLead{margin:0;font-size:15px;font-weight:600;color:#252525;line-height:1.45}
+.addPersonBtn{margin-top:12px}
+.people.requests{margin-bottom:8px}
+.people.requests .person{border-color:#252525}
+.inlineLink{display:inline;padding:0;font-size:12px;text-decoration:underline;color:#252525}
+.profileLink{margin-top:34px}
