@@ -89,6 +89,10 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
   const [inviteLink, setInviteLink] = useState('');
   const [worldInvitee, setWorldInvitee] = useState(''); // eslint-disable-line no-unused-vars
   const [spaceTab, setSpaceTab] = useState('items');
+  // Guided flows: one question at a time.
+  const [meStep, setMeStep] = useState(1); const [meDone, setMeDone] = useState(false);
+  const [forStep, setForStep] = useState(1); const [forDone, setForDone] = useState(false); const [forSearch, setForSearch] = useState('');
+  const [usStep, setUsStep] = useState(1); const [usCreating, setUsCreating] = useState(false);
   const [showSpaceAdd, setShowSpaceAdd] = useState(false);
   const [spaceSearch, setSpaceSearch] = useState('');
   const [spaceItem, setSpaceItem] = useState(null);
@@ -362,12 +366,17 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
   };
 
   // ---- thought of you ---------------------------------------------------------
-  const share = (item) => { setSelected(item); setMessage(''); setRecipient(''); setRecipientId(accepted[0]?.other.id || ''); setThoughtAi(false); setScreen('thought'); };
+  const startMoreForYou = ({ item = null, personId = '' } = {}) => {
+    setSelected(item); setMessage(''); setRecipient(''); setForSearch('');
+    setRecipientId(personId || accepted[0]?.other.id || ''); setThoughtAi(false);
+    setForStep(item ? 2 : 1); setForDone(false); setScreen('thought');
+  };
+  const share = (item) => startMoreForYou({ item });
   const sendThought = async () => {
     if (!selected) return;
     if (social && recipientId && recipientId !== '__external') {
-      const ok = await run(() => api.sendThought({ recipientId, itemId: selected.id, message: message.trim(), allowAi: thoughtAi }), 'Pensiero inviato');
-      if (ok) { await refreshThoughts(); setScreen('circle', { replace: true }); }
+      const ok = await run(() => api.sendThought({ recipientId, itemId: selected.id, message: message.trim(), allowAi: thoughtAi }));
+      if (ok) { await refreshThoughts(); setForDone(true); }
       return;
     }
     if (!recipient.trim()) return toast('Inserisci il destinatario');
@@ -376,7 +385,7 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
     const payload = `${message || 'Ho pensato a te.'}\n\n${selected.title}\n${selected.url || selected.note}\n\nShared via morethere`;
     if (navigator.share) navigator.share({ title: 'Thought of you · morethere', text: payload }).catch(() => {});
     else navigator.clipboard?.writeText(payload).then(() => toast('Messaggio copiato per la condivisione'));
-    setScreen('circle', { replace: true });
+    setForDone(true);
   };
 
   // ---- their worlds -------------------------------------------------------------
@@ -397,10 +406,12 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
     const w = await run(() => api.createWorld(worldName.trim()));
     if (!w) return;
     for (const id of spaceMembers) await run(() => api.inviteToWorld(w.id, id));
-    setWorldName(''); setSpaceMembers([]); await refreshWorlds();
+    setWorldName(''); setSpaceMembers([]); setUsCreating(false); await refreshWorlds();
     toast(spaceMembers.length ? 'Lo spazio è pronto: abbiamo mandato gli inviti' : 'Il tuo spazio è pronto');
     openWorld(w);
   };
+  const startMoreOfMe = (personId = '') => { pickShareTarget(personId); setMeStep(personId ? 2 : 1); setMeDone(false); setScreen('settings'); };
+  const startMoreOfUs = (memberIds = []) => { setSpaceMembers(memberIds); setWorldName(''); setUsStep(memberIds.length ? 2 : 1); setUsCreating(memberIds.length > 0 || !worlds.length); setScreen('worlds'); };
   const openWorld = (w) => { setSelected(w); setWorldData(null); setSpaceTab('items'); setShowSpaceAdd(false); setSpaceItem(null); setScreen('world'); };
   const reloadWorld = useCallback(async (id) => setWorldData(await api.loadWorld(id)), [api]);
   useEffect(() => {
@@ -420,8 +431,8 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
   const saveShare = async () => {
     if (!shareTarget) return toast('Scegli con chi condividere');
     if (shareMode === 'item' && !shareCollections.length) return toast('Scegli almeno una raccolta');
-    const ok = await run(() => api.setShare({ granteeId: shareTarget, scope: shareMode === 'all' ? 'all' : 'collections', canSave: permission === 'save', allowAi: shareAi, collectionIds: shareCollections }), 'Fatto: ora vede ciò che hai scelto');
-    if (ok !== undefined) await refreshCircle();
+    const ok = await run(() => api.setShare({ granteeId: shareTarget, scope: shareMode === 'all' ? 'all' : 'collections', canSave: permission === 'save', allowAi: shareAi, collectionIds: shareCollections }));
+    if (ok !== undefined) { await refreshCircle(); setMeDone(true); }
   };
   const revokeShare = async (granteeId) => {
     await run(() => api.revokeShare(granteeId), 'Accesso revocato');
@@ -509,6 +520,16 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
       <button type="button" className="pick add" onClick={() => setShowAddPerson(true)}><span className="av" aria-hidden="true"><Plus size={20} /></span><span className="pn">Aggiungi</span></button>
     </div>
   );
+  const wizard = ({ n, total, question, hint, children, canNext = true, onNext, nextLabel = 'Avanti', onBack }) => (
+    <div className="wiz">
+      <div className="wizTop"><span className="wizCount">{n} di {total}</span><span className="wizBar" aria-hidden="true">{Array.from({ length: total }, (_, k) => <i key={k} className={k < n ? 'on' : ''} />)}</span></div>
+      <h2 className="wizQ">{question}</h2>{hint && <p className="wizHint">{hint}</p>}
+      <div className="wizBody">{children}</div>
+      <div className="wizNav">{onBack ? <button type="button" className="textlink wizBack" onClick={onBack}><ArrowLeft size={15} /> Indietro</button> : <span />}<button type="button" className="pill dark wizNext" disabled={!canNext || busy} onClick={onNext}>{nextLabel}{nextLabel === 'Avanti' && <ArrowRight size={16} />}</button></div>
+    </div>
+  );
+  const option = ({ on, title, desc, onClick, multi = false, key }) => <button key={key} type="button" role={multi ? 'checkbox' : 'radio'} aria-checked={on} className={'opt' + (on ? ' on' : '') + (multi ? ' multi' : '')} onClick={onClick}><span className="optMark" aria-hidden="true">{on && (multi ? <Check size={13} /> : <i />)}</span><span className="optText"><strong>{title}</strong>{desc && <small>{desc}</small>}</span></button>;
+  const doneView = ({ title, text, actions }) => <div className="wizDone"><span className="doneMark" aria-hidden="true"><Check size={28} /></span><h2>{title}</h2><p className="muted">{text}</p><div className="doneActions">{actions}</div></div>;
   const step = (n, label) => <div className="step"><span className="stepNum">{n}</span><span className="stepLabel">{label}</span></div>;
   const shareSummary = sh => `${sh.scope === 'all' ? 'tutto il tuo archivio' : `${sh.collection_ids.length} ${sh.collection_ids.length === 1 ? 'raccolta' : 'raccolte'}`} · ${sh.can_save ? 'lettura e copia' : 'solo lettura'}${sh.allow_ai_export ? ' · AI' : ''}`;
   const spacesWith = id => worlds.filter(w => w.myStatus === 'active' && w.others.some(m => m.user_id === id));
@@ -552,9 +573,9 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
           : accepted.some(c => circle.sharesIn.some(x => x.owner_id === c.other.id)) && <p className="hint railHint"><span className="ringDot" aria-hidden="true" /> condivide qualcosa con te · tocca una persona per vedere tutto ciò che vi riguarda</p>}
       </section>}
       <section className="block"><div className="ixCap">COSA VUOI FARE</div><div className="ix">
-        <button className="ixr" onClick={() => setScreen('settings')}><span className="ixn">01</span><span className="ixb"><span className="ixt">More <b>of me.</b></span><span className="ixs">Le cose che amo raccontano qualcosa in più di me.</span></span><span className="ixgo" aria-hidden="true"><ArrowRight size={17} strokeWidth={1.5} /></span></button>
-        <button className="ixr" onClick={() => { setSelected(null); setRecipientId(accepted[0]?.other.id || ''); setThoughtAi(false); setScreen('thought'); }}><span className="ixn">02</span><span className="ixb"><span className="ixt">More <b>for you.</b></span><span className="ixs">Ho trovato qualcosa che vorrei condividere proprio con te.</span></span><span className="ixgo" aria-hidden="true"><ArrowRight size={17} strokeWidth={1.5} /></span></button>
-        <button className="ixr us" onClick={() => { setSpaceMembers([]); setScreen('worlds'); }}><span className="ixn">03</span><span className="ixb"><span className="ixt">More <b>of us.</b></span><span className="ixs">Le nostre scoperte, i nostri gusti, le cose che ci uniscono.</span>{(worldInvites.length > 0 || activeSpaces.length > 0) && <span className="ixmeta">{[activeSpaces.length ? `${activeSpaces.length} ${activeSpaces.length === 1 ? 'spazio' : 'spazi'}` : '', worldInvites.length ? `${worldInvites.length} ${worldInvites.length === 1 ? 'invito' : 'inviti'} da accettare` : ''].filter(Boolean).join(' · ')}</span>}</span><span className="ixgo" aria-hidden="true"><ArrowRight size={17} strokeWidth={1.5} /></span></button>
+        <button className="ixr" onClick={() => startMoreOfMe()}><span className="ixn">01</span><span className="ixb"><span className="ixt">More <b>of me.</b></span><span className="ixs">Le cose che amo raccontano qualcosa in più di me.</span></span><span className="ixgo" aria-hidden="true"><ArrowRight size={17} strokeWidth={1.5} /></span></button>
+        <button className="ixr" onClick={() => startMoreForYou()}><span className="ixn">02</span><span className="ixb"><span className="ixt">More <b>for you.</b></span><span className="ixs">Ho trovato qualcosa che vorrei condividere proprio con te.</span></span><span className="ixgo" aria-hidden="true"><ArrowRight size={17} strokeWidth={1.5} /></span></button>
+        <button className="ixr us" onClick={() => startMoreOfUs()}><span className="ixn">03</span><span className="ixb"><span className="ixt">More <b>of us.</b></span><span className="ixs">Le nostre scoperte, i nostri gusti, le cose che ci uniscono.</span>{(worldInvites.length > 0 || activeSpaces.length > 0) && <span className="ixmeta">{[activeSpaces.length ? `${activeSpaces.length} ${activeSpaces.length === 1 ? 'spazio' : 'spazi'}` : '', worldInvites.length ? `${worldInvites.length} ${worldInvites.length === 1 ? 'invito' : 'inviti'} da accettare` : ''].filter(Boolean).join(' · ')}</span>}</span><span className="ixgo" aria-hidden="true"><ArrowRight size={17} strokeWidth={1.5} /></span></button>
       </div></section>
       {social && thoughts.received.length > 0 && <><h2>Scoperte per te</h2>{thoughts.received.map(t => <div className={'note' + (t.read_at ? '' : ' unread')} key={t.id}><strong>Da {nameOf(t.sender)}</strong><p>{t.message || 'Ho pensato a te.'}</p>{photoUrls[t.item_image_path] && <Photo className="notephoto" url={photoUrls[t.item_image_path]} alt={t.item_title} />}<small>{t.item_title}</small><div className="noteactions">{safeUrl(t.item_url || '') && <a className="textlink" href={t.item_url} target="_blank" rel="noopener noreferrer" onClick={() => api.markThoughtRead(t.id).then(refreshThoughts).catch(() => {})}>Apri <ExternalLink size={12} /></a>}<button className="textlink" disabled={busy} onClick={async () => { const r = await run(() => api.saveThought(t), 'Salvato nel tuo archivio'); if (r) { refreshArchive(); refreshThoughts(); } }}>+ Salva nel mio archivio</button>{!t.read_at && <button className="textlink" onClick={() => api.markThoughtRead(t.id).then(refreshThoughts).catch(() => {})}>Segna come letto</button>}{t.allow_ai_export && <button className="textlink" onClick={() => exportShared([{ title: t.item_title, url: t.item_url, note: t.message ? `${t.item_note}\nDedication: ${t.message}` : t.item_note, category: t.item_category, collection: 'More for you', added_by_name: nameOf(t.sender) }], 'MORETHERE — SHARED CONTEXT', nameOf(t.sender))}>Use with AI</button>}</div></div>)}</>}
       {(thoughts.sent.length > 0 || notes.length > 0) && <><h2>Scoperte che hai mandato</h2>{thoughts.sent.map(n => <div className="note" key={n.id}><strong>Per {nameOf(n.recipient)}</strong><p>{n.message || 'Ho pensato a te.'}</p><small>{n.item_title} · {n.read_at ? 'Visto' : 'Inviato'} {fmtDate(n.created_at)}</small><div className="noteactions"><button className="textlink" onClick={async () => { await run(() => api.deleteThought(n.id), 'Pensiero ritirato'); refreshThoughts(); }}>Ritira</button></div></div>)}{notes.map(n => <div className="note" key={n.id}><strong>Per {n.recipient}</strong><p>{n.message || 'Ho pensato a te.'}</p><small>{n.item?.title} · condiviso fuori da morethere</small></div>)}</>}
@@ -563,9 +584,9 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
     {screen === 'friend' && friend && <main><div className="personHero"><span className="av big" aria-hidden="true">{face(friend)}</span><div><h1>{nameOf(friend)}</h1><p className="muted">@{friend.handle}{friend.subtitle ? ` · ${friend.subtitle}` : ''}</p></div></div>
       {(() => { const mine = circle.sharesOut.find(x => x.grantee_id === friend.id); const sp = spacesWith(friend.id); return <>
         <div className="ix">
-          <button className="ixr" onClick={() => { pickShareTarget(friend.id); setScreen('settings'); }}><span className="ixn">01</span><span className="ixb"><span className="ixt">More <b>of me.</b></span><span className="ixs">{mine ? (mine.scope === 'all' ? `${nameOf(friend)} vede tutto il tuo archivio` : `${nameOf(friend)} vede ${mine.collection_ids.length} ${mine.collection_ids.length === 1 ? 'raccolta' : 'raccolte'}`) : `${nameOf(friend)} non vede ancora nulla di te`}</span></span><span className="ixgo" aria-hidden="true"><ArrowRight size={17} strokeWidth={1.5} /></span></button>
-          <button className="ixr" onClick={() => { setSelected(null); setRecipientId(friend.id); setThoughtAi(false); setScreen('thought'); }}><span className="ixn">02</span><span className="ixb"><span className="ixt">More <b>for you.</b></span><span className="ixs">Manda una scoperta a {nameOf(friend)}</span></span><span className="ixgo" aria-hidden="true"><ArrowRight size={17} strokeWidth={1.5} /></span></button>
-          <button className="ixr us" onClick={() => { setSpaceMembers([friend.id]); setScreen('worlds'); }}><span className="ixn">03</span><span className="ixb"><span className="ixt">More <b>of us.</b></span><span className="ixs">Crea un nuovo spazio con {nameOf(friend)}</span></span><span className="ixgo" aria-hidden="true"><Plus size={17} strokeWidth={1.5} /></span></button>
+          <button className="ixr" onClick={() => startMoreOfMe(friend.id)}><span className="ixn">01</span><span className="ixb"><span className="ixt">More <b>of me.</b></span><span className="ixs">{mine ? (mine.scope === 'all' ? `${nameOf(friend)} vede tutto il tuo archivio` : `${nameOf(friend)} vede ${mine.collection_ids.length} ${mine.collection_ids.length === 1 ? 'raccolta' : 'raccolte'}`) : `${nameOf(friend)} non vede ancora nulla di te`}</span></span><span className="ixgo" aria-hidden="true"><ArrowRight size={17} strokeWidth={1.5} /></span></button>
+          <button className="ixr" onClick={() => startMoreForYou({ personId: friend.id })}><span className="ixn">02</span><span className="ixb"><span className="ixt">More <b>for you.</b></span><span className="ixs">Manda una scoperta a {nameOf(friend)}</span></span><span className="ixgo" aria-hidden="true"><ArrowRight size={17} strokeWidth={1.5} /></span></button>
+          <button className="ixr us" onClick={() => startMoreOfUs([friend.id])}><span className="ixn">03</span><span className="ixb"><span className="ixt">More <b>of us.</b></span><span className="ixs">Crea un nuovo spazio con {nameOf(friend)}</span></span><span className="ixgo" aria-hidden="true"><Plus size={17} strokeWidth={1.5} /></span></button>
         </div>
         <section className="block"><div className="blockHead"><h2>I vostri spazi</h2>{sp.length > 0 && <span className="count">{sp.length}</span>}</div>{sp.length ? <div className="stack">{sp.map(spaceRow)}</div> : <div className="empty compact">Nessuno spazio insieme, per ora. Creane uno con <strong>More of us.</strong></div>}</section></>; })()}
       <section className="block"><h2>Cosa condivide con te</h2>
@@ -576,12 +597,19 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
         <p className="hint"><ShieldCheck size={13} className="inline" /> {friendShare.can_save ? 'Lettura e copia' : 'Solo lettura'} · {friendShare.allow_ai_export ? 'Uso con AI consentito' : 'Uso con AI non consentito'}. {nameOf(friend)} può modificare o revocare questo accesso in qualsiasi momento.</p></>}</section>
       <button className="textlink danger" onClick={async () => { if (!window.confirm(`Rimuovere ${nameOf(friend)} dal tuo Circle? Gli accessi tra voi verranno revocati.`)) return; await run(() => api.removeConnection(friend.id), 'Connessione rimossa'); await refreshCircle(); setScreen('circle', { replace: true }); }}>Rimuovi dal mio Circle</button></main>}
 
-    {screen === 'worlds' && <main><div className="eyebrow">03 — RACCOLTA CONDIVISA</div><h1>More of us.</h1><p className="muted">Le nostre scoperte, i nostri gusti, le cose che ci uniscono. Uno spazio per ogni persona o gruppo: quanti ne vuoi.</p>
+    {screen === 'worlds' && <main><div className="eyebrow">03 — RACCOLTA CONDIVISA</div><h1>More of us.</h1>
       {!social && signInHint}
-      {social && <div className="panel stepped">{step(1, 'Con chi?')}{peoplePicker(spaceMembers, id => setSpaceMembers(v => (v.includes(id) ? v.filter(x => x !== id) : [...v, id])))}<small>{accepted.length ? 'Puoi sceglierne più di una, o nessuna e invitarle dopo.' : 'Puoi crearlo anche da solo e invitare qualcuno più avanti.'}</small>
-        {step(2, 'Come lo chiamate?')}<input id="wname" aria-label="COME LO CHIAMIAMO?" placeholder="Il nostro prossimo viaggio, Posti da provare…" value={worldName} onChange={e => setWorldName(e.target.value)} /><div className="chips wrap suggest">{['Viaggi insieme', 'Ristoranti da provare', 'Libri da leggere', 'Idee regalo', 'Casa'].map(x => <button key={x} type="button" className={'chip ' + (worldName === x ? 'active' : '')} onClick={() => setWorldName(x)}>{x}</button>)}</div><button className="pill dark wide" disabled={busy} onClick={createWorld}><Plus size={18} /> Crea lo spazio</button></div>}
-      {worldInvites.length > 0 && <><h2>Ti hanno invitato</h2><div className="people">{worldInvites.map(w => <div key={w.id} className="person"><div className="avatar"><FolderHeart size={20} /></div><span><strong>{w.name}</strong><small>Da {nameOf(w.owner)}</small></span><button className="pill dark small" disabled={busy} onClick={async () => { await run(() => api.respondWorldInvite(w.id, true), 'Benvenuto nel vostro spazio'); refreshWorlds(); }}>Entra</button><button className="iconbtn" aria-label="Rifiuta" disabled={busy} onClick={async () => { await run(() => api.respondWorldInvite(w.id, false)); refreshWorlds(); }}><X size={18} /></button></div>)}</div></>}
-      <div className="blockHead"><h2>I vostri spazi</h2>{activeSpaces.length > 0 && <span className="count">{activeSpaces.length}</span>}</div>{activeSpaces.length ? <div className="stack">{activeSpaces.map(spaceRow)}</div> : <div className="empty compact">Ancora nessuno spazio. Create un posto per le cose che volete fare, vedere e ricordare insieme.</div>}</main>}
+      {social && (usCreating ? <>
+        {usStep === 1 && wizard({ n: 1, total: 2, question: 'Con chi?', hint: 'Puoi scegliere più persone, oppure nessuna e invitarle dopo.', onBack: activeSpaces.length ? () => setUsCreating(false) : undefined, onNext: () => setUsStep(2), children: peoplePicker(spaceMembers, id => setSpaceMembers(v => (v.includes(id) ? v.filter(x => x !== id) : [...v, id]))) })}
+        {usStep === 2 && wizard({ n: 2, total: 2, question: 'Come lo chiamate?', hint: spaceMembers.length ? `Con ${accepted.filter(c => spaceMembers.includes(c.other.id)).map(c => nameOf(c.other)).join(', ')}. Riceveranno un invito.` : 'Per ora solo tu: potrai invitare qualcuno quando vuoi.', canNext: !!worldName.trim(), onBack: () => setUsStep(1), onNext: createWorld, nextLabel: 'Crea lo spazio', children: <>
+          <input id="wname" aria-label="COME LO CHIAMIAMO?" placeholder="Il nostro prossimo viaggio, Posti da provare…" value={worldName} onChange={e => setWorldName(e.target.value)} />
+          <div className="chips wrap suggest">{['Viaggi insieme', 'Ristoranti da provare', 'Libri da leggere', 'Idee regalo', 'Casa'].map(x => <button key={x} type="button" className={'chip ' + (worldName === x ? 'active' : '')} onClick={() => setWorldName(x)}>{x}</button>)}</div></> })}
+      </> : <>
+        <p className="muted">Le nostre scoperte, i nostri gusti, le cose che ci uniscono. Uno spazio per ogni persona o gruppo: quanti ne vuoi.</p>
+        <button className="pill dark wide newSpace" onClick={() => { setSpaceMembers([]); setWorldName(''); setUsStep(1); setUsCreating(true); }}><Plus size={18} /> Nuovo spazio</button>
+      </>)}
+      {!usCreating && <>{worldInvites.length > 0 && <><h2>Ti hanno invitato</h2><div className="people">{worldInvites.map(w => <div key={w.id} className="person"><div className="avatar"><FolderHeart size={20} /></div><span><strong>{w.name}</strong><small>Da {nameOf(w.owner)}</small></span><button className="pill dark small" disabled={busy} onClick={async () => { await run(() => api.respondWorldInvite(w.id, true), 'Benvenuto nel vostro spazio'); refreshWorlds(); }}>Entra</button><button className="iconbtn" aria-label="Rifiuta" disabled={busy} onClick={async () => { await run(() => api.respondWorldInvite(w.id, false)); refreshWorlds(); }}><X size={18} /></button></div>)}</div></>}
+      <div className="blockHead"><h2>I vostri spazi</h2>{activeSpaces.length > 0 && <span className="count">{activeSpaces.length}</span>}</div>{activeSpaces.length ? <div className="stack">{activeSpaces.map(spaceRow)}</div> : <div className="empty compact">Ancora nessuno spazio. Create un posto per le cose che volete fare, vedere e ricordare insieme.</div>}</>}</main>}
 
     {screen === 'world' && selected && <main className="spacePage">
       {!worldData ? <div className="empty compact">Caricamento…</div> : (() => {
@@ -630,21 +658,52 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
           <div className="detailtools"><button className="textlink" onClick={() => setEdit({ title: selected.title, url: selected.url || '', note: selected.note || '', memory_date: selected.memory_date || '' })}><Pencil size={14} /> Modifica</button><button className="textlink" disabled={busy} onClick={() => pickPhoto(selected.id)}><ImagePlus size={14} /> {selected.image_path ? 'Cambia foto' : 'Aggiungi foto'}</button>{social && safeUrl(selected.url || '') && !selected.image_path && <button className="textlink" disabled={busy} onClick={async () => { setBusy(true); const ok = await enrichLink(selected); setBusy(false); toast(ok ? 'Anteprima aggiornata' : 'Questa pagina non offre un\'anteprima'); if (ok) refreshArchive(); }}><Link2 size={14} /> Aggiorna anteprima</button>}<button className="textlink danger" onClick={async () => { if (!window.confirm(`Eliminare "${selected.title}"?`)) return; await removeItem(selected); goBack(); }}><Trash2 size={14} /> Elimina</button></div></>}
       <div className="panel"><label htmlFor="col">RACCOLTA</label><select id="col" value={selected.collection || ''} onChange={async e => { const v = e.target.value; const id = collectionId(v); setItems(arr => arr.map(i => i.id === selected.id ? { ...i, collection: v, collection_id: id } : i)); setSelected({ ...selected, collection: v, collection_id: id }); try { await api.updateItem(selected.id, { collection_id: id, collection: v }); } catch (err) { toast(friendlyError(err)); refreshArchive(); } }}>{!selected.collection && <option value="">—</option>}{collections.map(c => <option key={c}>{c}</option>)}</select></div><div className="stack"><button className="feature" onClick={() => share(selected)}><Heart /><span><strong>More for you.</strong><small>Mandala a qualcuno, con una dedica</small></span><ChevronRight /></button><button className="feature" onClick={() => exportAI([selected])}><Sparkles /><span><strong>Use with AI</strong><small>Copia il contesto</small></span><ChevronRight /></button></div></main>}
 
-    {screen === 'thought' && <main><div className="eyebrow">02 — SCOPERTA PERSONALE</div><h1>More for you.</h1><p className="muted">Ho trovato qualcosa che vorrei condividere proprio con te.</p>
-      <div className="panel stepped">{step(1, 'Cosa vuoi mandare?')}{selected ? <div className="chosenItem">{photoUrls[selected.image_path] ? <Photo className="rowthumb" url={photoUrls[selected.image_path]} alt="" /> : <span className="chosenIcon">{selected.url ? <Link2 size={18} /> : <PenLine size={18} />}</span>}<span><strong>{selected.title}</strong><small>{selected.url || selected.note}</small></span><button className="textlink" onClick={() => setSelected(null)}>Cambia</button></div> : <select id="pick" aria-label="SCEGLI UNA SCOPERTA" value="" onChange={e => setSelected(items.find(i => i.id === e.target.value) || null)}><option value="">Seleziona un elemento...</option>{items.map(i => <option value={i.id} key={i.id}>{i.title}</option>)}</select>}
-        {step(2, 'A chi?')}{social ? peoplePicker([recipientId], id => setRecipientId(id), { external: true }) : null}{social && !accepted.length && <small>Aggiungi una persona per mandarla dentro morethere, oppure condividila fuori, con i messaggi del telefono.</small>}{(!social || recipientId === '__external' || !accepted.length) && <input id="to" aria-label="PER CHI?" placeholder="Nome o contatto" value={recipient} onChange={e => setRecipient(e.target.value)} />}
-        {step(3, 'La tua dedica')}<textarea id="msg" aria-label="LA TUA DEDICA" rows="4" maxLength={1000} placeholder="Ho visto questo e ho pensato subito a te..." value={message} onChange={e => setMessage(e.target.value)} />{social && accepted.length > 0 && recipientId !== '__external' && <Toggle checked={thoughtAi} onChange={setThoughtAi} label="Può usarlo con AI" hint="Consenti di includere questa scoperta nel suo contesto AI." />}<button className="pill dark wide" disabled={!selected || busy} onClick={sendThought}><Send size={18} /> Invia la scoperta</button></div>
-      <p className="hint">{social && accepted.length > 0 && recipientId !== '__external' ? 'La troverà nel suo Your Circle, tra le scoperte per lei. Riceve una copia, non l\'accesso al tuo archivio.' : 'Il messaggio viene preparato tramite il menu di condivisione del dispositivo o gli appunti.'}</p></main>}
+    {screen === 'thought' && <main><div className="eyebrow">02 — SCOPERTA PERSONALE</div><h1>More for you.</h1>
+      {(() => {
+        const external = !social || !accepted.length || recipientId === '__external';
+        const to = accepted.find(c => c.other.id === recipientId)?.other;
+        const who = external ? (recipient.trim() || 'questa persona') : nameOf(to);
+        if (forDone) return doneView({ title: external ? 'Pronta da mandare.' : 'Mandata.', text: external ? 'Abbiamo preparato il messaggio con il menu di condivisione del telefono.' : `${who} la troverà nel suo Your Circle, tra le scoperte per lei. Riceve una copia, non l'accesso al tuo archivio.`, actions: <><button className="pill dark wide" onClick={() => startMoreForYou()}>Manda un'altra scoperta</button><button className="pill outline wide" onClick={() => setScreen('circle')}>Torna a Your Circle</button></> });
+        const q = forSearch.trim().toLowerCase();
+        const pickable = items.filter(i => !q || [i.title, i.note, i.url].join(' ').toLowerCase().includes(q));
+        return <>
+          {forStep === 1 && wizard({ n: 1, total: 3, question: 'Cosa vuoi mandare?', hint: 'Scegli una scoperta dal tuo archivio.', canNext: !!selected, onNext: () => setForStep(2), children: <>
+            <div className="search"><Search size={19} /><input aria-label="Cerca nel tuo archivio" placeholder="Cerca nel tuo archivio..." value={forSearch} onChange={e => setForSearch(e.target.value)} /></div>
+            <div className="pickGrid">{pickable.map(i => <button key={i.id} type="button" role="radio" aria-checked={selected?.id === i.id} aria-label={i.title} className={'pickTile' + (selected?.id === i.id ? ' added' : '')} onClick={() => setSelected(i)}><span className="ptImg">{photoUrls[i.image_path] ? <Photo url={photoUrls[i.image_path]} /> : (i.url ? <Link2 size={20} /> : <PenLine size={20} />)}{selected?.id === i.id && <span className="ptCheck"><Check size={14} /></span>}</span><span className="ptTitle">{i.title}</span></button>)}</div>
+            {!pickable.length && <div className="empty compact">{items.length ? 'Nessun risultato.' : 'Il tuo archivio è vuoto: salva prima qualcosa dalla home.'}</div>}</> })}
+          {forStep === 2 && wizard({ n: 2, total: 3, question: 'A chi la mandi?', hint: social && accepted.length ? 'Tocca una persona del tuo Circle, oppure mandala fuori da morethere.' : 'Aggiungi una persona per mandarla dentro morethere, oppure condividila con i messaggi del telefono.', canNext: external ? !!recipient.trim() : !!recipientId, onBack: () => setForStep(1), onNext: () => setForStep(3), children: <>
+            {selected && <div className="chosenItem">{photoUrls[selected.image_path] ? <Photo className="rowthumb" url={photoUrls[selected.image_path]} alt="" /> : <span className="chosenIcon">{selected.url ? <Link2 size={18} /> : <PenLine size={18} />}</span>}<span><strong>{selected.title}</strong><small>{selected.url || selected.note}</small></span><button className="textlink" onClick={() => setForStep(1)}>Cambia</button></div>}
+            {social && peoplePicker([recipientId], id => setRecipientId(id), { external: true })}
+            {external && <input id="to" aria-label="PER CHI?" placeholder="Nome o contatto" value={recipient} onChange={e => setRecipient(e.target.value)} />}</> })}
+          {forStep === 3 && wizard({ n: 3, total: 3, question: 'Vuoi aggiungere una dedica?', hint: 'Due parole bastano. Puoi anche lasciarla vuota.', onBack: () => setForStep(2), onNext: sendThought, nextLabel: external ? 'Prepara il messaggio' : `Invia a ${who}`, children: <>
+            <textarea id="msg" aria-label="LA TUA DEDICA" rows="4" maxLength={1000} placeholder="Ho visto questo e ho pensato subito a te..." value={message} onChange={e => setMessage(e.target.value)} />
+            {!external && <div className="wizToggle"><Toggle checked={thoughtAi} onChange={setThoughtAi} label="Può usarla con l'AI" hint={`${who} potrà includerla nel suo contesto per un assistente AI.`} /></div>}</> })}
+        </>;
+      })()}</main>}
 
-    {screen === 'settings' && <main><div className="eyebrow">01 — ACCESSO ALLA COLLEZIONE</div><h1>More of me.</h1><p className="muted">Le cose che amo raccontano qualcosa in più di me. Scegli cosa mostrare e a chi: il tuo archivio resta privato finché non lo decidi tu.</p>
-      {social ? <><div className="panel stepped">{step(1, 'A chi?')}{peoplePicker([shareTarget], id => pickShareTarget(id))}{!accepted.length && <p className="panelLead">Per prima cosa aggiungi la persona a cui vuoi mostrare qualcosa di te.</p>}
-        {shareTarget && <>{step(2, 'Cosa può vedere?')}<div className="choices"><button className={shareMode === 'item' ? 'chosen' : ''} onClick={() => setShareMode('item')}>Alcune raccolte</button><button className={shareMode === 'all' ? 'chosen' : ''} onClick={() => setShareMode('all')}>Tutto il mio archivio</button></div>
-          {shareMode === 'item' && <div className="chips wrap">{collectionRows.map(c => <button key={c.id} className={'chip ' + (shareCollections.includes(c.id) ? 'active' : '')} aria-pressed={shareCollections.includes(c.id)} onClick={() => setShareCollections(v => v.includes(c.id) ? v.filter(x => x !== c.id) : [...v, c.id])}>{c.name}</button>)}</div>}
-          {step(3, 'Come?')}<select id="perm" aria-label="PERMESSO" value={permission} onChange={e => setPermission(e.target.value)}><option value="view">Solo lettura</option><option value="save">Lettura e copia</option></select>
-          <Toggle checked={shareAi} onChange={setShareAi} label="Uso con AI" hint="Consenti a questa persona di includere ciò che condividi nel suo contesto AI." />
-          <button className="pill dark wide" disabled={busy} onClick={saveShare}><KeyRound size={18} /> {circle.sharesOut.some(x => x.grantee_id === shareTarget) ? 'Aggiorna' : 'Condividi'}</button></>}</div>
-        {circle.sharesOut.length > 0 && <><div className="blockHead"><h2>Chi vede qualcosa di te</h2><span className="count">{circle.sharesOut.length}</span></div><div className="people">{circle.sharesOut.map(sh => { const c = accepted.find(x => x.other.id === sh.grantee_id); return <div key={sh.id} className="person"><div className="avatar">{face(c?.other)}</div><span><strong>{nameOf(c?.other)}</strong><small>{shareSummary(sh).replace(/^./, m => m.toUpperCase())}</small></span><button className="pill outline small" disabled={busy} onClick={() => revokeShare(sh.grantee_id)}>Revoca</button></div>; })}</div></>}
-        <p className="hint"><ShieldCheck size={13} className="inline" /> Ogni accesso è verificato dal server e puoi revocarlo in qualsiasi momento.</p></>
+    {screen === 'settings' && <main><div className="eyebrow">01 — ACCESSO ALLA COLLEZIONE</div><h1>More of me.</h1>
+      {social ? (() => {
+        const target = accepted.find(c => c.other.id === shareTarget)?.other;
+        const who = nameOf(target);
+        const existing = circle.sharesOut.find(x => x.grantee_id === shareTarget);
+        const chosenNames = collectionRows.filter(c => shareCollections.includes(c.id)).map(c => c.name);
+        if (meDone) return doneView({ title: 'Fatto.', text: `${who} ora vede ${shareMode === 'all' ? 'tutto il tuo archivio' : chosenNames.join(', ')}. Puoi cambiare o togliere l'accesso quando vuoi.`, actions: <><button className="pill dark wide" onClick={() => target && openFriend(target)}>Vai alla pagina di {who}</button><button className="pill outline wide" onClick={() => setScreen('circle')}>Torna a Your Circle</button></> });
+        return <>
+          {meStep === 1 && wizard({ n: 1, total: 4, question: 'Con chi vuoi condividere?', hint: 'Il tuo archivio è privato: vedrà solo ciò che scegli tu, e puoi cambiare idea quando vuoi.', canNext: !!shareTarget, onNext: () => setMeStep(2), children: <>{peoplePicker([shareTarget], id => pickShareTarget(id))}{!accepted.length && <p className="panelLead">Per prima cosa aggiungi la persona a cui vuoi mostrare qualcosa di te.</p>}{existing && <p className="wizNote">{who} vede già {shareSummary(existing)}: puoi cambiarlo nei prossimi passi.</p>}</> })}
+          {meStep === 2 && wizard({ n: 2, total: 4, question: `Cosa può vedere ${who}?`, canNext: shareMode === 'all' || shareCollections.length > 0, onBack: () => setMeStep(1), onNext: () => setMeStep(3), children: <>
+            <div className="opts" role="radiogroup">{option({ on: shareMode === 'item', title: 'Alcune raccolte', desc: 'Scegli tu quali, una per una.', onClick: () => setShareMode('item') })}{option({ on: shareMode === 'all', title: 'Tutto il mio archivio', desc: 'Anche quello che salverai in futuro.', onClick: () => setShareMode('all') })}</div>
+            {shareMode === 'item' && <><div className="ixCap subCap">QUALI RACCOLTE?</div><div className="opts">{collectionRows.map(c => { const n = items.filter(i => i.collection_id === c.id).length; return option({ key: c.id, multi: true, on: shareCollections.includes(c.id), title: c.name, desc: `${n} ${n === 1 ? 'scoperta' : 'scoperte'}`, onClick: () => setShareCollections(v => (v.includes(c.id) ? v.filter(x => x !== c.id) : [...v, c.id])) }); })}</div></>}</> })}
+          {meStep === 3 && wizard({ n: 3, total: 4, question: `Cosa può farne ${who}?`, onBack: () => setMeStep(2), onNext: () => setMeStep(4), children: <>
+            <div className="opts" role="radiogroup">{option({ on: permission === 'view', title: 'Solo guardare', desc: 'Vede le tue scoperte, ma non può salvarle.', onClick: () => setPermission('view') })}{option({ on: permission === 'save', title: 'Guardare e salvare una copia', desc: 'Può tenere una copia nel suo archivio.', onClick: () => setPermission('save') })}</div>
+            <div className="wizToggle"><Toggle checked={shareAi} onChange={setShareAi} label="Può usarle con l'AI" hint={`${who} potrà includere ciò che condividi nel suo contesto per un assistente AI.`} /></div></> })}
+          {meStep === 4 && wizard({ n: 4, total: 4, question: 'Tutto giusto?', hint: 'Controlla e conferma.', onBack: () => setMeStep(3), onNext: saveShare, nextLabel: `Condividi con ${who}`, children: <dl className="summary">
+            <div><dt>Con</dt><dd><span className="mav">{face(target)}</span>{who}</dd></div>
+            <div><dt>Vedrà</dt><dd>{shareMode === 'all' ? 'Tutto il tuo archivio' : chosenNames.join(', ')}</dd></div>
+            <div><dt>Potrà</dt><dd>{permission === 'save' ? 'Guardare e salvare una copia' : 'Solo guardare'}</dd></div>
+            <div><dt>AI</dt><dd>{shareAi ? 'Sì, può usarle con l\'AI' : 'No'}</dd></div></dl> })}
+          {meStep === 1 && circle.sharesOut.length > 0 && <><div className="blockHead"><h2>Chi vede già qualcosa di te</h2><span className="count">{circle.sharesOut.length}</span></div><div className="people">{circle.sharesOut.map(sh => { const c = accepted.find(x => x.other.id === sh.grantee_id); return <div key={sh.id} className="person"><div className="avatar">{face(c?.other)}</div><span><strong>{nameOf(c?.other)}</strong><small>{shareSummary(sh).replace(/^./, m => m.toUpperCase())}</small></span><button className="pill outline small" disabled={busy} onClick={() => revokeShare(sh.grantee_id)}>Revoca</button></div>; })}</div></>}
+          <p className="hint"><ShieldCheck size={13} className="inline" /> Ogni accesso è verificato dal server e puoi revocarlo in qualsiasi momento.</p></>;
+      })()
         : <div className="panel"><label>ACCESSO</label><div className="choices"><button className={shareMode === 'item' ? 'chosen' : ''} onClick={() => setShareMode('item')}>Alcune raccolte</button><button className={shareMode === 'all' ? 'chosen' : ''} onClick={() => setShareMode('all')}>Tutto il mio archivio</button></div>{signInHint}<button className="pill dark wide" onClick={copyInvite}><Copy size={18} /> Copia riepilogo</button></div>}</main>}
 
     {screen === 'profile' && profileDraft && <main><div className="eyebrow">IL MIO PROFILO</div>

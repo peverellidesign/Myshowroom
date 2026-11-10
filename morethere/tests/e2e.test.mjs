@@ -231,13 +231,23 @@ test('More of me: the person sees exactly the chosen collection', async () => {
   const bob = people.bob.page;
   await alice.getByRole('dialog', { name: 'Aggiungi una persona' }).getByRole('button', { name: 'Chiudi' }).click();
   // Alice's screen updates by realtime sync: Bob is now one of her people.
+  // A guided flow, one question at a time.
   await alice.getByRole('button', { name: 'Bob', exact: true }).click();
-  await alice.getByRole('button', { name: 'Viaggi' }).click();
-  await alice.getByLabel('PERMESSO').selectOption('save');
-  await alice.locator('.toggle', { hasText: 'Uso con AI' }).click();
-  await alice.getByRole('button', { name: 'Condividi', exact: true }).click();
-  await toast(alice, 'Fatto: ora vede ciò che hai scelto');
-  await alice.getByText('Chi vede qualcosa di te').waitFor();
+  await alice.getByRole('button', { name: /Avanti/ }).click();
+  await alice.getByRole('heading', { name: 'Cosa può vedere Bob?' }).waitFor();
+  await alice.getByRole('checkbox', { name: /Viaggi/ }).click();
+  await shot(alice, '06a-more-of-me-step2');
+  await alice.getByRole('button', { name: /Avanti/ }).click();
+  await alice.getByRole('heading', { name: 'Cosa può farne Bob?' }).waitFor();
+  await alice.getByRole('radio', { name: /Guardare e salvare/ }).click();
+  await alice.locator('.toggle', { hasText: "Può usarle con l'AI" }).click();
+  await alice.getByRole('button', { name: /Avanti/ }).click();
+  await alice.getByRole('heading', { name: 'Tutto giusto?' }).waitFor();
+  await alice.locator('.summary').getByText('Viaggi').waitFor();
+  await alice.locator('.summary').getByText('Guardare e salvare una copia').waitFor();
+  await shot(alice, '06b-more-of-me-summary');
+  await alice.getByRole('button', { name: 'Condividi con Bob' }).click();
+  await alice.getByRole('heading', { name: 'Fatto.' }).waitFor();
   await shot(alice, '06-share-saved');
 
   await bob.goto(APP);
@@ -265,6 +275,9 @@ test('More of me: the person sees exactly the chosen collection', async () => {
 test('revoking access is immediate', async () => {
   const alice = people.alice.page;
   const bob = people.bob.page;
+  await alice.getByRole('button', { name: 'Torna a Your Circle' }).click();
+  await alice.getByRole('button', { name: /More of me/ }).click();
+  await alice.getByText('Chi vede già qualcosa di te').waitFor();
   await alice.getByRole('button', { name: 'Revoca' }).first().click();
   await toast(alice, 'Accesso revocato');
   await bob.reload();
@@ -281,11 +294,12 @@ test('More for you arrives in real time', async () => {
   await alice.locator('.item', { hasText: 'example.org' }).getByRole('button', { name: 'Condividi' }).click();
   await alice.getByRole('button', { name: 'Bob', exact: true }).click();
   assert.equal(await alice.getByRole('button', { name: 'Bob', exact: true }).getAttribute('aria-pressed'), 'true');
+  await alice.getByRole('button', { name: /Avanti/ }).click();
   await alice.getByLabel('LA TUA DEDICA').fill('Ci andiamo insieme?');
   await shot(alice, '08-more-for-you');
   await noWorld(alice);
-  await alice.getByRole('button', { name: 'Invia la scoperta' }).click();
-  await toast(alice, 'Pensiero inviato');
+  await alice.getByRole('button', { name: 'Invia a Bob' }).click();
+  await alice.getByRole('heading', { name: 'Mandata.' }).waitFor();
   // Bob has not reloaded: the badge comes from realtime sync.
   await bob.locator('.round .badge').waitFor({ timeout: 10000 });
   await bob.getByRole('button', { name: /Apri Your Circle/ }).click();
@@ -304,8 +318,8 @@ test('More of us: as many shared spaces as you like, started from a person', asy
   await alice.getByRole('button', { name: /Apri Your Circle/ }).click();
   await alice.getByRole('button', { name: /Bob/ }).click();
   await alice.getByRole('button', { name: /More of us/ }).click();
-  // Bob is already chosen.
-  assert.equal(await alice.getByRole('button', { name: 'Bob', exact: true }).getAttribute('aria-pressed'), 'true');
+  // Bob is already chosen: straight to the name.
+  await alice.getByText('Con Bob. Riceveranno un invito.').waitFor();
   await noWorld(alice);
   await alice.getByLabel('COME LO CHIAMIAMO?').fill('Japan 2027');
   await alice.getByRole('button', { name: 'Crea lo spazio' }).click();
