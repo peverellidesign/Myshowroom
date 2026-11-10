@@ -79,3 +79,100 @@ main>textarea{width:100%;border:1px solid #e2e2e2;border-radius:16px;padding:14p
 .people.requests .person{border-color:#252525}
 .inlineLink{display:inline;padding:0;font-size:12px;text-decoration:underline;color:#252525}
 .profileLink{margin-top:34px}
+/* ==== Your Circle, redesigned ============================================ */
+.block{margin-top:30px}
+.block h2{margin:0 0 14px}
+.blockHead{display:flex;align-items:center;gap:10px;margin:30px 0 14px}
+.block .blockHead{margin-top:0}
+.blockHead h2{margin:0}
+.count{min-width:24px;height:24px;padding:0 8px;border-radius:12px;background:#f1f0ee;font-size:12px;font-weight:600;display:grid;place-items:center;color:#555}
+
+/* people rail */
+.peopleRail{display:flex;gap:14px;overflow-x:auto;padding:4px 2px 6px;margin:0 -25px;padding-left:25px;padding-right:25px;scrollbar-width:none}
+.peopleRail::-webkit-scrollbar{display:none}
+.railItem{border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:7px;width:66px;flex-shrink:0}
+.railItem .av,.pick .av,.requestCard .av,.av.big{border-radius:50%;display:grid;place-items:center;font-weight:700;background:#f1f0ee;color:#252525}
+.railItem .av{width:60px;height:60px;font-size:21px;box-shadow:0 0 0 2px #fff,0 0 0 3px #e6e6e6}
+.railItem.shares .av{box-shadow:0 0 0 2px #fff,0 0 0 4px #252525}
+.railItem.add .av{background:#fff;border:1.5px dashed #9a9a9a;box-shadow:none;color:#252525}
+.railItem.pending{opacity:.55}
+.railItem .rn{font-size:12px;max-width:66px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#444}
+.railHint{margin:10px 0 0;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.ringDot{width:12px;height:12px;border-radius:50%;box-shadow:0 0 0 2px #fff inset,0 0 0 2px #252525;display:inline-block}
+
+/* incoming request */
+.requestCard{display:flex;align-items:center;gap:12px;background:#252525;color:#fff;border-radius:18px;padding:12px 12px 12px 14px;margin-bottom:14px}
+.requestCard .av{width:42px;height:42px;background:#fff;color:#252525;flex-shrink:0}
+.requestCard .rq{flex:1;min-width:0}
+.requestCard .rq strong,.requestCard .rq small{display:block}
+.requestCard .rq small{color:#bdbdbd;font-size:12px;margin-top:3px}
+.pill.light{background:#fff;color:#252525}
+.iconbtn.onDark{color:#cfcfcf}
+.iconbtn.onDark:hover{background:#ffffff1a}
+
+/* the three tiles */
+.tiles{display:grid;gap:12px}
+.tile{display:block;text-align:left;border-radius:24px;padding:20px 20px 22px;border:1px solid #e6e6e6;background:#fff;width:100%;position:relative}
+.tile.t2{background:#f5f5f3;border-color:#f5f5f3}
+.tile.t3{background:#252525;border-color:#252525;color:#fff}
+.tileTop{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+.tile .num{font-size:30px;font-weight:700;letter-spacing:-1px;line-height:1;color:#c9c9c6}
+.tile.t3 .num{color:#5c5c5c}
+.tileIcon{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:#f5f5f3}
+.tile.t2 .tileIcon{background:#fff}
+.tile.t3 .tileIcon{background:#3a3a3a;color:#fff}
+.tileLabel{display:block;font-size:10px;letter-spacing:1.3px;color:#9a9a9a;font-weight:500;margin-bottom:5px}
+.tile.t3 .tileLabel{color:#a8a8a8}
+.tile strong{display:block;font-size:22px;letter-spacing:-.4px}
+.tile small{display:block;margin-top:6px;font-size:13px;color:#7a7a7a;line-height:1.45}
+.tile.t3 small{color:#c9c9c9}
+.tileMeta{display:inline-block;margin-top:12px;font-size:12px;font-weight:600;padding:6px 11px;border-radius:14px;background:#3a3a3a;color:#fff}
+
+/* profile row */
+.profileRow{margin-top:34px;width:100%;display:flex;align-items:center;gap:12px;border:0;border-top:1px solid #eee;background:#fff;padding:18px 0;text-align:left}
+.profileRow span{flex:1;font-weight:600}
+.profileRow small{display:block;font-weight:400;color:#888;font-size:12px;margin-top:4px}
+
+/* person page */
+.personHero{display:flex;align-items:center;gap:16px;margin:8px 0 22px}
+.av.big{width:76px;height:76px;font-size:30px;flex-shrink:0}
+.personHero h1{margin:0 0 4px}
+.personHero .muted{margin:0;font-size:14px}
+.personActions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.pa{border-radius:20px;padding:16px 12px 14px;border:1px solid #e6e6e6;background:#fff;text-align:left;display:flex;flex-direction:column;gap:6px;min-height:118px}
+.pa.t2{background:#f5f5f3;border-color:#f5f5f3}
+.pa.t3{background:#252525;border-color:#252525;color:#fff}
+.pa svg{margin-bottom:auto}
+.pa strong{font-size:14px;letter-spacing:-.2px}
+.pa small{font-size:11px;color:#888;line-height:1.35}
+.pa.t3 small{color:#bdbdbd}
+
+/* steps and people picker */
+.panel.stepped{gap:12px}
+.step{display:flex;align-items:center;gap:10px;margin-top:6px}
+.step:first-child{margin-top:0}
+.stepNum{width:24px;height:24px;border-radius:50%;background:#252525;color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center;flex-shrink:0}
+.stepLabel{font-size:15px;font-weight:600}
+.pickRow{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 4px;scrollbar-width:none}
+.pickRow::-webkit-scrollbar{display:none}
+.pick{border:0;background:none;padding:0;display:flex;flex-direction:column;align-items:center;gap:6px;width:58px;flex-shrink:0}
+.pick .av{width:50px;height:50px;font-size:18px;transition:background .12s}
+.pick.on .av{background:#252525;color:#fff}
+.pick.add .av{background:#fff;border:1.5px dashed #9a9a9a}
+.pick .pn{font-size:11px;max-width:58px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#555}
+.pick.on .pn{color:#252525;font-weight:600}
+.chosenItem{display:flex;align-items:center;gap:12px;border:1px solid #eee;border-radius:14px;padding:10px}
+.chosenItem>span:not(.chosenIcon){flex:1;min-width:0}
+.chosenItem strong,.chosenItem small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chosenIcon{width:44px;height:44px;border-radius:12px;background:#f4f4f2;display:grid;place-items:center;color:#777;flex-shrink:0}
+.chosenItem .textlink{padding:0;flex-shrink:0}
+
+/* add-person sheet */
+.modal.sheet{gap:12px}
+.modal.sheet h2{margin:0}
+.modal.sheet label{margin-top:4px}
+.orLine{display:flex;align-items:center;gap:10px;color:#9a9a9a;font-size:12px;margin:4px 0}
+.orLine::before,.orLine::after{content:'';flex:1;height:1px;background:#eee}
+.sheetNote{color:#888;font-size:12px}
+@media(max-width:380px){.personActions{gap:7px}.pa{padding:13px 9px}.tile{padding:18px}}
+@media(prefers-reduced-motion:reduce){.pick .av{transition:none}}
