@@ -123,3 +123,20 @@ test('the date of a memory travels with thoughts, worlds and saved copies', asyn
   const wi = ok(await u.alice.client.rpc('add_item_to_world', { p_world: w.id, p_item: it.id }));
   assert.equal(ok(await u.alice.client.from('world_items').select('memory_date').eq('id', wi).single()).memory_date, '2019-08-15');
 });
+
+test('profile photos are visible only to people who may see the profile', async () => {
+  const dave = await makeUser('dave');
+  u.dave = dave;
+  const path = await upload(u.alice);
+  ok(await u.alice.client.from('profiles').update({ avatar_path: path }).eq('id', u.alice.id));
+  assert.equal(ok(await u.alice.client.from('profiles').select('avatar_path').eq('id', u.alice.id).single()).avatar_path, path);
+  assert.ok(await canRead(u.bob, path), 'a connection sees it');
+  assert.ok(await canRead(u.carol, path), 'another connection sees it');
+  assert.ok(!(await canRead(dave, path)), 'a stranger does not');
+  // Nobody can point their profile at someone else's file.
+  const steal = await dave.client.from('profiles').update({ avatar_path: path }).eq('id', dave.id);
+  assert.ok(steal.error, 'foreign path refused');
+  // Removing the photo removes access for others.
+  ok(await u.alice.client.from('profiles').update({ avatar_path: null }).eq('id', u.alice.id));
+  assert.ok(!(await canRead(u.bob, path)), 'no longer referenced');
+});

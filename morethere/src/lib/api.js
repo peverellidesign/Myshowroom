@@ -41,14 +41,21 @@ const must = ({ data, error }) => {
 
 // ---- photos ----------------------------------------------------------------
 // Resized on the device before upload (max 1600px, JPEG), stored privately.
-export async function resizeImage(file, max = 1600, quality = 0.82) {
+export async function resizeImage(file, max = 1600, quality = 0.82, square = false) {
   const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' }).catch(() => null);
   if (!bitmap) throw new Error('image_unreadable');
-  const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement('canvas');
-  canvas.width = Math.round(bitmap.width * scale);
-  canvas.height = Math.round(bitmap.height * scale);
-  canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  if (square) {
+    // Centre crop, for profile photos.
+    const side = Math.min(bitmap.width, bitmap.height);
+    canvas.width = canvas.height = Math.min(max, side);
+    canvas.getContext('2d').drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, canvas.width, canvas.height);
+  } else {
+    const scale = Math.min(1, max / Math.max(bitmap.width, bitmap.height));
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  }
   bitmap.close?.();
   return new Promise((resolve, reject) => canvas.toBlob(b => (b ? resolve(b) : reject(new Error('image_unreadable'))), 'image/jpeg', quality));
 }
@@ -128,10 +135,16 @@ async function selectItems(build) {
   return res;
 }
 
+let avatarsSupported = true; // profile photo column arrives with the fourth migration
 async function profilesById(ids) {
   const unique = [...new Set(ids.filter(Boolean))];
   if (!unique.length) return {};
-  const rows = must(await supabase.from('profiles').select('id, handle, display_name, subtitle').in('id', unique));
+  let res = await supabase.from('profiles').select(avatarsSupported ? 'id, handle, display_name, subtitle, avatar_path' : 'id, handle, display_name, subtitle').in('id', unique);
+  if (res.error?.code === '42703' && avatarsSupported) {
+    avatarsSupported = false;
+    res = await supabase.from('profiles').select('id, handle, display_name, subtitle').in('id', unique);
+  }
+  const rows = must(res);
   return Object.fromEntries(rows.map(p => [p.id, p]));
 }
 
@@ -197,6 +210,21 @@ export function createRemoteApi(user) {
       const path = `${me}/${crypto.randomUUID()}.jpg`;
       must(await supabase.storage.from('media').upload(path, blob, { contentType: 'image/jpeg', cacheControl: '3600' }));
       return path;
+    },
+    // Profile photo: square, private, visible to the people who can see the profile.
+    async setAvatar(file) {
+      const blob = await resizeImage(file, 512, 0.85, true);
+      const path = `${me}/${crypto.randomUUID()}.jpg`;
+      must(await supabase.storage.from('media').upload(path, blob, { contentType: 'image/jpeg', cacheControl: '3600' }));
+      const old = (await this.loadProfile()).avatar_path;
+      must(await supabase.from('profiles').update({ avatar_path: path }).eq('id', me));
+      if (old) await supabase.storage.from('media').remove([old]);
+      return path;
+    },
+    async removeAvatar() {
+      const old = (await this.loadProfile()).avatar_path;
+      must(await supabase.from('profiles').update({ avatar_path: null }).eq('id', me));
+      if (old) await supabase.storage.from('media').remove([old]);
     },
     // Delete a file unless a thought or a world still shows it.
     async releasePhoto(path) {

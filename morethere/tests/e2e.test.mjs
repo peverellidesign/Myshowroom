@@ -394,6 +394,17 @@ test('profile: edit, export data, sign out', async () => {
   await alice.goto(APP);
   await alice.getByRole('button', { name: /Apri Your Circle/ }).click();
   await alice.getByRole('button', { name: /Il mio profilo/ }).click();
+  // Profile photo: square, private, seen by her people.
+  await alice.getByTestId('avatar-input').setInputFiles(EXIF_PHOTO);
+  await toast(alice, 'Foto profilo aggiornata');
+  await alice.locator('.profileHero img.faceImg').waitFor();
+  assert.ok(await alice.locator('.profileHero img.faceImg').evaluate(img => img.complete && img.naturalWidth > 0), 'own photo loads');
+  const bob = people.bob.page;
+  await bob.goto(APP);
+  await bob.getByRole('button', { name: /Apri Your Circle/ }).click();
+  await bob.locator('.railItem', { hasText: 'Alice' }).locator('img.faceImg').waitFor({ timeout: 10000 });
+  assert.ok(await bob.locator('.railItem', { hasText: 'Alice' }).locator('img.faceImg').evaluate(img => img.complete && img.naturalWidth > 0), 'Bob sees Alice\'s photo');
+  await shot(bob, '11b-circle-with-photo');
   await alice.getByLabel('DI COSA TI OCCUPI').fill('Travel · Food · Architecture');
   await alice.getByRole('button', { name: 'Salva' }).click();
   await toast(alice, 'Profilo aggiornato');

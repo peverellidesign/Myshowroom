@@ -238,3 +238,18 @@ main>textarea{width:100%;border:1px solid #e2e2e2;border-radius:16px;padding:14p
 .chips.suggest{margin-top:-2px}
 .chips.suggest .chip{padding:8px 12px;font-size:12px}
 @media(max-width:380px){.pickGrid{gap:7px}}
+/* ==== profile photos ===================================================== */
+.av,.avatar,.mav{overflow:hidden;position:relative}
+.faceImg{width:100%;height:100%;object-fit:cover;display:block;border-radius:50%}
+.avCheck{position:absolute;right:-1px;bottom:-1px;width:20px;height:20px;border-radius:50%;background:#252525;color:#fff;display:grid;place-items:center;box-shadow:0 0 0 2px #fff}
+.pick .av{overflow:visible}
+.pick .av .faceImg{border-radius:50%}
+.pick.on .av:has(.faceImg){background:#f1f0ee;box-shadow:0 0 0 2px #fff,0 0 0 4px #252525}
+.profileHero{display:flex;align-items:center;gap:18px;margin:14px 0 10px}
+.profileHero h1{margin:0 0 4px}
+.profileHero .muted{margin:0;font-size:14px}
+.avatarEdit{position:relative;border:0;background:none;padding:0;flex-shrink:0}
+.avatarBadge{position:absolute;right:0;bottom:0;width:28px;height:28px;border-radius:50%;background:#252525;color:#fff;display:grid;place-items:center;box-shadow:0 0 0 3px #fff}
+.avatarLinks{display:flex;gap:16px}
+.avatarLinks .textlink{padding:6px 0 0;margin:0}
+.mav.own{width:30px;height:30px;margin:0;box-shadow:none}
