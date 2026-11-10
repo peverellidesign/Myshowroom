@@ -258,3 +258,20 @@ main>textarea{width:100%;border:1px solid #e2e2e2;border-radius:16px;padding:14p
 .round.me{padding:0;overflow:hidden;font-size:19px;font-weight:700;background:#f1f0ee;box-shadow:0 0 0 2px #fff,0 0 0 3px #e6e6e6}
 .round.me .faceImg{width:100%;height:100%}
 .usernameHint{margin-top:30px;padding-top:16px;border-top:1px solid #eee}
+/* ==== "D · Indice": editorial rows with a fine circular button ============ */
+.ixCap{font-size:11px;letter-spacing:1.6px;color:#8a8a8a;font-weight:500;margin-bottom:8px}
+.ix{border-top:1px solid #252525}
+.ixr{display:flex;align-items:center;gap:16px;width:100%;padding:22px 0;border:0;border-bottom:1px solid #e6e6e6;background:none;text-align:left;color:#252525}
+.ixn{font-size:13px;color:#9a9a9a;letter-spacing:.5px;width:22px;align-self:flex-start;margin-top:6px;flex-shrink:0}
+.ixb{flex:1;min-width:0;display:block}
+.ixt{display:block;font-size:25px;font-weight:300;letter-spacing:-.6px;line-height:1.1}
+.ixt b{font-weight:700}
+.ixs{display:block;font-size:13px;color:#8a8a8a;margin-top:6px;line-height:1.45}
+.ixmeta{display:block;font-size:12px;color:#252525;font-weight:600;margin-top:8px}
+.ixgo{width:42px;height:42px;border-radius:50%;border:1px solid #252525;display:grid;place-items:center;flex-shrink:0;transition:background .15s,color .15s}
+.ixr.us .ixgo{background:#252525;color:#fff}
+.ixr:hover .ixgo,.ixr:active .ixgo{background:#252525;color:#fff}
+.ixr.us:hover .ixgo,.ixr.us:active .ixgo{background:#fff;color:#252525}
+.ixr:focus-visible{outline:2px solid #999;outline-offset:4px;border-radius:4px}
+.personHero+.ix,.personHero~.ix{margin-top:4px}
+@media(prefers-reduced-motion:reduce){.ixgo{transition:none}}
