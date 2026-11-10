@@ -392,12 +392,17 @@ export function createRemoteApi(user) {
       const [worlds, members, items] = await Promise.all([
         supabase.from('worlds').select('*').in('id', ids).order('created_at', { ascending: false }),
         supabase.from('world_members').select('world_id, user_id, status, role').in('world_id', ids),
-        supabase.from('world_items').select('world_id').in('world_id', ids),
+        // image_path only once the photo migration exists; the count works either way.
+        supabase.from('world_items').select(photosSupported ? 'world_id, image_path, created_at' : 'world_id, created_at').in('world_id', ids).order('created_at', { ascending: false }),
       ]);
       const allMembers = must(members);
       const people = await profilesById([...allMembers.map(m => m.user_id), ...must(worlds).map(w => w.owner_id)]);
-      const counts = {};
-      must(items).forEach(i => { counts[i.world_id] = (counts[i.world_id] || 0) + 1; });
+      const counts = {}; const covers = {};
+      const itemRows = items.error?.code === '42703' ? [] : must(items);
+      itemRows.forEach(i => {
+        counts[i.world_id] = (counts[i.world_id] || 0) + 1;
+        if (i.image_path && (covers[i.world_id] ||= []).length < 4) covers[i.world_id].push(i.image_path);
+      });
       return must(worlds).map(w => {
         const mine = memberships.find(m => m.world_id === w.id);
         return {
@@ -408,6 +413,7 @@ export function createRemoteApi(user) {
           others: allMembers.filter(m => m.world_id === w.id && m.user_id !== me)
             .map(m => ({ ...m, profile: people[m.user_id] })),
           count: counts[w.id] || 0,
+          covers: covers[w.id] || [],
         };
       });
     },

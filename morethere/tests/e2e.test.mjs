@@ -311,8 +311,16 @@ test('More of us: as many shared spaces as you like, started from a person', asy
   await alice.getByRole('button', { name: 'Crea lo spazio' }).click();
   await toast(alice, 'Lo spazio è pronto');
   await alice.getByRole('heading', { name: 'Japan 2027' }).waitFor();
-  await alice.locator('.feature', { hasText: 'Kyoto inspiration' }).click();
+  await alice.getByText('Lo spazio è ancora vuoto').waitFor();
+  await shot(alice, '10b-space-empty');
+  await alice.getByRole('button', { name: 'Aggiungi', exact: true }).click();
+  const addSheet = alice.getByRole('dialog', { name: 'Aggiungi allo spazio' });
+  await addSheet.getByRole('button', { name: 'Aggiungi Kyoto inspiration' }).click();
   await toast(alice, 'Aggiunto al vostro spazio');
+  await addSheet.getByRole('button', { name: 'Già aggiunto: Kyoto inspiration' }).waitFor();
+  await shot(alice, '10c-space-add-sheet');
+  await addSheet.getByRole('button', { name: 'Fatto' }).click();
+  await alice.locator('.item', { hasText: 'Kyoto inspiration' }).waitFor();
   await noWorld(alice);
   // The back arrow goes back one step at a time: space → More of us → Bob → Circle → home.
   const backArrow = alice.getByRole('button', { name: /^Indietro/ });
@@ -342,9 +350,11 @@ test('More of us: as many shared spaces as you like, started from a person', asy
   await bob.locator('.person', { hasText: 'Ristoranti a Milano' }).getByRole('button', { name: 'Entra' }).click();
   await toast(bob, 'Benvenuto nel vostro spazio');
   await bob.getByRole('button', { name: /Japan 2027/ }).click();
-  await bob.locator('.feature', { hasText: 'Aggiunto da Alice' }).waitFor();
-  await bob.locator('.stack').last().locator('.feature', { hasText: 'example.org' }).click();
+  await bob.locator('.item', { hasText: 'Aggiunto da Alice' }).waitFor();
+  await bob.getByRole('button', { name: 'Aggiungi', exact: true }).click();
+  await bob.getByRole('dialog', { name: 'Aggiungi allo spazio' }).getByRole('button', { name: 'Aggiungi example.org' }).click();
   await toast(bob, 'Aggiunto al vostro spazio');
+  await bob.getByRole('button', { name: 'Fatto' }).click();
 
   // Alice's page for Bob lists both spaces.
   await alice.goto(APP);
@@ -355,8 +365,12 @@ test('More of us: as many shared spaces as you like, started from a person', asy
   await shot(alice, '10a-person-spaces');
   await alice.getByRole('button', { name: /Japan 2027/ }).click();
   // Alice sees Bob's contribution.
-  await alice.locator('.feature', { hasText: 'Aggiunto da Bob' }).waitFor({ timeout: 10000 });
+  await alice.locator('.item', { hasText: 'Aggiunto da Bob' }).waitFor({ timeout: 10000 });
   await shot(alice, '10-space');
+  // Tapping a discovery opens it.
+  await alice.locator('.item', { hasText: 'Aggiunto da Bob' }).locator('.itemtitle').click();
+  await alice.getByRole('dialog').getByText('Aggiunto da Bob').waitFor();
+  await alice.getByRole('dialog').getByRole('button', { name: 'Chiudi' }).click();
 
   // AI export respects Bob's consent.
   await alice.getByRole('button', { name: 'Use with AI' }).click();
@@ -364,8 +378,11 @@ test('More of us: as many shared spaces as you like, started from a person', asy
   let text = await alice.evaluate(() => navigator.clipboard.readText());
   assert.match(text, /Kyoto inspiration/);
   assert.doesNotMatch(text, /From: Bob/);
+  await bob.getByRole('tab', { name: /Persone/ }).click();
   await bob.locator('.toggle', { hasText: 'I miei contributi con AI' }).click();
+  await alice.getByRole('tab', { name: /Persone/ }).click();
   await alice.getByText('Partecipa · AI consentita').waitFor({ timeout: 10000 });
+  await shot(alice, '10d-space-people');
   await alice.getByRole('button', { name: 'Use with AI' }).click();
   await alice.waitForTimeout(300);
   text = await alice.evaluate(() => navigator.clipboard.readText());

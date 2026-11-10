@@ -179,3 +179,62 @@ main>textarea{width:100%;border:1px solid #e2e2e2;border-radius:16px;padding:14p
 /* panels never grow wider than the screen because of long text */
 .panel{grid-template-columns:minmax(0,1fr)}
 .panel>*{min-width:0}
+/* ==== Shared space ======================================================== */
+.spacePage{padding-top:18px}
+.spaceHero{position:relative;border-radius:26px;overflow:hidden;background:#252525;color:#fff;min-height:210px;display:flex;align-items:flex-end}
+.spaceHero.withPhotos{min-height:270px}
+.heroMosaic{position:absolute;inset:0;display:grid;gap:2px}
+.heroMosaic img{width:100%;height:100%;object-fit:cover;display:block}
+.heroMosaic.n2{grid-template-columns:1fr 1fr}
+.heroMosaic.n3{grid-template-columns:2fr 1fr;grid-template-rows:1fr 1fr}
+.heroMosaic.n3 img:first-child{grid-row:span 2}
+.heroMosaic.n4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+.spaceHero.withPhotos::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,#0000 30%,#000000b8 100%)}
+.spaceHeroText{position:relative;z-index:1;padding:20px 20px 18px;width:100%}
+.heroEyebrow{font-size:11px;letter-spacing:1.3px;color:#ffffffb3;font-weight:500}
+.heroTitle{display:flex;align-items:center;gap:6px}
+.heroTitle h1{margin:8px 0 12px;color:#fff;overflow-wrap:anywhere}
+.heroMembers{display:flex;align-items:center;gap:10px;font-size:13px;color:#ffffffd9}
+.memberStack{display:inline-flex;flex-shrink:0}
+.mav{width:30px;height:30px;border-radius:50%;background:#f1f0ee;color:#252525;font-size:12px;font-weight:700;display:grid;place-items:center;box-shadow:0 0 0 2px #252525;margin-left:-8px}
+.mav:first-child{margin-left:0}
+.mav.more{background:#3a3a3a;color:#fff}
+.spaceActions{display:flex;gap:8px;margin:16px 0 18px}
+.spaceActions .pill{flex:1}
+.spaceActions .pill.iconOnly{flex:0 0 50px;padding:13px 0}
+.viewToggle.tabs{width:100%;margin-bottom:18px}
+.viewToggle.tabs button{flex:1;padding:10px 12px;font-size:13px}
+.byline{display:block;color:#999;font-size:11px;margin-top:8px}
+.spaceEmpty{display:grid;justify-items:center;gap:8px;text-align:center;padding:36px 20px;border:1.5px dashed #ddd;border-radius:22px;color:#777}
+.spaceEmpty strong{color:#252525;font-size:16px}
+.spaceEmpty small{font-size:13px;line-height:1.5;max-width:260px}
+.spaceEmpty .pill{margin-top:10px}
+
+/* space card in lists */
+.spaceCard{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:#fff;border:1px solid #e6e6e6;border-radius:20px;padding:12px 14px 12px 12px}
+.mosaic{width:68px;height:68px;border-radius:14px;overflow:hidden;background:#f4f4f2;display:grid;gap:1px;flex-shrink:0;place-items:center;color:#8a8a8a}
+.mosaic img{width:100%;height:100%;object-fit:cover;display:block}
+.mosaic.n2{grid-template-columns:1fr 1fr}
+.mosaic.n3,.mosaic.n4{grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+.mosaic.n3 img:first-child{grid-row:span 2}
+.scBody{flex:1;min-width:0}
+.scBody strong{display:block;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scBody small{display:block;color:#888;font-size:12px;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.scMeta{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:11px;color:#999}
+.scMeta .mav{width:22px;height:22px;font-size:10px;box-shadow:0 0 0 2px #fff;margin-left:-6px}
+.scMeta .mav:first-child{margin-left:0}
+
+/* add-to-space sheet */
+.modal.sheet.tall{max-height:86vh;overflow-y:auto}
+.modal .search{padding:12px 16px}
+.pickGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.pickTile{border:0;background:none;padding:0;text-align:left;display:grid;gap:6px}
+.pickTile:disabled{opacity:1;cursor:default}
+.ptImg{position:relative;aspect-ratio:1;border-radius:14px;background:#f4f4f2;display:grid;place-items:center;overflow:hidden;color:#888;border:1px solid #eee}
+.ptImg img{width:100%;height:100%;object-fit:cover;display:block}
+.pickTile.added .ptImg{outline:2px solid #252525;outline-offset:-2px}
+.ptCheck{position:absolute;top:6px;right:6px;width:22px;height:22px;border-radius:50%;background:#252525;color:#fff;display:grid;place-items:center}
+.ptTitle{font-size:12px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.chips.suggest{margin-top:-2px}
+.chips.suggest .chip{padding:8px 12px;font-size:12px}
+@media(max-width:380px){.pickGrid{gap:7px}}
