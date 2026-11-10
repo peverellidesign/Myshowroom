@@ -442,7 +442,9 @@ test('profile: edit, export data, sign out', async () => {
   await bob.goto(APP);
   await bob.getByRole('button', { name: /Apri Your Circle/ }).click();
   await bob.locator('.railItem', { hasText: 'Alice' }).locator('img.faceImg').waitFor({ timeout: 10000 });
-  assert.ok(await bob.locator('.railItem', { hasText: 'Alice' }).locator('img.faceImg').evaluate(img => img.complete && img.naturalWidth > 0), 'Bob sees Alice\'s photo');
+  // Faces load lazily: wait for the image to finish loading, then check it.
+  const loaded = await bob.locator('.railItem', { hasText: 'Alice' }).locator('img.faceImg').evaluate(img => (img.complete && img.naturalWidth > 0) || new Promise(r => { img.addEventListener('load', () => r(img.naturalWidth > 0)); img.addEventListener('error', () => r(false)); setTimeout(() => r(img.naturalWidth > 0), 8000); }));
+  assert.ok(loaded, 'Bob sees Alice\'s photo');
   await shot(bob, '11b-circle-with-photo');
   await alice.getByLabel('DI COSA TI OCCUPI').fill('Travel · Food · Architecture');
   await alice.getByRole('button', { name: 'Salva' }).click();
