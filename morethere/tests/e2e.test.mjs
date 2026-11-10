@@ -450,15 +450,13 @@ test('share to morethere from another app, and from morethere to other apps', as
   await close(alice);
   // Out to other apps, straight to the share sheet.
   await alice.locator('.item', { hasText: 'example.org' }).first().getByRole('button', { name: 'Condividi' }).click();
+  // One tap on "Fuori app" opens the phone's share sheet.
   await alice.getByRole('button', { name: 'Fuori app', exact: true }).click();
-  await alice.getByRole('button', { name: /Avanti/ }).click();
-  await alice.getByLabel('LA TUA DEDICA').fill('Andiamoci!');
-  await alice.getByRole('button', { name: "Condividi con un'altra app" }).click();
   await alice.getByRole('heading', { name: 'Condiviso.' }).waitFor();
   const shared = await alice.evaluate(() => window.__shared);
   assert.equal(shared.length, 1);
-  assert.match(shared[0].text, /Andiamoci!/);
   assert.match(shared[0].text, /example\.org\/da-instagram/);
+  assert.match(shared[0].text, /da morethere/);
 });
 
 test('profile: edit, export data, sign out', async () => {

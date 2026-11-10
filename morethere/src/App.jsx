@@ -278,12 +278,12 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   };
   useEffect(() => {
     setExtFile(null);
-    const url = screen === 'thought' && recipientId === '__external' ? photoUrls[selected?.image_path] : null;
+    const url = screen === 'thought' ? photoUrls[selected?.image_path] : null;
     if (!url) return;
     let alive = true;
     fetch(url).then(r => r.blob()).then(b => alive && setExtFile(new File([b], 'morethere.jpg', { type: b.type || 'image/jpeg' }))).catch(() => {});
     return () => { alive = false; };
-  }, [screen, recipientId, selected?.image_path, photoUrls]);
+  }, [screen, selected?.image_path, photoUrls]);
 
   // Something shared to morethere from another app (Instagram, browser, photos…).
   const handledShare = useRef(false);
@@ -432,7 +432,12 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
       if (ok) { await refreshThoughts(); setForDone(true); }
       return;
     }
-    // Outside morethere: hand it to the phone's share sheet (WhatsApp, Instagram, Mail…).
+    return shareOut();
+  };
+  // Outside morethere: hand it to the phone's share sheet (WhatsApp, Instagram, Mail…).
+  // Called directly from the tap, so the phone allows the share sheet to open.
+  const shareOut = async () => {
+    if (!selected) return toast('Scegli prima un ricordo');
     const text = [message.trim(), selected.title, selected.url || selected.note, '— da morethere'].filter(Boolean).join('\n\n');
     const data = { title: selected.title, text };
     if (extFile && navigator.canShare?.({ files: [extFile] })) data.files = [extFile];
@@ -444,7 +449,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
       try { await navigator.clipboard.writeText(text); toast('Testo copiato: incollalo nell\'app che preferisci'); } catch { return toast('Condivisione non riuscita'); }
     }
     setNotes(v => [{ id: crypto.randomUUID(), recipient: recipient.trim() || 'Fuori da morethere', message: message.trim(), item: { title: selected.title, url: selected.url, note: selected.note }, created: Date.now() }, ...v]);
-    setForDone(true);
+    setForDone('out');
   };
 
   // ---- their worlds -------------------------------------------------------------
@@ -744,7 +749,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
         const external = !social || !accepted.length || recipientId === '__external';
         const to = accepted.find(c => c.other.id === recipientId)?.other;
         const who = external ? (recipient.trim() || 'questa persona') : nameOf(to);
-        if (forDone) return doneView({ title: external ? 'Condiviso.' : 'Fatto.', text: external ? `Hai condiviso “${selected?.title || 'il tuo ricordo'}” con un'altra app.` : `${who} ora può vedere “${selected?.title || 'il tuo ricordo'}”. Resta nella tua raccolta: puoi toglierglielo quando vuoi.`, actions: <><button className="pill dark wide" onClick={() => startMoreForYou()}>Apri un altro ricordo</button><button className="pill outline wide" onClick={() => setScreen('circle')}>Torna a Your Circle</button></> });
+        if (forDone) return doneView({ title: forDone === 'out' ? 'Condiviso.' : 'Fatto.', text: forDone === 'out' ? `Hai condiviso “${selected?.title || 'il tuo ricordo'}” con un'altra app.` : `${who} ora può vedere “${selected?.title || 'il tuo ricordo'}”. Resta nella tua raccolta: puoi toglierglielo quando vuoi.`, actions: <><button className="pill dark wide" onClick={() => startMoreForYou()}>Apri un altro ricordo</button><button className="pill outline wide" onClick={() => setScreen('circle')}>Torna a Your Circle</button></> });
         const q = forSearch.trim().toLowerCase();
         const pickable = items.filter(i => !q || [i.title, i.note, i.url].join(' ').toLowerCase().includes(q));
         const total = external ? 3 : 4;
@@ -755,8 +760,8 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
             {!pickable.length && <div className="empty compact">{items.length ? 'Nessun risultato.' : 'La tua raccolta è vuota: salva prima qualcosa dalla home.'}</div>}</> })}
           {forStep === 2 && wizard({ n: 2, total, question: 'A quale amico?', hint: social && accepted.length ? 'Solo lui potrà vederlo, finché vuoi tu.' : 'Aggiungi un amico per aprirgli il ricordo dentro morethere, oppure condividilo con un messaggio.', canNext: external ? true : !!recipientId, onBack: () => setForStep(1), onNext: () => setForStep(3), children: <>
             {selected && <div className="chosenItem">{photoUrls[selected.image_path] ? <Photo className="rowthumb" url={photoUrls[selected.image_path]} alt="" /> : <span className="chosenIcon">{selected.url ? <Link2 size={18} /> : <PenLine size={18} />}</span>}<span><strong>{selected.title}</strong><small>{selected.url || selected.note}</small></span><button className="textlink" onClick={() => setForStep(1)}>Cambia</button></div>}
-            {social && peoplePicker([recipientId], id => setRecipientId(id), { external: true })}
-            {external && <p className="wizNote">Si aprirà il menu di condivisione del telefono: scegli tu l'app (WhatsApp, Instagram, Mail…).</p>}</> })}
+            {social && peoplePicker([recipientId], id => (id === '__external' ? shareOut() : setRecipientId(id)), { external: true })}
+            <p className="wizNote">Tocca <strong>Fuori app</strong> per mandarlo con WhatsApp, Instagram, Mail o qualsiasi altra app.</p></> })}
           {forStep === 3 && !external && wizard({ n: 3, total, question: `Cosa può fare ${who}?`, onBack: () => setForStep(2), onNext: () => setForStep(4), children: <>
             <div className="opts" role="radiogroup">{option({ on: !thoughtSave, title: 'Solo guardare', desc: 'Lo vede nella tua raccolta, sempre aggiornato.', onClick: () => setThoughtSave(false) })}{option({ on: thoughtSave, title: 'Guardare e salvare', desc: 'Può tenersi una copia.', onClick: () => setThoughtSave(true) })}</div>
             <div className="wizToggle"><Toggle checked={thoughtAi} onChange={setThoughtAi} label="Può usarlo con l'AI" hint="Per esempio per chiedere consigli a un assistente AI." /></div></> })}
