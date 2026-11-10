@@ -12,6 +12,8 @@ const opts = { auth: { persistSession: false, autoRefreshToken: false } };
 const admin = createClient(URL_, SERVICE, opts);
 const run = Date.now().toString(36);
 const u = {};
+const noEffect = (res, msg) => assert.ok(res.error || res.data.length === 0, msg ?? 'expected no effect');
+const denied = (res, msg) => assert.ok(res.error, msg ?? 'expected the request to be refused');
 const ok = ({ data, error }) => { if (error) throw new Error(error.message); return data; };
 const jpeg = () => new Blob([new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4, 0xff, 0xd9])], { type: 'image/jpeg' });
 const canRead = async (who, path) => !(await who.client.storage.from('media').download(path)).error;
@@ -139,4 +141,23 @@ test('profile photos are visible only to people who may see the profile', async 
   // Removing the photo removes access for others.
   ok(await u.alice.client.from('profiles').update({ avatar_path: null }).eq('id', u.alice.id));
   assert.ok(!(await canRead(u.bob, path)), 'no longer referenced');
+});
+
+test('a shared space cover is set by members and seen only by the space', async () => {
+  const w = ok(await u.alice.client.from('worlds').insert({ name: 'Copertina' }).select().single());
+  ok(await u.alice.client.rpc('invite_to_world', { p_world: w.id, p_user: u.carol.id }));
+  ok(await u.carol.client.rpc('respond_world_invite', { p_world: w.id, p_accept: true }));
+  const cover = await upload(u.carol);
+  ok(await u.carol.client.rpc('set_world_cover', { p_world: w.id, p_path: cover }));
+  assert.equal(ok(await u.alice.client.from('worlds').select('cover_path').eq('id', w.id).single()).cover_path, cover);
+  assert.ok(await canRead(u.alice, cover), 'another member sees it');
+  assert.ok(!(await canRead(u.bob, cover)), 'a non-member does not');
+  // Only members, only their own files.
+  denied(await u.bob.client.rpc('set_world_cover', { p_world: w.id, p_path: null }), 'non-member cannot change it');
+  const alicePhoto = await upload(u.alice);
+  denied(await u.carol.client.rpc('set_world_cover', { p_world: w.id, p_path: alicePhoto }), 'not your file');
+  denied(await u.carol.client.rpc('set_world_cover', { p_world: w.id, p_path: `${u.carol.id}/${crypto.randomUUID()}.jpg` }), 'file must exist');
+  noEffect(await u.carol.client.from('worlds').update({ cover_path: null }).eq('id', w.id).select());
+  ok(await u.alice.client.rpc('set_world_cover', { p_world: w.id, p_path: null }));
+  assert.ok(!(await canRead(u.alice, cover)), 'removed cover is no longer shared');
 });

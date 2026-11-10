@@ -326,3 +326,9 @@ main>textarea{width:100%;border:1px solid #e2e2e2;border-radius:16px;padding:14p
 .openedTitle{display:block;font-weight:700;font-size:16px;margin:6px 0 2px}
 .openedNote{display:block;color:#888;font-size:13px;line-height:1.45}
 .dedication{font-style:italic;color:#555;margin:6px 0 0}
+/* shared space cover */
+.coverTools{position:absolute;top:12px;right:12px;z-index:2;display:flex;gap:6px}
+.coverBtn{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:18px;padding:8px 12px;font-size:12px;font-weight:600;background:#ffffffe6;color:#252525;backdrop-filter:blur(6px)}
+.coverBtn.iconOnly{padding:8px}
+.coverBtn:disabled{opacity:.6}
+.heroMosaic.n1{grid-template-columns:1fr}

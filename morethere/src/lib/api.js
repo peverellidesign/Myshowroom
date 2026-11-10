@@ -234,7 +234,8 @@ export function createRemoteApi(user) {
         supabase.from('world_items').select('id', { count: 'exact', head: true }).eq('added_by', me).eq('image_path', path),
         supabase.from('items').select('id', { count: 'exact', head: true }).eq('owner_id', me).eq('image_path', path),
       ]);
-      if ((t.count || 0) + (w.count || 0) + (i.count || 0) === 0) await supabase.storage.from('media').remove([path]);
+      const c = await supabase.from('worlds').select('id', { count: 'exact', head: true }).eq('cover_path', path);
+      if ((t.count || 0) + (w.count || 0) + (i.count || 0) + (c.error ? 0 : (c.count || 0)) === 0) await supabase.storage.from('media').remove([path]);
     },
     // Copy a photo someone shared into my own folder (for saved copies).
     async copyPhoto(path) {
@@ -472,6 +473,19 @@ export function createRemoteApi(user) {
     },
     async createWorld(name) {
       return must(await supabase.from('worlds').insert({ name }).select().single());
+    },
+    // Cover photo of a shared space: any member can set or remove it.
+    async setWorldCover(worldId, file, oldPath) {
+      const blob = await resizeImage(file, 1600, 0.82);
+      const path = `${me}/${crypto.randomUUID()}.jpg`;
+      must(await supabase.storage.from('media').upload(path, blob, { contentType: 'image/jpeg', cacheControl: '3600' }));
+      must(await supabase.rpc('set_world_cover', { p_world: worldId, p_path: path }));
+      if (oldPath?.startsWith(me + '/')) await this.releasePhoto(oldPath);
+      return path;
+    },
+    async removeWorldCover(worldId, oldPath) {
+      must(await supabase.rpc('set_world_cover', { p_world: worldId, p_path: null }));
+      if (oldPath?.startsWith(me + '/')) await this.releasePhoto(oldPath);
     },
     async renameWorld(id, name) { must(await supabase.from('worlds').update({ name }).eq('id', id)); },
     async deleteWorld(id) { must(await supabase.from('worlds').delete().eq('id', id)); },

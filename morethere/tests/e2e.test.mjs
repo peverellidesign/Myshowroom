@@ -341,6 +341,13 @@ test('More of us: as many shared spaces as you like, started from a person', asy
   await shot(alice, '10c-space-add-sheet');
   await addSheet.getByRole('button', { name: 'Fatto' }).click();
   await alice.locator('.item', { hasText: 'Kyoto inspiration' }).waitFor();
+  // A cover photo of their choice.
+  await alice.getByTestId('cover-input').setInputFiles(EXIF_PHOTO);
+  await toast(alice, 'Copertina aggiornata');
+  await alice.locator('.spaceHero .heroMosaic.n1 img').waitFor();
+  assert.ok(await alice.locator('.spaceHero .heroMosaic img').evaluate(img => img.complete && img.naturalWidth > 0), 'cover loads');
+  await alice.getByRole('button', { name: 'Cambia copertina' }).waitFor();
+  await shot(alice, '10e-space-cover');
   await noWorld(alice);
   // The back arrow goes back one step at a time: space → More of us → Bob → Circle → home.
   const backArrow = alice.getByRole('button', { name: /^Indietro/ });
@@ -367,6 +374,8 @@ test('More of us: as many shared spaces as you like, started from a person', asy
   await bob.getByRole('button', { name: /More of us/ }).click();
   await bob.locator('.person', { hasText: 'Japan 2027' }).getByRole('button', { name: 'Entra' }).click();
   await toast(bob, 'Benvenuto nel vostro spazio');
+  // Bob sees the cover Alice chose, on the space card.
+  await bob.locator('.spaceCard', { hasText: 'Japan 2027' }).locator('img').waitFor({ timeout: 10000 });
   await bob.locator('.person', { hasText: 'Ristoranti a Milano' }).getByRole('button', { name: 'Entra' }).click();
   await toast(bob, 'Benvenuto nel vostro spazio');
   await bob.getByRole('button', { name: /Japan 2027/ }).click();

@@ -186,7 +186,8 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
     ...thoughts.received.map(t => t.item?.image_path || t.item_image_path),
     ...thoughts.sent.map(t => t.item_image_path),
     ...(worldData?.items || []).map(i => i.image_path),
-    ...worlds.flatMap(w => w.covers || []),
+    ...worlds.flatMap(w => [w.cover_path, ...(w.covers || [])]),
+    worldData?.world?.cover_path,
     // faces
     profile?.avatar_path, friend?.avatar_path,
     ...circle.connections.map(c => c.other?.avatar_path),
@@ -478,6 +479,7 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
 
   // ---- account ----------------------------------------------------------------------
   const avatarInput = useRef();
+  const coverInput = useRef();
   const onAvatarChosen = async (e) => {
     const file = e.target.files?.[0]; e.target.value = '';
     if (!file) return;
@@ -537,7 +539,7 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
   const activeSpaces = worlds.filter(w => w.myStatus === 'active');
   const cover = (paths, cls = 'mosaic') => { const urls = (paths || []).map(x => photoUrls[x]).filter(Boolean).slice(0, 4); return <span className={`${cls} n${urls.length}`} aria-hidden="true">{urls.length ? urls.map(u => <img key={u} src={u} alt="" loading="lazy" />) : <FolderHeart size={22} />}</span>; };
   const memberStack = (profiles, max = 4) => <span className="memberStack" aria-hidden="true">{profiles.slice(0, max).map((p, k) => <span key={k} className="mav">{face(p)}</span>)}{profiles.length > max && <span className="mav more">+{profiles.length - max}</span>}</span>;
-  const spaceRow = w => { const others = w.others.filter(m => m.status === 'active'); const waiting = w.others.filter(m => m.status === 'invited'); return <button key={w.id} className="spaceCard" onClick={() => openWorld(w)}>{cover(w.covers)}<span className="scBody"><strong>{w.name}</strong><small>{others.length ? 'Con ' + others.map(m => nameOf(m.profile)).join(', ') : 'Solo tu, per ora'}{waiting.length ? ` · ${waiting.length} ${waiting.length === 1 ? 'invito' : 'inviti'} in attesa` : ''}</small><span className="scMeta">{memberStack([profile, ...others.map(m => m.profile)].filter(Boolean))}<span>{w.count} {w.count === 1 ? 'scoperta' : 'scoperte'}</span></span></span><ChevronRight size={18} /></button>; };
+  const spaceRow = w => { const others = w.others.filter(m => m.status === 'active'); const waiting = w.others.filter(m => m.status === 'invited'); return <button key={w.id} className="spaceCard" onClick={() => openWorld(w)}>{cover(w.cover_path ? [w.cover_path] : w.covers)}<span className="scBody"><strong>{w.name}</strong><small>{others.length ? 'Con ' + others.map(m => nameOf(m.profile)).join(', ') : 'Solo tu, per ora'}{waiting.length ? ` · ${waiting.length} ${waiting.length === 1 ? 'invito' : 'inviti'} in attesa` : ''}</small><span className="scMeta">{memberStack([profile, ...others.map(m => m.profile)].filter(Boolean))}<span>{w.count} {w.count === 1 ? 'scoperta' : 'scoperte'}</span></span></span><ChevronRight size={18} /></button>; };
   const title = { home: 'morethere', circle: 'Your Circle', friend: nameOf(friend), worlds: 'More of us', world: 'Spazio condiviso', thought: 'More for you', detail: 'La tua scoperta', settings: 'More of me', export: 'Use with AI', profile: 'Il mio profilo' }[screen] || 'morethere';
   const signInHint = <p className="hint">Questa versione funziona solo su questo dispositivo. Configura il backend Supabase e accedi per connetterti alle persone di cui ti fidi.</p>;
 
@@ -616,13 +618,15 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
         const active = worldData.members.filter(m => m.status === 'active');
         const others = active.filter(m => m.user_id !== api.me);
         const invited = worldData.members.filter(m => m.status === 'invited');
-        const heroPaths = worldData.items.map(i => i.image_path).filter(x => photoUrls[x]).slice(0, 4);
+        const custom = worldData.world.cover_path && photoUrls[worldData.world.cover_path] ? [worldData.world.cover_path] : null;
+        const heroPaths = custom || worldData.items.map(i => i.image_path).filter(x => photoUrls[x]).slice(0, 4);
         const eligible = accepted.filter(c => !memberIds.has(c.other.id));
         const q = spaceSearch.trim().toLowerCase();
         const pickable = items.filter(i => !q || [i.title, i.note, i.url].join(' ').toLowerCase().includes(q));
         return <>
           <div className={'spaceHero' + (heroPaths.length ? ' withPhotos' : '')}>
             {heroPaths.length > 0 && cover(heroPaths, 'heroMosaic')}
+            {myMembership?.status === 'active' && <div className="coverTools"><button className="coverBtn" disabled={busy} aria-label={worldData.world.cover_path ? 'Cambia copertina' : 'Aggiungi una copertina'} onClick={() => coverInput.current?.click()}><Camera size={16} /><span>{worldData.world.cover_path ? 'Cambia copertina' : 'Copertina'}</span></button>{worldData.world.cover_path && <button className="coverBtn iconOnly" disabled={busy} aria-label="Togli la copertina" onClick={async () => { if (!window.confirm('Togliere la copertina? Tornerà il mosaico con le foto dello spazio.')) return; const ok = await run(() => api.removeWorldCover(selected.id, worldData.world.cover_path), 'Copertina tolta'); if (ok !== undefined) { reloadWorld(selected.id); refreshWorlds(); } }}><X size={16} /></button>}<input ref={coverInput} type="file" accept="image/*" hidden aria-hidden="true" data-testid="cover-input" onChange={async e => { const file = e.target.files?.[0]; e.target.value = ''; if (!file) return; const ok = await run(() => api.setWorldCover(selected.id, file, worldData.world.cover_path), 'Copertina aggiornata'); if (ok !== undefined) { reloadWorld(selected.id); refreshWorlds(); } }} /></div>}
             <div className="spaceHeroText"><span className="heroEyebrow">03 — SPAZIO CONDIVISO</span>
               <div className="heroTitle"><h1>{worldData.world.name}</h1>{isWorldOwner && <button className="iconbtn onDark" aria-label="Rinomina lo spazio" onClick={() => setRenameSpace(worldData.world.name)}><Pencil size={16} /></button>}</div>
               <div className="heroMembers">{memberStack(active.map(m => m.profile).filter(Boolean), 5)}<span>{others.length ? 'Tu e ' + others.map(m => nameOf(m.profile)).join(', ') : 'Solo tu, per ora'}{invited.length ? ` · ${invited.length} ${invited.length === 1 ? 'invito' : 'inviti'} in attesa` : ''}</span></div></div>
