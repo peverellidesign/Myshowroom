@@ -320,3 +320,5 @@ main>textarea{width:100%;border:1px solid #e2e2e2;border-radius:16px;padding:14p
 .app:has(.wizNav) .toast{bottom:calc(96px + env(safe-area-inset-bottom))}
 /* Your Circle opens straight on the people */
 .block.first{margin-top:0}
+.subHead{font-size:15px;letter-spacing:-.2px;margin:28px 0 4px}
+.railHint.lead{margin:-6px 0 14px}

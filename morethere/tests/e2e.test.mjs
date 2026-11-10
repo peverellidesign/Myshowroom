@@ -343,7 +343,7 @@ test('More of us: as many shared spaces as you like, started from a person', asy
   await backArrow.click();
   await alice.getByRole('heading', { name: 'Bob' }).waitFor();
   await backArrow.click();
-  await alice.getByRole('heading', { name: 'Le tue persone' }).waitFor();
+  await alice.getByRole('heading', { name: 'Dai tuoi amici' }).waitFor();
   await backArrow.click();
   await alice.getByText('NUOVO INGRESSO').waitFor();
 
