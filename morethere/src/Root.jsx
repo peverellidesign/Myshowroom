@@ -15,6 +15,20 @@ function captureInvite() {
   try { return sessionStorage.getItem('mt_invite'); } catch { return null; }
 }
 
+// Something shared to morethere: from the Android share sheet (?share=1&title&text&url[&media])
+// or from an iPhone Shortcut / any link (?add=<link or text>). Kept until signed in.
+function captureShare() {
+  const q = new URLSearchParams(window.location.search);
+  let found = null;
+  if (q.get('share') === '1') found = { title: q.get('title') || '', text: q.get('text') || '', url: q.get('url') || '', media: q.get('media') === '1' };
+  else if (q.get('add')) found = { title: '', text: q.get('add'), url: '', media: false };
+  if (found) {
+    try { sessionStorage.setItem('mt_share', JSON.stringify(found)); } catch { /* ignore */ }
+    history.replaceState(null, '', window.location.pathname + window.location.hash);
+  }
+  try { return JSON.parse(sessionStorage.getItem('mt_share') || 'null'); } catch { return null; }
+}
+
 const AUTH_ERRORS = [
   [/Invalid login credentials/i, 'Email o password non corretti.'],
   [/Email not confirmed/i, 'Conferma prima la tua email: controlla la posta.'],
@@ -101,6 +115,8 @@ function AuthScreen({ hasInvite, recovery, onRecovered }) {
 
 export default function Root() {
   const [invite, setInvite] = useState(() => captureInvite());
+  const [incoming, setIncoming] = useState(() => captureShare());
+  const clearIncoming = () => { try { sessionStorage.removeItem('mt_share'); } catch { /* ignore */ } setIncoming(null); };
   const [session, setSession] = useState(undefined);
   const [recovery, setRecovery] = useState(false);
   const localApi = useMemo(() => (isConfigured ? null : createLocalApi()), []);
@@ -127,8 +143,8 @@ export default function Root() {
   const api = useMemo(() => (userId ? createRemoteApi({ id: userId }) : null), [userId]);
   const clearInvite = () => { try { sessionStorage.removeItem('mt_invite'); } catch { /* ignore */ } setInvite(null); };
 
-  if (!isConfigured) return <App api={localApi} />;
+  if (!isConfigured) return <App api={localApi} pendingShare={incoming} onShareHandled={clearIncoming} />;
   if (session === undefined) return <div className="app"><header><div><span className="brand">morethere</span><div className="subtitle">Sincronizzazione…</div></div></header></div>;
   if (!session || recovery) return <AuthScreen hasInvite={Boolean(invite)} recovery={recovery} onRecovered={() => setRecovery(false)} />;
-  return <App key={userId} api={api} pendingInvite={invite} onInviteHandled={clearInvite} />;
+  return <App key={userId} api={api} pendingInvite={invite} onInviteHandled={clearInvite} pendingShare={incoming} onShareHandled={clearIncoming} />;
 }

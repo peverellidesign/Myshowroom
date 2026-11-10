@@ -35,7 +35,7 @@ function Photo({ url, alt = '', className = '' }) {
   return <img className={className} src={url} alt={alt} loading="lazy" decoding="async" />;
 }
 
-export default function App({ api, pendingInvite, onInviteHandled }) {
+export default function App({ api, pendingInvite, onInviteHandled, pendingShare, onShareHandled }) {
   const social = api.social;
 
   // ---- personal archive ----------------------------------------------------
@@ -84,6 +84,7 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
   const [recipientId, setRecipientId] = useState('');
   const [thoughtAi, setThoughtAi] = useState(false);
   const [thoughtSave, setThoughtSave] = useState(false);
+  const [extFile, setExtFile] = useState(null);
   const [worldName, setWorldName] = useState('');
   const [spaceMembers, setSpaceMembers] = useState([]); // people for a new shared space
   const [showAddPerson, setShowAddPerson] = useState(false);
@@ -275,6 +276,54 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
       return true;
     } catch { return false; } // previews are best effort
   };
+  useEffect(() => {
+    setExtFile(null);
+    const url = screen === 'thought' && recipientId === '__external' ? photoUrls[selected?.image_path] : null;
+    if (!url) return;
+    let alive = true;
+    fetch(url).then(r => r.blob()).then(b => alive && setExtFile(new File([b], 'morethere.jpg', { type: b.type || 'image/jpeg' }))).catch(() => {});
+    return () => { alive = false; };
+  }, [screen, recipientId, selected?.image_path, photoUrls]);
+
+  // Something shared to morethere from another app (Instagram, browser, photos…).
+  const handledShare = useRef(false);
+  useEffect(() => {
+    if (!loaded || !pendingShare || handledShare.current) return;
+    handledShare.current = true;
+    const s = pendingShare; onShareHandled?.();
+    (async () => {
+      let file = null;
+      if (s.media && 'caches' in window) {
+        try {
+          const cache = await caches.open('mt-share');
+          const r = await cache.match('/__shared-media');
+          if (r) { const b = await r.blob(); file = new File([b], 'condiviso.jpg', { type: b.type || 'image/jpeg' }); await cache.delete('/__shared-media'); }
+        } catch { /* no shared file */ }
+      }
+      const all = [s.url, s.text, s.title].filter(Boolean).join(' ');
+      const url = safeUrl((all.match(/https?:\/\/[^\s<>"']+/) || [])[0] || '');
+      const words = [s.title, s.text].filter(Boolean).join('\n').replace(/https?:\/\/[^\s<>"']+/g, '').replace(/\s+\n/g, '\n').trim();
+      await run(async () => {
+        let draft;
+        if (file) {
+          const taken = (await photoTakenDate(file)) || todayIso();
+          const image_path = await api.uploadPhoto(file);
+          draft = { title: (s.title || words.split('\n')[0] || `Foto del ${fmtMemory(taken)}`).slice(0, 300), url: url || '', note: s.title ? words : '', category: 'Foto', image_path, memory_date: taken };
+        } else if (url) {
+          draft = { title: new URL(url).hostname.replace(/^www\./, ''), url, note: words.slice(0, 10000), category: 'Pagine' };
+        } else if (words) {
+          draft = { title: words.slice(0, 70), url: '', note: words.slice(0, 10000), category: 'Appunti' };
+        } else return;
+        const saved = await api.addItem({ ...draft, collection: 'Idee', collection_id: collectionId('Idee') });
+        let item = { ...draft, id: saved.id, collection: 'Idee', collection_id: collectionId('Idee'), created: Date.now(), image_path: draft.image_path || null };
+        if (url && !file) { await enrichLink({ ...item, note: '' }); }
+        await refreshArchive();
+        setSelected(sel => (sel?.id === item.id ? sel : item));
+        setScreen('detail');
+      }, 'Salvato nella tua raccolta');
+    })();
+  }, [loaded, pendingShare]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const pickPhoto = (itemId = null) => { photoTarget.current = itemId; fileInput.current?.click(); };
   const onPhotoChosen = async (e) => {
     const file = e.target.files?.[0]; e.target.value = '';
@@ -383,12 +432,18 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
       if (ok) { await refreshThoughts(); setForDone(true); }
       return;
     }
-    if (!recipient.trim()) return toast('Inserisci il destinatario');
-    const n = { id: crypto.randomUUID(), recipient: recipient.trim(), message: message.trim(), item: { title: selected.title, url: selected.url, note: selected.note }, created: Date.now() };
-    setNotes(v => [n, ...v]);
-    const payload = `${message || 'Ho pensato a te.'}\n\n${selected.title}\n${selected.url || selected.note}\n\nShared via morethere`;
-    if (navigator.share) navigator.share({ title: 'Thought of you · morethere', text: payload }).catch(() => {});
-    else navigator.clipboard?.writeText(payload).then(() => toast('Messaggio copiato per la condivisione'));
+    // Outside morethere: hand it to the phone's share sheet (WhatsApp, Instagram, Mail…).
+    const text = [message.trim(), selected.title, selected.url || selected.note, '— da morethere'].filter(Boolean).join('\n\n');
+    const data = { title: selected.title, text };
+    if (extFile && navigator.canShare?.({ files: [extFile] })) data.files = [extFile];
+    try {
+      if (navigator.share) await navigator.share(data);
+      else { await navigator.clipboard.writeText(text); toast('Testo copiato: incollalo nell\'app che preferisci'); }
+    } catch (e) {
+      if (e?.name === 'AbortError') return; // closed the share sheet: stay here
+      try { await navigator.clipboard.writeText(text); toast('Testo copiato: incollalo nell\'app che preferisci'); } catch { return toast('Condivisione non riuscita'); }
+    }
+    setNotes(v => [{ id: crypto.randomUUID(), recipient: recipient.trim() || 'Fuori da morethere', message: message.trim(), item: { title: selected.title, url: selected.url, note: selected.note }, created: Date.now() }, ...v]);
     setForDone(true);
   };
 
@@ -689,7 +744,7 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
         const external = !social || !accepted.length || recipientId === '__external';
         const to = accepted.find(c => c.other.id === recipientId)?.other;
         const who = external ? (recipient.trim() || 'questa persona') : nameOf(to);
-        if (forDone) return doneView({ title: external ? 'Pronto da condividere.' : 'Fatto.', text: external ? 'Abbiamo preparato un messaggio con il menu di condivisione del telefono.' : `${who} ora può vedere “${selected?.title || 'il tuo ricordo'}”. Resta nella tua raccolta: puoi toglierglielo quando vuoi.`, actions: <><button className="pill dark wide" onClick={() => startMoreForYou()}>Apri un altro ricordo</button><button className="pill outline wide" onClick={() => setScreen('circle')}>Torna a Your Circle</button></> });
+        if (forDone) return doneView({ title: external ? 'Condiviso.' : 'Fatto.', text: external ? `Hai condiviso “${selected?.title || 'il tuo ricordo'}” con un'altra app.` : `${who} ora può vedere “${selected?.title || 'il tuo ricordo'}”. Resta nella tua raccolta: puoi toglierglielo quando vuoi.`, actions: <><button className="pill dark wide" onClick={() => startMoreForYou()}>Apri un altro ricordo</button><button className="pill outline wide" onClick={() => setScreen('circle')}>Torna a Your Circle</button></> });
         const q = forSearch.trim().toLowerCase();
         const pickable = items.filter(i => !q || [i.title, i.note, i.url].join(' ').toLowerCase().includes(q));
         const total = external ? 3 : 4;
@@ -698,14 +753,14 @@ export default function App({ api, pendingInvite, onInviteHandled }) {
             <div className="search"><Search size={19} /><input aria-label="Cerca nel tuo archivio" placeholder="Cerca nella tua raccolta..." value={forSearch} onChange={e => setForSearch(e.target.value)} /></div>
             <div className="pickGrid">{pickable.map(i => <button key={i.id} type="button" role="radio" aria-checked={selected?.id === i.id} aria-label={i.title} className={'pickTile' + (selected?.id === i.id ? ' added' : '')} onClick={() => setSelected(i)}><span className="ptImg">{photoUrls[i.image_path] ? <Photo url={photoUrls[i.image_path]} /> : (i.url ? <Link2 size={20} /> : <PenLine size={20} />)}{selected?.id === i.id && <span className="ptCheck"><Check size={14} /></span>}</span><span className="ptTitle">{i.title}</span></button>)}</div>
             {!pickable.length && <div className="empty compact">{items.length ? 'Nessun risultato.' : 'La tua raccolta è vuota: salva prima qualcosa dalla home.'}</div>}</> })}
-          {forStep === 2 && wizard({ n: 2, total, question: 'A quale amico?', hint: social && accepted.length ? 'Solo lui potrà vederlo, finché vuoi tu.' : 'Aggiungi un amico per aprirgli il ricordo dentro morethere, oppure condividilo con un messaggio.', canNext: external ? !!recipient.trim() : !!recipientId, onBack: () => setForStep(1), onNext: () => setForStep(3), children: <>
+          {forStep === 2 && wizard({ n: 2, total, question: 'A quale amico?', hint: social && accepted.length ? 'Solo lui potrà vederlo, finché vuoi tu.' : 'Aggiungi un amico per aprirgli il ricordo dentro morethere, oppure condividilo con un messaggio.', canNext: external ? true : !!recipientId, onBack: () => setForStep(1), onNext: () => setForStep(3), children: <>
             {selected && <div className="chosenItem">{photoUrls[selected.image_path] ? <Photo className="rowthumb" url={photoUrls[selected.image_path]} alt="" /> : <span className="chosenIcon">{selected.url ? <Link2 size={18} /> : <PenLine size={18} />}</span>}<span><strong>{selected.title}</strong><small>{selected.url || selected.note}</small></span><button className="textlink" onClick={() => setForStep(1)}>Cambia</button></div>}
             {social && peoplePicker([recipientId], id => setRecipientId(id), { external: true })}
-            {external && <input id="to" aria-label="PER CHI?" placeholder="Nome o contatto" value={recipient} onChange={e => setRecipient(e.target.value)} />}</> })}
+            {external && <p className="wizNote">Si aprirà il menu di condivisione del telefono: scegli tu l'app (WhatsApp, Instagram, Mail…).</p>}</> })}
           {forStep === 3 && !external && wizard({ n: 3, total, question: `Cosa può fare ${who}?`, onBack: () => setForStep(2), onNext: () => setForStep(4), children: <>
             <div className="opts" role="radiogroup">{option({ on: !thoughtSave, title: 'Solo guardare', desc: 'Lo vede nella tua raccolta, sempre aggiornato.', onClick: () => setThoughtSave(false) })}{option({ on: thoughtSave, title: 'Guardare e salvare', desc: 'Può tenersi una copia.', onClick: () => setThoughtSave(true) })}</div>
             <div className="wizToggle"><Toggle checked={thoughtAi} onChange={setThoughtAi} label="Può usarlo con l'AI" hint="Per esempio per chiedere consigli a un assistente AI." /></div></> })}
-          {((forStep === 4 && !external) || (forStep === 3 && external)) && wizard({ n: total, total, question: 'Vuoi aggiungere una dedica?', hint: 'Due parole bastano. Puoi anche lasciarla vuota.', onBack: () => setForStep(external ? 2 : 3), onNext: sendThought, nextLabel: external ? 'Prepara il messaggio' : `Apri a ${who}`, children: <>
+          {((forStep === 4 && !external) || (forStep === 3 && external)) && wizard({ n: total, total, question: 'Vuoi aggiungere una dedica?', hint: 'Due parole bastano. Puoi anche lasciarla vuota.', onBack: () => setForStep(external ? 2 : 3), onNext: sendThought, nextLabel: external ? 'Condividi con un\'altra app' : `Apri a ${who}`, children: <>
             <textarea id="msg" aria-label="LA TUA DEDICA" rows="4" maxLength={1000} placeholder="Ho visto questo e ho pensato subito a te..." value={message} onChange={e => setMessage(e.target.value)} /></> })}
         </>;
       })()}</main>}

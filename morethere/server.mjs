@@ -71,6 +71,7 @@ createServer(async (req, res) => {
     if (path === '/health') { res.writeHead(200, { 'Content-Type': 'text/plain' }); return res.end('ok'); }
     if (path === '/api/preview' && req.method === 'GET') return await handlePreview(req, res);
     if (path === '/api/preview-image' && req.method === 'GET') return await handlePreviewImage(req, res);
+    if (path === '/share-target' && req.method === 'POST') { req.resume(); res.writeHead(303, { Location: '/?share=1' }); return res.end(); }
     const file = normalize(join(root, path));
     if (file.startsWith(root) && path !== '/' && (await stat(file).catch(() => null))?.isFile()) {
       const cache = path.startsWith('/assets/') ? 'public, max-age=31536000, immutable' : path === '/sw.js' ? 'no-cache' : 'public, max-age=300';

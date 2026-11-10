@@ -428,6 +428,39 @@ test('More of us: as many shared spaces as you like, started from a person', asy
   assert.match(text, /From: Bob/);
 });
 
+test('share to morethere from another app, and from morethere to other apps', async () => {
+  const alice = people.alice.page;
+  // The phone's share sheet cannot open in a headless browser: record what it would receive.
+  await alice.addInitScript(() => {
+    window.__shared = [];
+    navigator.share = async d => { window.__shared.push({ title: d.title, text: d.text, files: (d.files || []).length }); };
+    navigator.canShare = () => true;
+  });
+  // From Instagram (Android share sheet → /share-target → ?share=1…)
+  await alice.goto(`${APP}/?share=1&title=Instagram&text=${encodeURIComponent('Guarda che posto https://www.example.org/da-instagram')}`);
+  await toast(alice, 'Salvato nella tua raccolta');
+  await alice.getByRole('heading', { name: 'example.org' }).waitFor();
+  assert.doesNotMatch(alice.url(), /share=/, 'the address is cleaned');
+  await alice.getByRole('link', { name: /Apri la fonte/ }).waitFor();
+  await close(alice);
+  // From an iPhone Shortcut or any link (?add=…)
+  await alice.goto(`${APP}/?add=${encodeURIComponent('Un appunto dalle Note')}`);
+  await toast(alice, 'Salvato nella tua raccolta');
+  await alice.getByRole('heading', { name: 'Un appunto dalle Note' }).waitFor();
+  await close(alice);
+  // Out to other apps, straight to the share sheet.
+  await alice.locator('.item', { hasText: 'example.org' }).first().getByRole('button', { name: 'Condividi' }).click();
+  await alice.getByRole('button', { name: 'Fuori app', exact: true }).click();
+  await alice.getByRole('button', { name: /Avanti/ }).click();
+  await alice.getByLabel('LA TUA DEDICA').fill('Andiamoci!');
+  await alice.getByRole('button', { name: "Condividi con un'altra app" }).click();
+  await alice.getByRole('heading', { name: 'Condiviso.' }).waitFor();
+  const shared = await alice.evaluate(() => window.__shared);
+  assert.equal(shared.length, 1);
+  assert.match(shared[0].text, /Andiamoci!/);
+  assert.match(shared[0].text, /example\.org\/da-instagram/);
+});
+
 test('profile: edit, export data, sign out', async () => {
   const alice = people.alice.page;
   await alice.goto(APP);
