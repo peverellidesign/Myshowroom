@@ -1,19 +1,35 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Check, KeyRound, Mail } from 'lucide-react';
+import { Check, KeyRound, Mail, MailCheck } from 'lucide-react';
 import App from './App.jsx';
-import { supabase, isConfigured } from './lib/supabase.js';
+import { supabase, isConfigured, emailLink } from './lib/supabase.js';
 import { createRemoteApi } from './lib/api.js';
 import { createLocalApi } from './lib/local.js';
 
 // Invitation tokens travel in the URL fragment so they are never sent to a server.
+// They are kept in localStorage, so the invite survives the trip through the
+// confirmation email (which opens a new tab). After confirming on another
+// device the token comes back as ?invite= in the redirect address.
+const TOKEN = /^[A-Za-z0-9_-]{20,}$/;
+const keep = { get: () => { try { return localStorage.getItem('mt_invite'); } catch { return null; } },
+  set: t => { try { localStorage.setItem('mt_invite', t); } catch { /* ignore */ } },
+  del: () => { try { localStorage.removeItem('mt_invite'); sessionStorage.removeItem('mt_invite'); } catch { /* ignore */ } } };
 function captureInvite() {
-  const m = window.location.hash.match(/invite=([A-Za-z0-9_-]{20,})/);
-  if (m) {
-    try { sessionStorage.setItem('mt_invite', m[1]); } catch { /* ignore */ }
-    history.replaceState(null, '', window.location.pathname + window.location.search);
+  const fromHash = window.location.hash.match(/invite=([A-Za-z0-9_-]{20,})/)?.[1];
+  const q = new URLSearchParams(window.location.search);
+  const fromQuery = TOKEN.test(q.get('invite') || '') ? q.get('invite') : null;
+  if (fromQuery || q.has('invite')) {
+    q.delete('invite');
+    const rest = q.toString();
+    history.replaceState(null, '', window.location.pathname + (rest ? '?' + rest : '') + window.location.hash);
   }
-  try { return sessionStorage.getItem('mt_invite'); } catch { return null; }
+  if (fromHash) history.replaceState(null, '', window.location.pathname + window.location.search);
+  const token = fromHash || fromQuery;
+  if (token) keep.set(token);
+  return keep.get();
 }
+
+// Where links in emails bring people back, carrying the invite if there is one.
+const returnUrl = () => { const t = keep.get(); return window.location.origin + '/' + (t ? '?invite=' + t : ''); };
 
 // Something shared to morethere: from the Android share sheet (?share=1&title&text&url[&media])
 // or from an iPhone Shortcut / any link (?add=<link or text>). Kept until signed in.
@@ -39,15 +55,27 @@ const AUTH_ERRORS = [
 ];
 const authError = (e) => AUTH_ERRORS.find(([re]) => re.test(e?.message || ''))?.[1] || 'Accesso non riuscito. Riprova.';
 
-function AuthScreen({ hasInvite, recovery, onRecovered }) {
-  const [mode, setMode] = useState(recovery ? 'recover' : 'signin');
+const LINK_ERROR = 'Il link non è più valido: è scaduto o è già stato usato. Chiedine uno nuovo qui sotto.';
+
+function AuthScreen({ hasInvite, recovery, linkError, onRecovered }) {
+  const [mode, setMode] = useState(recovery ? 'recover' : linkError ? 'reset' : hasInvite ? 'signup' : 'signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [error, setError] = useState('');
+  const [error, setError] = useState(linkError ? LINK_ERROR : '');
   const [info, setInfo] = useState('');
   const [busy, setBusy] = useState(false);
-  const redirectTo = window.location.origin + window.location.pathname;
+  const [unconfirmed, setUnconfirmed] = useState(false);
+  const go = (m) => { setMode(m); setError(''); setInfo(''); setUnconfirmed(false); };
+
+  const resend = async () => {
+    setError(''); setInfo(''); setBusy(true);
+    try {
+      const { error: err } = await supabase.auth.resend({ type: 'signup', email: email.trim(), options: { emailRedirectTo: returnUrl() } });
+      if (err) throw err;
+      setInfo('Email inviata di nuovo. Guarda anche nello spam.');
+    } catch (err) { setError(authError(err)); } finally { setBusy(false); }
+  };
 
   const submit = async (e) => {
     e.preventDefault();
@@ -55,18 +83,19 @@ function AuthScreen({ hasInvite, recovery, onRecovered }) {
     try {
       if (mode === 'signin') {
         const { error: err } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-        if (err) throw err;
+        if (err) { if (/not confirmed/i.test(err.message)) setUnconfirmed(true); throw err; }
       } else if (mode === 'signup') {
+        if (!name.trim()) throw new Error('name');
         if (password.length < 8) throw new Error('Password should be at least 8');
         const { data, error: err } = await supabase.auth.signUp({
-          email: email.trim(), password, options: { data: { display_name: name.trim() }, emailRedirectTo: redirectTo },
+          email: email.trim(), password, options: { data: { display_name: name.trim() }, emailRedirectTo: returnUrl() },
         });
         if (err) throw err;
-        if (!data.session) setInfo('Ti abbiamo inviato un\'email per confermare l\'account.');
+        if (!data.session) setMode('check');
       } else if (mode === 'reset') {
-        const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+        const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: returnUrl() });
         if (err) throw err;
-        setInfo('Se esiste un account con questa email, riceverai un link per reimpostare la password.');
+        setInfo('Se esiste un account con questa email, riceverai un link per scegliere una nuova password. Guarda anche nello spam.');
       } else if (mode === 'recover') {
         if (password.length < 8) throw new Error('Password should be at least 8');
         const { error: err } = await supabase.auth.updateUser({ password });
@@ -74,38 +103,63 @@ function AuthScreen({ hasInvite, recovery, onRecovered }) {
         onRecovered();
       }
     } catch (err) {
-      setError(authError(err));
+      setError(err?.message === 'name' ? 'Scrivi il tuo nome: è così che ti vedranno i tuoi amici.' : authError(err));
     } finally {
       setBusy(false);
     }
   };
 
-  const heading = { signin: 'Bentornato nel tuo mondo.', signup: 'Il tuo mondo comincia qui.', reset: 'Reimposta la password.', recover: 'Scegli una nuova password.' }[mode];
+  const header = <header><div><span className="brand">morethere</span><div className="subtitle">Your world. Your people. Your intelligence.</div></div></header>;
+
+  if (mode === 'check') return (
+    <div className="app">
+      {header}
+      <main>
+        <div className="eyebrow">ULTIMO PASSO</div>
+        <h1>Controlla la tua email.</h1>
+        <p className="muted">Ti abbiamo scritto a <strong>{email.trim()}</strong>. Apri il link nell'email per attivare l'account{hasInvite ? ' e accettare l\'invito' : ''}.</p>
+        <div className="panel">
+          <MailCheck size={28} />
+          <small>Non la trovi? Guarda nello spam o nelle promozioni. Il link funziona anche se lo apri da un altro telefono o computer.</small>
+          {error && <p className="formerror" role="alert">{error}</p>}
+          {info && <p className="forminfo" role="status"><Check size={15} className="inline" /> {info}</p>}
+          <button className="pill outline wide" type="button" disabled={busy} onClick={resend}><Mail size={18} /> Invia di nuovo</button>
+        </div>
+        <div className="authlinks">
+          <button className="textlink" onClick={() => go('signin')}>Ho già confermato: accedi</button>
+          <button className="textlink" onClick={() => go('signup')}>Email sbagliata? Torna indietro</button>
+        </div>
+      </main>
+    </div>
+  );
+
+  const heading = { signin: 'Bentornato nel tuo mondo.', signup: hasInvite ? 'Ti stanno aspettando.' : 'Il tuo mondo comincia qui.', reset: 'Reimposta la password.', recover: 'Scegli una nuova password.' }[mode];
+  const intro = mode === 'reset' ? 'Scrivi l\'email con cui ti sei registrato: ti mandiamo un link per scegliere una nuova password.'
+    : mode === 'recover' ? 'Almeno 8 caratteri. Dopo entri subito.'
+    : hasInvite ? (mode === 'signup' ? 'Qualcuno ti ha invitato nel suo Circle. Crea il tuo account: ci vuole un minuto.' : 'Qualcuno ti ha invitato nel suo Circle. Accedi per accettare.')
+    : 'Un luogo per raccogliere ciò che conta, scoprire attraverso le persone di cui ti fidi e trasformare ciò che sai in azione con l\'AI.';
 
   return (
     <div className="app">
-      <header><div><span className="brand">morethere</span><div className="subtitle">Your world. Your people. Your intelligence.</div></div></header>
+      {header}
       <main>
         <div className="eyebrow">{mode === 'signup' ? 'CREA IL TUO ACCOUNT' : mode === 'signin' ? 'ACCEDI' : 'PASSWORD'}</div>
         <h1>{heading}</h1>
-        <p className="muted">
-          {hasInvite
-            ? 'Qualcuno ti ha invitato nel suo Circle. Accedi o crea un account per accettare.'
-            : 'Un luogo per raccogliere ciò che conta, scoprire attraverso le persone di cui ti fidi e trasformare ciò che sai in azione con l\'AI.'}
-        </p>
+        <p className="muted">{intro}</p>
         <form className="panel" onSubmit={submit} noValidate>
           {mode === 'signup' && <><label htmlFor="a-name">COME TI CHIAMI?</label><input id="a-name" autoComplete="name" maxLength={60} value={name} onChange={e => setName(e.target.value)} /></>}
           {mode !== 'recover' && <><label htmlFor="a-email">EMAIL</label><input id="a-email" type="email" autoComplete="email" inputMode="email" autoCapitalize="none" required value={email} onChange={e => setEmail(e.target.value)} /></>}
-          {mode !== 'reset' && <><label htmlFor="a-pass">{mode === 'recover' ? 'NUOVA PASSWORD' : 'PASSWORD'}</label><input id="a-pass" type="password" autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} minLength={8} required value={password} onChange={e => setPassword(e.target.value)} /></>}
+          {mode !== 'reset' && <><label htmlFor="a-pass">{mode === 'recover' ? 'NUOVA PASSWORD' : 'PASSWORD'}</label><input id="a-pass" type="password" autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} minLength={8} required value={password} onChange={e => setPassword(e.target.value)} />{(mode === 'signup' || mode === 'recover') && <small>Almeno 8 caratteri.</small>}</>}
           {error && <p className="formerror" role="alert">{error}</p>}
+          {unconfirmed && <button type="button" className="textlink" disabled={busy} onClick={resend}>Invia di nuovo l'email di conferma</button>}
           {info && <p className="forminfo" role="status"><Check size={15} className="inline" /> {info}</p>}
           <button className="pill dark wide" type="submit" disabled={busy}>
             {mode === 'reset' ? <><Mail size={18} /> Invia link</> : <><KeyRound size={18} /> {mode === 'signup' ? 'Crea account' : mode === 'recover' ? 'Salva password' : 'Entra'}</>}
           </button>
         </form>
         <div className="authlinks">
-          {mode === 'signin' && <><button className="textlink" onClick={() => { setMode('signup'); setError(''); setInfo(''); }}>Non hai un account? Creane uno</button><button className="textlink" onClick={() => { setMode('reset'); setError(''); setInfo(''); }}>Password dimenticata?</button></>}
-          {(mode === 'signup' || mode === 'reset') && <button className="textlink" onClick={() => { setMode('signin'); setError(''); setInfo(''); }}>Hai già un account? Accedi</button>}
+          {mode === 'signin' && <><button className="textlink" onClick={() => go('signup')}>Non hai un account? Creane uno</button><button className="textlink" onClick={() => go('reset')}>Password dimenticata?</button></>}
+          {(mode === 'signup' || mode === 'reset') && <button className="textlink" onClick={() => go('signin')}>Hai già un account? Accedi</button>}
         </div>
         <p className="hint">Il tuo archivio è privato per impostazione predefinita. Nessuno può vederlo finché non scegli tu cosa condividere e con chi.</p>
       </main>
@@ -118,7 +172,9 @@ export default function Root() {
   const [incoming, setIncoming] = useState(() => captureShare());
   const clearIncoming = () => { try { sessionStorage.removeItem('mt_share'); } catch { /* ignore */ } setIncoming(null); };
   const [session, setSession] = useState(undefined);
-  const [recovery, setRecovery] = useState(false);
+  const [recovery, setRecovery] = useState(emailLink.recovery);
+  const linkError = Boolean(emailLink.error);
+  useEffect(() => { if (emailLink.error) history.replaceState(null, '', window.location.pathname + window.location.search); }, []);
   const localApi = useMemo(() => (isConfigured ? null : createLocalApi()), []);
 
   // An invitation link opened in a tab where the app is already running.
@@ -141,10 +197,10 @@ export default function Root() {
 
   const userId = session?.user?.id;
   const api = useMemo(() => (userId ? createRemoteApi({ id: userId }) : null), [userId]);
-  const clearInvite = () => { try { sessionStorage.removeItem('mt_invite'); } catch { /* ignore */ } setInvite(null); };
+  const clearInvite = () => { keep.del(); setInvite(null); };
 
   if (!isConfigured) return <App api={localApi} pendingShare={incoming} onShareHandled={clearIncoming} />;
   if (session === undefined) return <div className="app"><header><div><span className="brand">morethere</span><div className="subtitle">Sincronizzazione…</div></div></header></div>;
-  if (!session || recovery) return <AuthScreen hasInvite={Boolean(invite)} recovery={recovery} onRecovered={() => setRecovery(false)} />;
+  if (!session || recovery) return <AuthScreen hasInvite={Boolean(invite)} recovery={recovery} linkError={linkError} onRecovered={() => setRecovery(false)} />;
   return <App key={userId} api={api} pendingInvite={invite} onInviteHandled={clearInvite} pendingShare={incoming} onShareHandled={clearIncoming} />;
 }
