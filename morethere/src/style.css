@@ -379,3 +379,9 @@ button,.pick,.railItem,.chip,.opt,.ixr,.tile,.spaceCard{-webkit-user-select:none
 .hereBtn{display:inline-flex;align-items:center;gap:8px;border:1px solid #252525;border-radius:999px;background:#fff;padding:11px 16px;font-size:14px;font-weight:500}
 .hereBtn.on{background:#252525;color:#fff}
 .pickLabel{display:flex;align-items:center;gap:6px;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#8a8a8a;font-weight:500}
+/* Your Circle, leaner */
+.ixbadge{min-width:22px;height:22px;border-radius:11px;background:#252525;color:#fff;font-size:12px;font-weight:700;display:grid;place-items:center;padding:0 6px;flex-shrink:0}
+.sentToggle{display:flex;align-items:center;gap:10px;width:100%;border:0;border-top:1px solid #eee;background:none;padding:18px 0;text-align:left;font-size:17px;font-weight:700;color:#252525}
+.sentToggle span:first-child{flex:1}
+.sentToggle svg{transition:transform .15s}
+.sentToggle svg.turned{transform:rotate(90deg)}

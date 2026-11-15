@@ -448,7 +448,7 @@ test('Chiedi consigli: Bob goes to Florence, Alice answers with her places', asy
   await bob.goto(APP);
   await bob.getByRole('button', { name: /Apri Your Circle/ }).click();
   await bob.getByText('Le tue richieste').waitFor();
-  await bob.getByRole('button', { name: /Firenze, a maggio/ }).getByText('2 consigli da 1 amico').waitFor();
+  await bob.getByRole('button', { name: /Firenze, a maggio/ }).getByText('2 consigli').waitFor();
   assert.equal(await bob.locator('.note', { hasText: 'Da non perdere!' }).count(), 0);
   await close(bob);
 });
@@ -492,7 +492,7 @@ test('More of us: as many shared spaces as you like, started from a person', asy
   await backArrow.click();
   await alice.getByRole('heading', { name: 'Bob' }).waitFor();
   await backArrow.click();
-  await alice.getByRole('heading', { name: 'Dai tuoi amici' }).waitFor();
+  await alice.getByRole('heading', { name: 'I tuoi amici' }).waitFor();
   await backArrow.click();
   await alice.getByText('NUOVO INGRESSO').waitFor();
 
