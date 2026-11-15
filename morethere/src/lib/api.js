@@ -114,6 +114,7 @@ const toItem = (row, collectionsById) => ({
   image_path: row.image_path || null,
   memory_date: row.memory_date || null,
   created: Date.parse(row.created_at),
+  position: row.position ?? -Date.parse(row.created_at),
 });
 
 const BASE_COLS = 'id, owner_id, collection_id, title, url, note, category, created_at';
@@ -122,13 +123,15 @@ const BASE_COLS = 'id, owner_id, collection_id, title, url, note, category, crea
 // The same applies to memory_date (third migration).
 let photosSupported = true;
 let datesSupported = true;
-const itemCols = () => BASE_COLS + (photosSupported ? ', image_path' : '') + (datesSupported ? ', memory_date' : '');
+let orderSupported = true; // items.position arrives with the eighth migration
+const itemCols = () => BASE_COLS + (photosSupported ? ', image_path' : '') + (datesSupported ? ', memory_date' : '') + (orderSupported ? ', position' : '');
 const missingColumn = (error, col) => error && error.code === '42703' && (error.message || '').includes(col);
 async function selectItems(build) {
   let res = await build(itemCols());
-  for (let k = 0; k < 2 && res.error?.code === '42703'; k++) {
+  for (let k = 0; k < 3 && res.error?.code === '42703'; k++) {
     if (missingColumn(res.error, 'image_path')) photosSupported = false;
     else if (missingColumn(res.error, 'memory_date')) datesSupported = false;
+    else if (missingColumn(res.error, 'position')) orderSupported = false;
     else break;
     res = await build(itemCols());
   }
@@ -172,8 +175,13 @@ export function createRemoteApi(user) {
         selectItems(c => supabase.from('items').select(c).eq('owner_id', me).order('created_at', { ascending: false })),
       ]);
       const collections = must(cols);
+      // Your own order (drag and drop); newest first until you move something.
       const byId = Object.fromEntries(collections.map(c => [c.id, c]));
-      return { collections, items: must(items).map(r => toItem(r, byId)) };
+      return { collections, items: must(items).map(r => toItem(r, byId)).sort((a, b) => a.position - b.position) };
+    },
+    async moveItem(id, position) {
+      if (!orderSupported) throw new Error('order-unsupported');
+      must(await supabase.from('items').update({ position }).eq('id', id).eq('owner_id', me));
     },
     async addItem({ title, url, note, category, collection_id, image_path, memory_date }) {
       const row = { title, url: url || null, note: note || '', category, collection_id: collection_id || null };

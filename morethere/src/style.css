@@ -350,3 +350,9 @@ button,.pick,.railItem,.chip,.opt,.ixr,.tile,.spaceCard{-webkit-user-select:none
 .itemactions .mfy{width:36px;height:36px;display:grid;place-items:center;border:1px solid #252525;border-radius:50%;color:#252525;margin-right:auto}
 .itemactions .mfy:active{background:#252525;color:#fff}
 @media(hover:hover){.itemactions .mfy:hover{background:#252525;color:#fff}}
+/* Drag and drop in the collection. */
+.cards .item{touch-action:manipulation;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;background:#fff}
+.cards .item img{-webkit-user-drag:none;pointer-events:none}
+.item.dragging{box-shadow:0 18px 40px #00000026;transform-origin:center;cursor:grabbing;opacity:.96}
+.item:focus-visible{outline:2px solid #999;outline-offset:3px}
+.dragHint{text-align:center;margin:18px 0 0}

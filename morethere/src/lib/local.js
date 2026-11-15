@@ -37,7 +37,7 @@ export function createLocalApi() {
   persist();
   const toUi = () => ({
     collections: collections.map(name => ({ id: name, name })),
-    items: items.map(i => ({ ...i, collection_id: i.collection, image_path: i.image || null, memory_date: i.memory_date || null })),
+    items: items.map(i => ({ ...i, collection_id: i.collection, image_path: i.image || null, memory_date: i.memory_date || null, position: i.position ?? -i.created })).sort((a, b) => a.position - b.position),
   });
   return {
     social: false,
@@ -58,6 +58,7 @@ export function createLocalApi() {
       });
       persist();
     },
+    async moveItem(id, position) { items = items.map(i => (i.id === id ? { ...i, position } : i)); persist(); },
     async deleteItem(item) { items = items.filter(i => i.id !== item.id); persist(); },
     async addCollection(name) {
       if (!collections.includes(name)) collections = [...collections, name];

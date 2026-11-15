@@ -195,6 +195,62 @@ test('edit an item, rename and delete a collection', async () => {
   assert.equal(await page.getByRole('button', { name: 'Design e casa', exact: true }).count(), 0);
 });
 
+test('drag and drop: your own order, kept on every device', async () => {
+  const { page } = people.alice;
+  await page.getByRole('button', { name: 'Tutti', exact: true }).click();
+  const titles = () => page.locator('.cards .item .itemtitle').allInnerTexts();
+  const start = await titles();
+  assert.ok(start.length >= 3, 'enough discoveries to reorder');
+  await page.getByText("Tieni premuta una scoperta e trascinala").waitFor();
+
+  // With the mouse: the second card goes first.
+  const cards = page.locator('.cards .item');
+  await cards.nth(0).scrollIntoViewIfNeeded();
+  const from = await cards.nth(1).locator('.itembody').boundingBox();
+  const to = await cards.nth(0).locator('.itembody').boundingBox();
+  await page.mouse.move(from.x + 20, from.y + 10);
+  await page.mouse.down();
+  for (let k = 1; k <= 12; k++) await page.mouse.move(from.x + 20 + (to.x - from.x) * k / 12, from.y + 10);
+  await page.mouse.up();
+  const moved = [start[1], start[0], ...start.slice(2)];
+  await page.waitForFunction(t => document.querySelector('.cards .item .itemtitle')?.innerText === t, moved[0]);
+  assert.deepEqual(await titles(), moved);
+
+  // A tap is still a tap: it opens the discovery, it does not move it.
+  // (For 50 ms after a drop the library ignores clicks, so the drop never opens a card; no person taps that fast.)
+  await page.waitForTimeout(200);
+  await cards.nth(1).locator('.itemtitle').click();
+  await page.getByRole('button', { name: 'Modifica' }).waitFor();
+  await close(page);
+
+  // Another device (a phone, by touch): same order; long press and drag the first card after the second.
+  const phone = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const p2 = await phone.newPage();
+  await p2.goto(APP);
+  await p2.getByLabel('EMAIL').fill(people.alice.email);
+  await p2.getByLabel('PASSWORD').fill(people.alice.password);
+  await p2.getByRole('button', { name: 'Entra' }).click();
+  await p2.locator('.cards .item').first().waitFor();
+  await p2.locator('.cards .item').first().scrollIntoViewIfNeeded();
+  assert.deepEqual(await p2.locator('.cards .item .itemtitle').allInnerTexts(), moved, 'the order is saved');
+  const a = await p2.locator('.cards .item').nth(0).locator('.itembody').boundingBox();
+  const b = await p2.locator('.cards .item').nth(1).locator('.itembody').boundingBox();
+  const cdp = await phone.newCDPSession(p2);
+  const touch = (type, x, y) => cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y }] });
+  await touch('touchStart', a.x + 20, a.y + 10);
+  await p2.waitForTimeout(600); // long press
+  for (let k = 1; k <= 12; k++) await touch('touchMove', a.x + 20 + (b.x + b.width - 20 - a.x - 20) * k / 12, a.y + 10);
+  await touch('touchEnd');
+  const swapped = [moved[1], moved[0], ...moved.slice(2)]; // back to the starting order
+  await p2.waitForFunction(t => document.querySelector('.cards .item .itemtitle')?.innerText === t, swapped[0]);
+  assert.deepEqual(await p2.locator('.cards .item .itemtitle').allInnerTexts(), swapped);
+  await phone.close();
+
+  await page.reload();
+  await page.locator('.cards .item').first().waitFor();
+  assert.deepEqual(await titles(), swapped, 'back on the first device, the new order is there');
+});
+
 test('More of me without anyone yet: add a person right there, by invite link', async () => {
   const alice = people.alice.page;
   const bob = people.bob.page;

@@ -5,6 +5,21 @@ import {
   ShieldCheck, Download, LogOut, Share, Inbox, UserRoundCheck, ImagePlus, Pencil, UserRound, ArrowRight,
 } from 'lucide-react';
 import { watermark } from './lib/watermark.js';
+import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// One discovery that can be dragged to a new place in the grid.
+function Sortable({ id, children }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  return children({
+    ref: setNodeRef,
+    dragging: isDragging,
+    style: { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 3 : undefined },
+    // The keyboard picks up the card only when the card itself has focus, not a button inside it.
+    props: { ...attributes, ...listeners, onKeyDown: e => { if (e.target === e.currentTarget) listeners?.onKeyDown?.(e); }, role: undefined, 'aria-roledescription': 'scoperta trascinabile' },
+  });
+}
 
 // The three gestures of morethere, drawn as icons so they read at a glance.
 // More of me: a friend steps into your collection. More for you: one memory,
@@ -389,8 +404,27 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   };
   const filtered = useMemo(() => items.filter(i => (filter === 'Tutti' || i.category === filter || i.collection === filter) && [i.title, i.note, i.url].join(' ').toLowerCase().includes(search.toLowerCase())), [items, filter, search]);
   // "Per data": by the date of the memory (or when it was saved), grouped by month.
+  const posOf = i => i.position ?? -i.created;
+  // Mouse: drag after a few pixels. Touch: long press, so scrolling still works.
+  const dragSensors = useSensors(
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 350, tolerance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
   const whenOf = i => i.memory_date || new Date(i.created).toISOString().slice(0, 10);
-  const sorted = useMemo(() => (view === 'date' ? [...filtered].sort((a, b) => whenOf(b).localeCompare(whenOf(a)) || b.created - a.created) : filtered), [filtered, view]); // eslint-disable-line react-hooks/exhaustive-deps
+  const sorted = useMemo(() => (view === 'date' ? [...filtered].sort((a, b) => whenOf(b).localeCompare(whenOf(a)) || b.created - a.created) : [...filtered].sort((a, b) => posOf(a) - posOf(b))), [filtered, view]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Drag and drop: the moved discovery lands halfway between its new neighbours.
+  const onDragEnd = async ({ active, over }) => {
+    if (!over || active.id === over.id) return;
+    const from = sorted.findIndex(i => i.id === active.id), to = sorted.findIndex(i => i.id === over.id);
+    if (from < 0 || to < 0) return;
+    const moved = arrayMove(sorted, from, to);
+    const prev = moved[to - 1], next = moved[to + 1];
+    const position = prev && next ? (posOf(prev) + posOf(next)) / 2 : prev ? posOf(prev) + 1000 : posOf(next) - 1000;
+    const before = items;
+    setItems(v => v.map(i => (i.id === active.id ? { ...i, position } : i)));
+    try { await api.moveItem(active.id, position); } catch (e) { setItems(before); toast(e?.message === 'order-unsupported' ? 'Spostamento non ancora disponibile' : friendlyError(e)); }
+  };
   const byMonth = useMemo(() => {
     if (view !== 'date') return [];
     const groups = [];
@@ -587,7 +621,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     await run(() => api.deleteAccount());
   };
 
-  const renderCard = i => (<article className="item" key={i.id}><button className={'preview' + (photoUrls[i.image_path] ? ' hasphoto' : '')} aria-label={`Apri ${i.title}`} onClick={() => { setSelected(i); setEdit(null); setScreen('detail'); }}>{photoUrls[i.image_path] ? <Photo url={photoUrls[i.image_path]} /> : <span>{i.image_path ? <Camera size={26} /> : i.url ? <Link2 size={26} /> : <PenLine size={26} />}</span>}</button><div className="itembody"><div className="eyebrow">{i.category}{i.memory_date ? <> · {fmtMemory(i.memory_date, true)}</> : null}</div><button className="itemtitle" onClick={() => { setSelected(i); setEdit(null); setScreen('detail'); }}>{i.title}</button><div className="itemactions"><button className="mfy" onClick={() => share(i)} aria-label={`More for you: apri ${i.title} a un amico`}><MoreForYouIcon size={16} /></button><button onClick={() => exportAI([i])} aria-label="Usa con AI"><Sparkles size={17} /></button><button onClick={() => { if (window.confirm(`Eliminare "${i.title}"?`)) removeItem(i); }} aria-label="Elimina"><Trash2 size={17} /></button></div></div></article>);
+  const renderCard = (i, d) => (<article className={'item' + (d?.dragging ? ' dragging' : '')} key={i.id} ref={d?.ref} style={d?.style} {...(d?.props || {})}><button className={'preview' + (photoUrls[i.image_path] ? ' hasphoto' : '')} aria-label={`Apri ${i.title}`} onClick={() => { setSelected(i); setEdit(null); setScreen('detail'); }}>{photoUrls[i.image_path] ? <Photo url={photoUrls[i.image_path]} /> : <span>{i.image_path ? <Camera size={26} /> : i.url ? <Link2 size={26} /> : <PenLine size={26} />}</span>}</button><div className="itembody"><div className="eyebrow">{i.category}{i.memory_date ? <> · {fmtMemory(i.memory_date, true)}</> : null}</div><button className="itemtitle" onClick={() => { setSelected(i); setEdit(null); setScreen('detail'); }}>{i.title}</button><div className="itemactions"><button className="mfy" onClick={() => share(i)} aria-label={`More for you: apri ${i.title} a un amico`}><MoreForYouIcon size={16} /></button><button onClick={() => exportAI([i])} aria-label="Usa con AI"><Sparkles size={17} /></button><button onClick={() => { if (window.confirm(`Eliminare "${i.title}"?`)) removeItem(i); }} aria-label="Elimina"><Trash2 size={17} /></button></div></div></article>);
   const pendingInvites = circle.invitations.filter(i => !i.accepted_at && !i.revoked_at && Date.parse(i.expires_at) > Date.now());
   const initial = p => (nameOf(p)[0] || '?').toUpperCase();
   // A person's face: their profile photo if they have one, else their initial.
@@ -638,7 +672,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
 
     {screen === 'home' && <main>
       {legacy && <div className="panel"><strong>Hai {legacy.items.length} {legacy.items.length === 1 ? 'scoperta salvata' : 'scoperte salvate'} su questo dispositivo</strong><small>Vuoi portarle nel tuo account privato? Resteranno visibili solo a te. Dopo l'importazione verranno rimosse da questo dispositivo.</small><div className="choices"><button className="chosen" disabled={busy} onClick={importLegacy}>Importa</button><button onClick={() => setLegacy(null)}>Non ora</button></div></div>}
-      <div className="eyebrow">NUOVO INGRESSO</div><div className="entry"><input value={entry} onChange={e => setEntry(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()} placeholder="Incolla un link o scrivi..." /><button className="square" title={entry ? 'Salva una nota o un link' : 'Aggiungi una foto'} aria-label={entry ? 'Salva' : 'Aggiungi una foto'} disabled={busy} onClick={() => (entry ? add() : pickPhoto())}>{entry ? <Plus /> : <Camera />}</button><input ref={fileInput} type="file" accept="image/*" hidden aria-hidden="true" onChange={onPhotoChosen} /></div><div className="search"><Search size={21} /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca nell'archivio..." /></div><div className="chips">{cats.map(c => <button key={c} className={'chip ' + (filter === c ? 'active' : '')} onClick={() => setFilter(c)}>{c}</button>)}<button className="chip" aria-label="Nuova raccolta" onClick={() => setShowAddCollection(true)}><Plus size={15} /></button></div>{activeCollection && <div className="collectionTools"><button className="textlink" onClick={() => setCollectionDialog({ id: activeCollection.id, name: activeCollection.name })}><Pencil size={13} /> Rinomina</button><button className="textlink danger" onClick={deleteCollection}><Trash2 size={13} /> Elimina raccolta</button></div>}<div className="sectionRow"><div className="sectionLabel">{activeCollection ? activeCollection.name : 'La tua raccolta'}</div><div className="viewToggle" role="group" aria-label="Ordina"><button className={view === 'recent' ? 'on' : ''} aria-pressed={view === 'recent'} onClick={() => chooseView('recent')}>Recenti</button><button className={view === 'date' ? 'on' : ''} aria-pressed={view === 'date'} onClick={() => chooseView('date')}>Per data</button></div></div>{view === 'date' ? byMonth.map(g => <section key={g.key} className="monthGroup"><h3 className="monthLabel">{g.label}</h3><div className="cards">{g.items.map(renderCard)}</div></section>) : <div className="cards">{sorted.map(renderCard)}</div>}{loaded && !filtered.length && <div className="empty">Il tuo mondo comincia da una scoperta. Salva qualcosa che vale la pena ricordare.</div>}<button className="socialCta" onClick={() => setScreen('circle')}><div><strong>Le persone di cui ti fidi</strong><small>{social ? (accepted.length ? `${accepted.length} ${accepted.length === 1 ? 'persona' : 'persone'} nel tuo Circle` : 'Scopri le loro raccolte condivise') : 'Scopri le loro raccolte condivise'}</small></div><ChevronRight /></button><div className="homeactions"><button onClick={() => { setShowAddPerson(true); setScreen('circle'); }}><UserRoundPlus size={18} /> Invita un amico</button><button onClick={() => setScreen('circle')}><FolderHeart size={18} /> Condivise con te</button></div></main>}
+      <div className="eyebrow">NUOVO INGRESSO</div><div className="entry"><input value={entry} onChange={e => setEntry(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()} placeholder="Incolla un link o scrivi..." /><button className="square" title={entry ? 'Salva una nota o un link' : 'Aggiungi una foto'} aria-label={entry ? 'Salva' : 'Aggiungi una foto'} disabled={busy} onClick={() => (entry ? add() : pickPhoto())}>{entry ? <Plus /> : <Camera />}</button><input ref={fileInput} type="file" accept="image/*" hidden aria-hidden="true" onChange={onPhotoChosen} /></div><div className="search"><Search size={21} /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca nell'archivio..." /></div><div className="chips">{cats.map(c => <button key={c} className={'chip ' + (filter === c ? 'active' : '')} onClick={() => setFilter(c)}>{c}</button>)}<button className="chip" aria-label="Nuova raccolta" onClick={() => setShowAddCollection(true)}><Plus size={15} /></button></div>{activeCollection && <div className="collectionTools"><button className="textlink" onClick={() => setCollectionDialog({ id: activeCollection.id, name: activeCollection.name })}><Pencil size={13} /> Rinomina</button><button className="textlink danger" onClick={deleteCollection}><Trash2 size={13} /> Elimina raccolta</button></div>}<div className="sectionRow"><div className="sectionLabel">{activeCollection ? activeCollection.name : 'La tua raccolta'}</div><div className="viewToggle" role="group" aria-label="Ordina"><button className={view === 'recent' ? 'on' : ''} aria-pressed={view === 'recent'} onClick={() => chooseView('recent')}>Recenti</button><button className={view === 'date' ? 'on' : ''} aria-pressed={view === 'date'} onClick={() => chooseView('date')}>Per data</button></div></div>{view === 'date' ? byMonth.map(g => <section key={g.key} className="monthGroup"><h3 className="monthLabel">{g.label}</h3><div className="cards">{g.items.map(renderCard)}</div></section>) : <DndContext sensors={dragSensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}><SortableContext items={sorted.map(i => i.id)} strategy={rectSortingStrategy}><div className="cards">{sorted.map(i => <Sortable key={i.id} id={i.id}>{d => renderCard(i, d)}</Sortable>)}</div></SortableContext></DndContext>}{view === 'recent' && sorted.length > 1 && <p className="hint dragHint">Tieni premuta una scoperta e trascinala per cambiare l'ordine.</p>}{loaded && !filtered.length && <div className="empty">Il tuo mondo comincia da una scoperta. Salva qualcosa che vale la pena ricordare.</div>}<button className="socialCta" onClick={() => setScreen('circle')}><div><strong>Le persone di cui ti fidi</strong><small>{social ? (accepted.length ? `${accepted.length} ${accepted.length === 1 ? 'persona' : 'persone'} nel tuo Circle` : 'Scopri le loro raccolte condivise') : 'Scopri le loro raccolte condivise'}</small></div><ChevronRight /></button><div className="homeactions"><button onClick={() => { setShowAddPerson(true); setScreen('circle'); }}><UserRoundPlus size={18} /> Invita un amico</button><button onClick={() => setScreen('circle')}><FolderHeart size={18} /> Condivise con te</button></div></main>}
 
     {screen === 'circle' && <main className="circlePage">
       {!social && signInHint}
