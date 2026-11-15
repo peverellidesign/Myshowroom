@@ -291,7 +291,7 @@ test('More for you arrives in real time', async () => {
   const alice = people.alice.page;
   const bob = people.bob.page;
   await close(alice);
-  await alice.locator('.item', { hasText: 'example.org' }).getByRole('button', { name: 'Condividi' }).click();
+  await alice.locator('.item', { hasText: 'example.org' }).getByRole('button', { name: /^More for you/ }).click();
   await alice.getByRole('button', { name: 'Bob', exact: true }).click();
   assert.equal(await alice.getByRole('button', { name: 'Bob', exact: true }).getAttribute('aria-pressed'), 'true');
   await alice.getByRole('button', { name: /Avanti/ }).click();
@@ -449,7 +449,7 @@ test('share to morethere from another app, and from morethere to other apps', as
   await alice.getByRole('heading', { name: 'Un appunto dalle Note' }).waitFor();
   await close(alice);
   // Out to other apps, straight to the share sheet.
-  await alice.locator('.item', { hasText: 'example.org' }).first().getByRole('button', { name: 'Condividi' }).click();
+  await alice.locator('.item', { hasText: 'example.org' }).first().getByRole('button', { name: /^More for you/ }).click();
   // One tap on "Fuori app" opens the phone's share sheet.
   await alice.getByRole('button', { name: 'Fuori app', exact: true }).click();
   await alice.getByRole('heading', { name: 'Condiviso.' }).waitFor();

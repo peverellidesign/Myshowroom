@@ -340,3 +340,13 @@ button,.pick,.railItem,.chip,.opt,.ixr,.tile,.spaceCard{-webkit-user-select:none
 .pick:active .av,.railItem:active .av{transform:scale(.95)}
 .pick .av,.railItem .av{transition:transform .12s}
 @media(prefers-reduced-motion:reduce){.pick .av,.railItem .av{transition:none}}
+/* The three gestures as icons: a round charcoal-outlined mark before each row. */
+.ixi{width:48px;height:48px;border-radius:50%;border:1px solid #d6d6d6;display:grid;place-items:center;flex-shrink:0;color:#252525;background:#fff}
+.ixr.us .ixi{background:#f4f4f2;border-color:#f4f4f2}
+.feature>.ixi{flex:0 0 48px}
+.mfyFeature{border-color:#252525}
+/* More for you under every discovery: icon plus its name, so it reads at a glance. */
+.itemactions{align-items:center}
+.itemactions .mfy{width:36px;height:36px;display:grid;place-items:center;border:1px solid #252525;border-radius:50%;color:#252525;margin-right:auto}
+.itemactions .mfy:active{background:#252525;color:#fff}
+@media(hover:hover){.itemactions .mfy:hover{background:#252525;color:#fff}}
