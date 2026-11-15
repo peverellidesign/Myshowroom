@@ -18,6 +18,8 @@ const ERRORS = {
   invite_not_found: 'Invito non trovato.',
   thought_not_found: 'Pensiero non trovato.',
   not_authenticated: 'Accedi per continuare.',
+  geo_denied: 'Per usare la posizione, consentila a morethere nelle impostazioni del telefono o del browser.',
+  geo_unavailable: 'Non riesco a capire dove sei. Scrivilo tu.',
   photos_unavailable: 'Le foto non sono ancora attive su questo server.',
   image_unreadable: 'Questa immagine non si può leggere. Prova con una foto JPEG o PNG.',
   'exceeded the maximum allowed size': 'La foto è troppo grande (massimo 5 MB).',
@@ -426,21 +428,32 @@ export function createRemoteApi(user) {
     // Requests you made (with the friends you asked) and requests to you.
     async loadAsks() {
       const [mine, rec] = await Promise.all([
-        supabase.from('asks').select('id, owner_id, title, note, created_at').eq('owner_id', me).order('created_at', { ascending: false }),
+        supabase.from('asks').select('*').eq('owner_id', me).order('created_at', { ascending: false }),
         supabase.from('ask_recipients').select('ask_id, user_id, owner_id'),
       ]);
       if (mine.error?.code === '42P01' || mine.error?.code === 'PGRST205') return { mine: [], incoming: [] }; // before the ninth migration
       const own = must(mine); const rows = must(rec);
       const incomingIds = rows.filter(r => r.user_id === me).map(r => r.ask_id);
-      const incoming = incomingIds.length ? must(await supabase.from('asks').select('id, owner_id, title, note, created_at').in('id', incomingIds).order('created_at', { ascending: false })) : [];
+      const incoming = incomingIds.length ? must(await supabase.from('asks').select('*').in('id', incomingIds).order('created_at', { ascending: false })) : [];
       const people = await profilesById([...rows.map(r => r.user_id), ...incoming.map(a => a.owner_id)]);
       return {
         mine: own.map(a => ({ ...a, recipients: rows.filter(r => r.ask_id === a.id).map(r => people[r.user_id]).filter(Boolean) })),
         incoming: incoming.map(a => ({ ...a, owner: people[a.owner_id] })).filter(a => a.owner),
       };
     },
-    async createAsk({ title, note, recipientIds }) {
-      return must(await supabase.rpc('create_ask', { p_title: title, p_note: note || '', p_recipients: recipientIds }));
+    async createAsk({ title, note, recipientIds, place }) {
+      const id = must(await supabase.rpc('create_ask', { p_title: title, p_note: note || '', p_recipients: recipientIds }));
+      if (place) await supabase.rpc('set_ask_place', { p_ask: id, p_place: place }); // best effort: the request is already sent
+      return id;
+    },
+    // "Sono qui": the phone's position (read once, with consent) -> the city name.
+    async whereAmI() {
+      if (!navigator.geolocation) throw new Error('geo_unavailable');
+      const pos = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, e => reject(new Error(e.code === 1 ? 'geo_denied' : 'geo_unavailable')), { enableHighAccuracy: false, timeout: 15000, maximumAge: 600000 }));
+      const { data } = await supabase.auth.getSession();
+      const res = await fetch(`/api/where?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`, { headers: { Authorization: `Bearer ${data.session?.access_token || ''}` } });
+      if (!res.ok) throw new Error('geo_unavailable');
+      return res.json();
     },
     async answerAsk({ askId, itemIds, message, allowSave, allowAi }) {
       return must(await supabase.rpc('answer_ask', { p_ask: askId, p_items: itemIds, p_message: message || '', p_allow_save: !!allowSave, p_allow_ai_export: !!allowAi }));

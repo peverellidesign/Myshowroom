@@ -97,3 +97,14 @@ test('answers: own memories only, by friends asked, revocable, and the request o
   ok(await sara.client.rpc('remove_connection', { p_other: matteo.id }));
   denied(await sara.client.rpc('answer_ask', { p_ask: id2, p_items: [saraItem] }), 'not connected any more');
 });
+
+test('"Sono qui": only the owner sets the city of a request, friends asked can read it', async () => {
+  const { matteo, luca, sara } = u;
+  await connect(matteo, sara).catch(() => {}); // reconnect after the previous test
+  const id = ok(await matteo.client.rpc('create_ask', { p_title: 'A Firenze, adesso', p_note: '', p_recipients: [luca.id] }));
+  denied(await luca.client.rpc('set_ask_place', { p_ask: id, p_place: 'Altrove' }), 'not the owner');
+  ok(await matteo.client.rpc('set_ask_place', { p_ask: id, p_place: '  Firenze  ' }));
+  assert.equal(ok(await luca.client.from('asks').select('place').eq('id', id).single()).place, 'Firenze');
+  ok(await matteo.client.rpc('set_ask_place', { p_ask: id, p_place: 'x'.repeat(200) }));
+  assert.equal(ok(await matteo.client.from('asks').select('place').eq('id', id).single()).place.length, 80, 'trimmed to 80');
+});

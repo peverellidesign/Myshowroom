@@ -282,3 +282,52 @@ export async function handlePreviewImage(req, res) {
     return json(res, 422, { error: 'image_unavailable' });
   }
 }
+
+// ---- "Sono qui": GET /api/where?lat=..&lon=.. -> { place, area, country } ----
+// The phone's position, read once with the person's consent, becomes a city
+// name. Coordinates are rounded to ~1 km before leaving our server, the map
+// service sees our server (not the person), and nothing is stored here.
+const GEOCODER = process.env.GEOCODER_URL || 'https://nominatim.openstreetmap.org/reverse';
+const whereCache = new Map();
+const whereHits = new Map();
+function whereLimited(userId) {
+  const now = Date.now();
+  const list = (whereHits.get(userId) || []).filter(t => t > now - 600_000);
+  list.push(now);
+  whereHits.set(userId, list);
+  return list.length > 20;
+}
+let lastGeocode = 0; // the public geocoder allows one request per second
+export async function placeFrom(lat, lon) {
+  const key = `${lat.toFixed(2)},${lon.toFixed(2)}`;
+  const hit = whereCache.get(key);
+  if (hit) return hit;
+  const wait = lastGeocode + 1100 - Date.now();
+  if (wait > 0) await new Promise(r => setTimeout(r, wait));
+  lastGeocode = Date.now();
+  const q = `?format=jsonv2&zoom=10&accept-language=it&lat=${lat.toFixed(2)}&lon=${lon.toFixed(2)}`;
+  const res = await fetch(GEOCODER + q, { headers: { 'User-Agent': 'morethere/1.0', Accept: 'application/json' }, signal: AbortSignal.timeout(6000) });
+  if (!res.ok) throw new Error('geocoder');
+  const data = await res.json();
+  const a = data.address || {};
+  const place = a.city || a.town || a.village || a.municipality || a.hamlet || a.suburb || a.county || data.name || '';
+  const out = { place: String(place).slice(0, 80), area: String(a.state || a.region || '').slice(0, 80), country: String(a.country || '').slice(0, 80) };
+  if (whereCache.size > 2000) whereCache.clear();
+  whereCache.set(key, out);
+  return out;
+}
+export async function handleWhere(req, res) {
+  try {
+    const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    const userId = token && await userFromToken(token);
+    if (!userId) return json(res, 401, { error: 'unauthorized' });
+    if (whereLimited(userId)) return json(res, 429, { error: 'rate_limited' });
+    const sp = new URL(req.url, 'http://x').searchParams;
+    const lat = Number(sp.get('lat')), lon = Number(sp.get('lon'));
+    if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return json(res, 400, { error: 'bad_position' });
+    const out = await placeFrom(lat, lon);
+    return json(res, out.place ? 200 : 404, out.place ? out : { error: 'no_place' });
+  } catch {
+    return json(res, 502, { error: 'geocoder_unavailable' });
+  }
+}

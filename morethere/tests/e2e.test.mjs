@@ -108,7 +108,7 @@ test('saving a link and a note works as in the prototype', async () => {
   const { page } = people.alice;
   await page.getByPlaceholder('Incolla un link o scrivi...').fill('https://www.example.org/ristorante');
   await page.getByPlaceholder('Incolla un link o scrivi...').press('Enter');
-  await toast(page, 'Salvato nel tuo mondo');
+  await toast(page, 'Salvato nella tua raccolta');
   await page.locator('.item', { hasText: 'example.org' }).waitFor();
   await page.getByPlaceholder("Cerca nell'archivio...").fill('kyoto');
   assert.equal(await page.locator('.item').count(), 1);
@@ -123,7 +123,7 @@ test('link preview: real page title and cover image, stored as a private photo',
   const { page } = people.alice;
   await page.getByPlaceholder('Incolla un link o scrivi...').fill(pageUrl);
   await page.getByPlaceholder('Incolla un link o scrivi...').press('Enter');
-  await toast(page, 'Salvato nel tuo mondo');
+  await toast(page, 'Salvato nella tua raccolta');
   const card = page.locator('.item', { hasText: 'Trattoria da Mario — Milano' });
   await card.waitFor({ timeout: 15000 });
   await card.locator('.preview img').waitFor({ timeout: 15000 });
@@ -386,6 +386,16 @@ test('Chiedi consigli: Bob goes to Florence, Alice answers with her places', asy
   await bob.goto(APP);
   await bob.getByRole('button', { name: /Apri Your Circle/ }).click();
   await bob.getByRole('button', { name: /Chiedi consigli/ }).click();
+  // "Sono qui": the phone says where Bob is; the server turns it into a city.
+  await ctx.bob.grantPermissions(['geolocation']);
+  await ctx.bob.setGeolocation({ latitude: 43.7712, longitude: 11.2539 });
+  let asked = '';
+  await bob.route('**/api/where**', route => { asked = route.request().url(); route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ place: 'Firenze', area: 'Toscana', country: 'Italia' }) }); });
+  await bob.getByRole('button', { name: 'Sono qui' }).click();
+  await bob.getByRole('button', { name: 'Sei a Firenze' }).waitFor();
+  await shot(bob, '09a0-here');
+  assert.match(asked, /lat=43\.77.*lon=11\.25/);
+  assert.equal(await bob.getByLabel('LA TUA RICHIESTA').inputValue(), 'A Firenze, adesso');
   await bob.getByLabel('LA TUA RICHIESTA').fill('Firenze, a maggio');
   await bob.getByLabel('DETTAGLI').fill('Ristoranti e posti tranquilli');
   await bob.getByRole('button', { name: /Avanti/ }).click();
@@ -399,13 +409,20 @@ test('Chiedi consigli: Bob goes to Florence, Alice answers with her places', asy
 
   // Alice gets the request live and answers with two of her memories.
   await alice.goto(APP);
+  await alice.getByPlaceholder('Incolla un link o scrivi...').fill('Gelateria dei Neri, Firenze');
+  await alice.getByRole('button', { name: 'Salva', exact: true }).click();
+  await alice.locator('.item', { hasText: 'Gelateria dei Neri' }).waitFor();
   await alice.locator('.round .badge').waitFor({ timeout: 10000 });
   await alice.getByRole('button', { name: /Apri Your Circle/ }).click();
   await alice.getByText('Ti chiedono un consiglio').waitFor();
   await alice.getByText('Firenze, a maggio').waitFor();
+  await alice.getByText('Bob è a Firenze').waitFor();
   await shot(alice, '09b-asked');
   await alice.getByRole('button', { name: 'Consiglia' }).click();
   await alice.getByRole('heading', { name: 'Cosa consigli a Bob?' }).waitFor();
+  // Her places in Florence come first.
+  await alice.getByText('I tuoi posti a Firenze sono in cima.').waitFor();
+  assert.equal(await alice.locator('.pickTile').first().getAttribute('aria-label'), 'Gelateria dei Neri, Firenze');
   const tiles = alice.locator('.pickTile');
   await tiles.nth(0).click();
   await tiles.nth(1).click();

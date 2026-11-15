@@ -5,7 +5,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { brotliCompressSync, gzipSync, constants as zlib } from 'node:zlib';
-import { handlePreview, handlePreviewImage } from './preview.mjs';
+import { handlePreview, handlePreviewImage, handleWhere } from './preview.mjs';
 
 const root = join(fileURLToPath(new URL('.', import.meta.url)), 'dist');
 const port = Number(process.env.PORT) || 8080;
@@ -30,7 +30,7 @@ const headers = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'no-referrer',
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
-  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(self)',
 };
 
 // Files are read and compressed once, then served from memory (the build is immutable).
@@ -71,6 +71,7 @@ createServer(async (req, res) => {
     if (path === '/health') { res.writeHead(200, { 'Content-Type': 'text/plain' }); return res.end('ok'); }
     if (path === '/api/preview' && req.method === 'GET') return await handlePreview(req, res);
     if (path === '/api/preview-image' && req.method === 'GET') return await handlePreviewImage(req, res);
+    if (path === '/api/where' && req.method === 'GET') return await handleWhere(req, res);
     if (path === '/share-target' && req.method === 'POST') { req.resume(); res.writeHead(303, { Location: '/?share=1' }); return res.end(); }
     const file = normalize(join(root, path));
     if (file.startsWith(root) && path !== '/' && (await stat(file).catch(() => null))?.isFile()) {

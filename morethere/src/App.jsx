@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   UsersRound, Camera, Search, ArrowLeft, Plus, KeyRound, Sparkles, Trash2, ExternalLink, Copy,
   FolderHeart, Send, Check, Bookmark, PenLine, X, Link2, UserRoundPlus, ChevronRight,
-  ShieldCheck, Download, LogOut, Share, Compass, Inbox, UserRoundCheck, ImagePlus, Pencil, UserRound, ArrowRight,
+  ShieldCheck, Download, LogOut, Share, Compass, MapPin, Inbox, UserRoundCheck, ImagePlus, Pencil, UserRound, ArrowRight,
 } from 'lucide-react';
 import { watermark } from './lib/watermark.js';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -128,6 +128,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   // Chiedi consigli: your request (askNew), an answer to a friend (answer), the answers you got (ask).
   const [askStep, setAskStep] = useState(1); const [askDone, setAskDone] = useState(null);
   const [askTitle, setAskTitle] = useState(''); const [askNote, setAskNote] = useState(''); const [askPeople, setAskPeople] = useState([]);
+  const [askPlace, setAskPlace] = useState(''); const [hereBusy, setHereBusy] = useState(false);
   const [openAskId, setOpenAskId] = useState(null);
   const [answering, setAnswering] = useState(null);
   const [ansStep, setAnsStep] = useState(1); const [ansItems, setAnsItems] = useState([]); const [ansSave, setAnsSave] = useState(true);
@@ -283,7 +284,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     const raw = entry.trim(); if (!raw) return;
     const url = safeUrl(raw);
     const draft = { title: url ? new URL(url).hostname.replace(/^www\./, '') : raw.slice(0, 70), url: url || '', note: url ? '' : raw, category: url ? 'Pagine' : 'Appunti', collection: 'Idee', collection_id: collectionId('Idee') };
-    const saved = await run(() => api.addItem(draft), 'Salvato nel tuo mondo');
+    const saved = await run(() => api.addItem(draft), 'Salvato nella tua raccolta');
     if (!saved) return;
     setEntry(''); await refreshArchive();
     // Enrich links with the real page title and cover image, in the background.
@@ -532,9 +533,18 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   };
   const startMoreOfMe = (personId = '') => { pickShareTarget(personId); setMeStep(personId ? 2 : 1); setMeDone(false); setScreen('settings'); };
   // ---- Chiedi consigli ----------------------------------------------------------
-  const startAsk = (personIds = []) => { setAskStep(1); setAskDone(null); setAskTitle(''); setAskNote(''); setAskPeople(personIds); setScreen('askNew'); };
+  const startAsk = (personIds = []) => { setAskStep(1); setAskDone(null); setAskTitle(''); setAskNote(''); setAskPlace(''); setAskPeople(personIds); setScreen('askNew'); };
+  // "Sono qui": read the position once and write the city; only the name is kept.
+  const locateMe = async () => {
+    setHereBusy(true);
+    try {
+      const w = await api.whereAmI();
+      setAskPlace(w.place);
+      setAskTitle(t => (!t.trim() || /^A .+, adesso$/.test(t) ? `A ${w.place}, adesso` : t));
+    } catch (e) { toast(friendlyError(e)); } finally { setHereBusy(false); }
+  };
   const sendAsk = async () => {
-    const id = await run(() => api.createAsk({ title: askTitle.trim(), note: askNote.trim(), recipientIds: askPeople }));
+    const id = await run(() => api.createAsk({ title: askTitle.trim(), note: askNote.trim(), recipientIds: askPeople, place: askPlace }));
     if (id) { setAskDone(id); refreshAsks(); }
   };
   const openAsk = a => { setOpenAskId(a.id); setScreen('ask'); };
@@ -717,7 +727,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
         <button className="ixr" onClick={() => startAsk()}><span className="ixi" aria-hidden="true"><AskIcon /></span><span className="ixb"><span className="ixt">Chiedi <b>consigli.</b></span><span className="ixs">Parti per Firenze? I tuoi amici ti mandano i loro posti e le loro foto.</span>{(asksToAnswer.length > 0 || asks.mine.length > 0) && <span className="ixmeta">{[asksToAnswer.length ? `${asksToAnswer.length} ${asksToAnswer.length === 1 ? 'amico ti chiede' : 'amici ti chiedono'} un consiglio` : '', asks.mine.length ? `${asks.mine.length} ${asks.mine.length === 1 ? 'tua richiesta' : 'tue richieste'}` : ''].filter(Boolean).join(' · ')}</span>}</span><span className="ixgo" aria-hidden="true"><ArrowRight size={17} strokeWidth={1.5} /></span></button>
         <button className="ixr us" onClick={() => startMoreOfUs()}><span className="ixi" aria-hidden="true"><MoreOfUsIcon /></span><span className="ixb"><span className="ixt">More <b>of us.</b></span><span className="ixs">Crea uno spazio con i tuoi amici: le vostre scoperte, insieme.</span>{(worldInvites.length > 0 || activeSpaces.length > 0) && <span className="ixmeta">{[activeSpaces.length ? `${activeSpaces.length} ${activeSpaces.length === 1 ? 'spazio' : 'spazi'}` : '', worldInvites.length ? `${worldInvites.length} ${worldInvites.length === 1 ? 'invito' : 'inviti'} da accettare` : ''].filter(Boolean).join(' · ')}</span>}</span><span className="ixgo" aria-hidden="true"><ArrowRight size={17} strokeWidth={1.5} /></span></button>
       </div></section>
-      {social && asks.incoming.length > 0 && <section className="block"><div className="blockHead"><h2>Ti chiedono un consiglio</h2></div>{asks.incoming.map(a => { const given = answeredBy(a.id).length; return <div key={a.id} className="askCard"><span className="av" aria-hidden="true">{face(a.owner)}</span><span className="askBody"><small>{nameOf(a.owner)} chiede</small><strong>{a.title}</strong>{a.note && <span className="askNote">{a.note}</span>}{given > 0 && <small className="askGiven"><Check size={12} className="inline" /> Hai mandato {given} {given === 1 ? 'consiglio' : 'consigli'}</small>}</span><button className={'pill small ' + (given ? 'outline' : 'dark')} onClick={() => startAnswer(a)}>{given ? 'Ancora' : 'Consiglia'}</button></div>; })}</section>}
+      {social && asks.incoming.length > 0 && <section className="block"><div className="blockHead"><h2>Ti chiedono un consiglio</h2></div>{asks.incoming.map(a => { const given = answeredBy(a.id).length; return <div key={a.id} className="askCard"><span className="av" aria-hidden="true">{face(a.owner)}</span><span className="askBody"><small>{a.place ? <><MapPin size={12} className="inline" /> {nameOf(a.owner)} è a {a.place}</> : `${nameOf(a.owner)} chiede`}</small><strong>{a.title}</strong>{a.note && <span className="askNote">{a.note}</span>}{given > 0 && <small className="askGiven"><Check size={12} className="inline" /> Hai mandato {given} {given === 1 ? 'consiglio' : 'consigli'}</small>}</span><button className={'pill small ' + (given ? 'outline' : 'dark')} onClick={() => startAnswer(a)}>{given ? 'Ancora' : 'Consiglia'}</button></div>; })}</section>}
       {social && asks.mine.length > 0 && <section className="block"><div className="blockHead"><h2>Le tue richieste</h2></div><div className="ix">{asks.mine.map(a => { const got = askAnswers(a.id); const fresh = got.filter(t => !t.read_at).length; const people = new Set(got.map(t => t.sender_id)).size; return <button key={a.id} className="ixr askRow" onClick={() => openAsk(a)}><span className="ixi" aria-hidden="true"><AskIcon size={20} /></span><span className="ixb"><span className="ixt small">{a.title}</span><span className="ixs">{got.length ? `${got.length} ${got.length === 1 ? 'consiglio' : 'consigli'} da ${people} ${people === 1 ? 'amico' : 'amici'}` : `Chiesto a ${a.recipients.map(nameOf).join(', ')}`}{fresh ? ` · ${fresh} ${fresh === 1 ? 'nuovo' : 'nuovi'}` : ''}</span></span><span className="ixgo" aria-hidden="true"><ArrowRight size={17} strokeWidth={1.5} /></span></button>; })}</div></section>}
       {social && <section className="block"><div className="blockHead"><h2>Dai tuoi amici</h2>{accepted.length > 0 && <span className="count">{accepted.length}</span>}</div>
         {accepted.length || outgoing.length ? <><p className="hint railHint lead">Tocca un amico per vedere cosa condivide con te e i vostri spazi.</p><div className="peopleRail">
@@ -831,6 +841,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     {screen === 'askNew' && <main><div className="eyebrow">CHIEDI CONSIGLI</div><h1>Dove vai?</h1>
       {askDone ? doneView({ title: 'Chiesto.', text: `Quando i tuoi amici rispondono, trovi i loro posti e le loro foto in Your Circle, sotto “${askTitle.trim()}”.`, actions: <><button className="pill dark wide" onClick={() => { setOpenAskId(askDone); setScreen('ask', { replace: true }); }}>Apri la richiesta</button><button className="pill outline wide" onClick={() => setScreen('circle')}>Torna a Your Circle</button></> }) : <>
         {askStep === 1 && wizard({ n: 1, total: 2, question: 'Dove vai, o cosa cerchi?', hint: 'Per esempio: Firenze, a maggio.', canNext: !!askTitle.trim(), onNext: () => setAskStep(2), children: <>
+          {social && <div className="hereRow"><button type="button" className={'hereBtn' + (askPlace ? ' on' : '')} disabled={hereBusy} onClick={locateMe}><MapPin size={17} /> {hereBusy ? 'Cerco dove sei…' : askPlace ? `Sei a ${askPlace}` : 'Sono qui'}</button>{askPlace ? <button type="button" className="textlink" onClick={() => { setAskPlace(''); setAskTitle(t => (/^A .+, adesso$/.test(t) ? '' : t)); }}>Togli</button> : <small>Legge la posizione una volta e scrive la città. Non la salviamo.</small>}</div>}
           <input className="wizInput" aria-label="LA TUA RICHIESTA" maxLength={120} autoFocus placeholder="Firenze, a maggio" value={askTitle} onChange={e => setAskTitle(e.target.value)} onKeyDown={e => e.key === 'Enter' && askTitle.trim() && setAskStep(2)} />
           <textarea aria-label="DETTAGLI" rows="3" maxLength={1000} placeholder="Cosa ti piacerebbe? Ristoranti, musei, posti tranquilli…" value={askNote} onChange={e => setAskNote(e.target.value)} /></> })}
         {askStep === 2 && wizard({ n: 2, total: 2, question: 'A chi lo chiedi?', hint: accepted.length ? 'Solo loro vedranno la tua richiesta.' : 'Non hai ancora amici su morethere: aggiungine uno con More of me.', canNext: askPeople.length > 0, onBack: () => setAskStep(1), onNext: sendAsk, nextLabel: askPeople.length > 1 ? `Chiedi a ${askPeople.length} amici` : 'Chiedi', children: <>
@@ -843,10 +854,17 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
         const q = ansSearch.trim().toLowerCase();
         const pickable = items.filter(i => !q || [i.title, i.note, i.url, i.category, i.collection].join(' ').toLowerCase().includes(q));
         const who = nameOf(answering.owner); const n = ansItems.length;
+        // Your places in the city your friend is in come first.
+        const fold = x => (x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+        const at = answering.place ? fold(answering.place) : '';
+        const isHere = i => at && fold([i.title, i.note, i.url, i.collection].join(' ')).includes(at);
+        const here = pickable.filter(isHere); const rest = pickable.filter(i => !isHere(i));
+        const tile = i => { const on = ansItems.includes(i.id); return <button key={i.id} type="button" role="checkbox" aria-checked={on} aria-label={i.title} className={'pickTile' + (on ? ' added' : '')} onClick={() => setAnsItems(v => (on ? v.filter(x => x !== i.id) : [...v, i.id]))}><span className="ptImg">{photoUrls[i.image_path] ? <Photo url={photoUrls[i.image_path]} /> : (i.url ? <Link2 size={20} /> : <PenLine size={20} />)}{on && <span className="ptCheck"><Check size={14} /></span>}</span><span className="ptTitle">{i.title}</span></button>; };
         return <>
-          {ansStep === 1 && wizard({ n: 1, total: 3, question: `Cosa consigli a ${who}?`, hint: 'Scegli uno o più posti e foto dalla tua raccolta.', canNext: n > 0, onNext: () => setAnsStep(2), nextLabel: n ? `Avanti · ${n}` : 'Avanti', children: <>
+          {ansStep === 1 && wizard({ n: 1, total: 3, question: `Cosa consigli a ${who}?`, hint: here.length ? `I tuoi posti a ${answering.place} sono in cima.` : 'Scegli uno o più posti e foto dalla tua raccolta.', canNext: n > 0, onNext: () => setAnsStep(2), nextLabel: n ? `Avanti · ${n}` : 'Avanti', children: <>
             <div className="search"><Search size={19} /><input aria-label="Cerca nel tuo archivio" placeholder="Cerca: Firenze, ristorante…" value={ansSearch} onChange={e => setAnsSearch(e.target.value)} /></div>
-            <div className="pickGrid">{pickable.map(i => { const on = ansItems.includes(i.id); return <button key={i.id} type="button" role="checkbox" aria-checked={on} aria-label={i.title} className={'pickTile' + (on ? ' added' : '')} onClick={() => setAnsItems(v => (on ? v.filter(x => x !== i.id) : [...v, i.id]))}><span className="ptImg">{photoUrls[i.image_path] ? <Photo url={photoUrls[i.image_path]} /> : (i.url ? <Link2 size={20} /> : <PenLine size={20} />)}{on && <span className="ptCheck"><Check size={14} /></span>}</span><span className="ptTitle">{i.title}</span></button>; })}</div>
+            {here.length > 0 && <><div className="pickLabel"><MapPin size={13} /> A {answering.place}</div><div className="pickGrid">{here.map(tile)}</div>{rest.length > 0 && <div className="pickLabel">Tutto il resto</div>}</>}
+            <div className="pickGrid">{rest.map(tile)}</div>
             {!pickable.length && <div className="empty compact">{items.length ? 'Nessun risultato.' : 'La tua raccolta è vuota: salva prima qualcosa dalla home.'}</div>}</> })}
           {ansStep === 2 && wizard({ n: 2, total: 3, question: `Cosa può fare ${who}?`, onBack: () => setAnsStep(1), onNext: () => setAnsStep(3), children: <>
             <div className="opts" role="radiogroup">{option({ on: ansSave, title: 'Guardare e salvare', desc: 'Può tenersi una copia per il suo viaggio.', onClick: () => setAnsSave(true) })}{option({ on: !ansSave, title: 'Solo guardare', desc: 'Li vede nella tua raccolta, sempre aggiornati.', onClick: () => setAnsSave(false) })}</div>
