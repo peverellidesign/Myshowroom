@@ -7,7 +7,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
@@ -437,7 +437,7 @@ test('share to morethere from another app, and from morethere to other apps', as
   // The phone's share sheet cannot open in a headless browser: record what it would receive.
   await alice.addInitScript(() => {
     window.__shared = [];
-    navigator.share = async d => { window.__shared.push({ title: d.title, text: d.text, files: (d.files || []).length }); };
+    navigator.share = async d => { window.__shared.push({ title: d.title, text: d.text, files: (d.files || []).length }); window.__sharedFile = d.files?.[0] || null; };
     navigator.canShare = () => true;
   });
   // From Instagram (Android share sheet → /share-target → ?share=1…)
@@ -461,6 +461,26 @@ test('share to morethere from another app, and from morethere to other apps', as
   assert.equal(shared.length, 1);
   assert.match(shared[0].text, /example\.org\/da-instagram/);
   assert.match(shared[0].text, /da morethere/);
+
+  // A photo leaves with the morethere mark; the one in the archive stays as it was.
+  await alice.goto(APP);
+  const card = alice.locator('.item', { hasText: 'Trattoria da Mario' }).first();
+  const original = await card.locator('.preview img').getAttribute('src');
+  await card.getByRole('button', { name: /^More for you/ }).click();
+  await alice.waitForFunction(() => document.querySelector('.chosenItem'));
+  await alice.waitForTimeout(1500); // the marked copy is prepared in the background
+  await alice.getByRole('button', { name: 'Fuori app', exact: true }).click();
+  await alice.getByRole('heading', { name: 'Condiviso.' }).waitFor();
+  const marks = await alice.evaluate(async (src) => {
+    // Brightness in the bottom-right corner, where the mark goes, before and after.
+    const corner = async blob => { const b = await createImageBitmap(blob); const c = new OffscreenCanvas(b.width, b.height); const x = c.getContext('2d'); x.drawImage(b, 0, 0); const w = Math.round(b.width * 0.35), h = Math.round(b.height * 0.08); const d = x.getImageData(b.width - w, b.height - h, w, h).data; let white = 0; for (let i = 0; i < d.length; i += 4) if (d[i] > 225 && d[i + 1] > 225 && d[i + 2] > 225) white++; return white; };
+    const f = window.__sharedFile;
+    return { type: f?.type, after: f ? await corner(f) : -1, before: await corner(await (await fetch(src)).blob()), data: f ? await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(f); }) : '' };
+  }, original);
+  assert.equal(marks.type, 'image/jpeg');
+  assert.ok(marks.after > marks.before + 50, `the mark is drawn (${marks.before} → ${marks.after} white pixels)`);
+  if (SHOTS) writeFileSync(`${SHOTS}/12-shared-photo.jpg`, Buffer.from(marks.data.split(',')[1], 'base64'));
+  assert.equal(await card.locator('.preview img').getAttribute('src').catch(() => original), original, 'the archive photo is unchanged');
 });
 
 test('profile: edit, export data, sign out', async () => {

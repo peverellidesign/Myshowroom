@@ -4,6 +4,7 @@ import {
   FolderHeart, Send, Check, Bookmark, PenLine, X, Link2, UserRoundPlus, ChevronRight,
   ShieldCheck, Download, LogOut, Share, Inbox, UserRoundCheck, ImagePlus, Pencil, UserRound, ArrowRight,
 } from 'lucide-react';
+import { watermark } from './lib/watermark.js';
 
 // The three gestures of morethere, drawn as icons so they read at a glance.
 // More of me: a friend steps into your collection. More for you: one memory,
@@ -288,7 +289,8 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     const url = screen === 'thought' ? photoUrls[selected?.image_path] : null;
     if (!url) return;
     let alive = true;
-    fetch(url).then(r => r.blob()).then(b => alive && setExtFile(new File([b], 'morethere.jpg', { type: b.type || 'image/jpeg' }))).catch(() => {});
+    // The copy that travels outside carries the morethere mark.
+    fetch(url).then(r => r.blob()).then(b => watermark(b).catch(() => b)).then(b => alive && setExtFile(new File([b], 'morethere.jpg', { type: b.type || 'image/jpeg' }))).catch(() => {});
     return () => { alive = false; };
   }, [screen, selected?.image_path, photoUrls]);
 
@@ -560,7 +562,13 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     const ok = await run(() => api.removeAvatar(), 'Foto profilo tolta');
     if (ok !== undefined) { await refreshProfile(); refreshCircle(); refreshWorlds(); }
   };
-  const openProfile = () => { setProfileDraft({ display_name: profile?.display_name || '', handle: profile?.handle || '', subtitle: profile?.subtitle || '' }); setScreen('profile'); };
+  const draftFromProfile = p => ({ display_name: p?.display_name || '', handle: p?.handle || '', subtitle: p?.subtitle || '', loaded: Boolean(p) });
+  const openProfile = () => { setProfileDraft(draftFromProfile(profile)); setScreen('profile'); };
+  // Profile opened before it finished loading: fill the form once it arrives, keeping anything typed.
+  useEffect(() => {
+    if (!profile || !profileDraft || profileDraft.loaded) return;
+    setProfileDraft(d => { const f = draftFromProfile(profile); return { display_name: d.display_name || f.display_name, handle: d.handle || f.handle, subtitle: d.subtitle || f.subtitle, loaded: true }; });
+  }, [profile, profileDraft]);
   const saveProfile = async () => {
     const p = await run(() => api.updateProfile(profileDraft), 'Profilo aggiornato');
     if (p) setProfile(p);
@@ -805,7 +813,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
         <div><h1>{profile?.display_name}</h1><p className="muted">@{profile?.handle}</p><div className="avatarLinks"><button className="textlink" disabled={busy} onClick={() => avatarInput.current?.click()}>{profile?.avatar_path ? 'Cambia foto' : 'Aggiungi una foto'}</button>{profile?.avatar_path && <button className="textlink danger" disabled={busy} onClick={removeAvatar}>Togli</button>}</div></div></div>
       <p className="hint">La tua foto la vedono solo le persone del tuo Circle e chi condivide uno spazio con te.</p>
       <div className="panel"><label htmlFor="pn">NOME</label><input id="pn" maxLength={60} value={profileDraft.display_name} onChange={e => setProfileDraft({ ...profileDraft, display_name: e.target.value })} /><label htmlFor="ph">NOME UTENTE</label><input id="ph" maxLength={31} autoCapitalize="none" autoCorrect="off" value={profileDraft.handle} onChange={e => setProfileDraft({ ...profileDraft, handle: e.target.value })} /><label htmlFor="ps">DI COSA TI OCCUPI</label><input id="ps" maxLength={120} placeholder="Travel · Food · Architecture" value={profileDraft.subtitle} onChange={e => setProfileDraft({ ...profileDraft, subtitle: e.target.value })} /><button className="pill dark wide" disabled={busy} onClick={saveProfile}><Check size={18} /> Salva</button></div>
-      <p className="hint">Il tuo nome e la descrizione sono visibili solo alle persone del tuo Circle e dei mondi condivisi.</p>
+      <p className="hint">Il tuo nome e la descrizione sono visibili solo alle persone del tuo Circle e degli spazi condivisi.</p>
       <div className="stack"><button className="feature" onClick={() => exportAI(items)}><Sparkles /><span><strong>Use with AI</strong><small>Copia tutto il tuo archivio come contesto</small></span><ChevronRight /></button><button className="feature" disabled={busy} onClick={async () => exportShared(await run(() => api.aiExportThoughts()), 'MORETHERE — THOUGHTS SHARED WITH ME')}><Inbox /><span><strong>Pensieri con AI</strong><small>I pensieri ricevuti che puoi usare con AI</small></span><ChevronRight /></button><button className="feature" disabled={busy} onClick={downloadData}><Download /><span><strong>Esporta i miei dati</strong><small>Scarica tutto in formato JSON</small></span><ChevronRight /></button></div>
       <button className="pill outline wide" onClick={() => api.signOut()}><LogOut size={18} /> Esci</button>
       <button className="textlink danger" onClick={deleteAccount}>Elimina il mio account</button></main>}
