@@ -292,6 +292,10 @@ test('More for you arrives in real time', async () => {
   const bob = people.bob.page;
   await close(alice);
   await alice.locator('.item', { hasText: 'example.org' }).getByRole('button', { name: /^More for you/ }).click();
+  await alice.getByRole('heading', { name: 'A quale amico?' }).waitFor();
+  // Only friends and other apps here: adding people happens in Your Circle.
+  assert.equal(await alice.getByRole('button', { name: 'Aggiungi', exact: true }).count(), 0);
+  await shot(alice, '07b-more-for-you-friend');
   await alice.getByRole('button', { name: 'Bob', exact: true }).click();
   assert.equal(await alice.getByRole('button', { name: 'Bob', exact: true }).getAttribute('aria-pressed'), 'true');
   await alice.getByRole('button', { name: /Avanti/ }).click();

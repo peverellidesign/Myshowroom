@@ -1,15 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  UsersRound, Camera, Search, ArrowLeft, Plus, Heart, KeyRound, Sparkles, Trash2, ExternalLink, Copy,
+  UsersRound, Camera, Search, ArrowLeft, Plus, KeyRound, Sparkles, Trash2, ExternalLink, Copy,
   FolderHeart, Send, Check, Bookmark, PenLine, X, Link2, UserRoundPlus, ChevronRight,
-  ShieldCheck, Download, LogOut, Inbox, UserRoundCheck, ImagePlus, Pencil, UserRound, ArrowRight,
+  ShieldCheck, Download, LogOut, Share, Inbox, UserRoundCheck, ImagePlus, Pencil, UserRound, ArrowRight,
 } from 'lucide-react';
 
 // The three gestures of morethere, drawn as icons so they read at a glance.
 // More of me: a friend steps into your collection. More for you: one memory,
-// opened to one person. More of us: two worlds overlapping into a shared space.
+// sent to one friend (a paper plane). More of us: two worlds overlapping into a shared space.
 const MoreOfMeIcon = ({ size = 22 }) => <UserRoundPlus size={size} strokeWidth={1.5} />;
-const MoreForYouIcon = ({ size = 22 }) => <Heart size={size} strokeWidth={1.5} />;
+const MoreForYouIcon = ({ size = 22 }) => <Send size={size} strokeWidth={1.5} />;
 const MoreOfUsIcon = ({ size = 22 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><circle cx="9" cy="12" r="6.25" /><circle cx="15" cy="12" r="6.25" /></svg>;
 import { buildAIContext, fromExportRows } from './lib/ai.js';
 import { friendlyError, photoTakenDate } from './lib/api.js';
@@ -585,11 +585,11 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   // A person's face: their profile photo if they have one, else their initial.
   const face = p => (photoUrls[p?.avatar_path] ? <img className="faceImg" src={photoUrls[p.avatar_path]} alt="" loading="lazy" /> : initial(p));
   // Pick people by tapping their avatar. `single`: exactly one; otherwise toggles.
-  const peoplePicker = (selectedIds, onPick, { external = false } = {}) => (
+  const peoplePicker = (selectedIds, onPick, { external = false, add = true } = {}) => (
     <div className="pickRow" role="group" aria-label="Persone">
       {accepted.map(c => { const on = selectedIds.includes(c.other.id); return <button key={c.other.id} type="button" className={'pick' + (on ? ' on' : '')} aria-pressed={on} onClick={() => onPick(c.other.id)}><span className="av" aria-hidden="true">{face(c.other)}{on && <span className="avCheck"><Check size={13} /></span>}</span><span className="pn">{nameOf(c.other)}</span></button>; })}
-      {external && <button type="button" className={'pick' + (selectedIds.includes('__external') ? ' on' : '')} aria-pressed={selectedIds.includes('__external')} onClick={() => onPick('__external')}><span className="av" aria-hidden="true"><Send size={16} /></span><span className="pn">Fuori app</span></button>}
-      <button type="button" className="pick add" onClick={() => setShowAddPerson(true)}><span className="av" aria-hidden="true"><Plus size={20} /></span><span className="pn">Aggiungi</span></button>
+      {external && <button type="button" className={'pick' + (selectedIds.includes('__external') ? ' on' : '')} aria-pressed={selectedIds.includes('__external')} onClick={() => onPick('__external')}><span className="av" aria-hidden="true"><Share size={17} /></span><span className="pn">Fuori app</span></button>}
+      {add && <button type="button" className="pick add" onClick={() => setShowAddPerson(true)}><span className="av" aria-hidden="true"><Plus size={20} /></span><span className="pn">Aggiungi</span></button>}
     </div>
   );
   const wizard = ({ n, total, question, hint, children, canNext = true, onNext, nextLabel = 'Avanti', onBack }) => (
@@ -763,9 +763,9 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
             <div className="search"><Search size={19} /><input aria-label="Cerca nel tuo archivio" placeholder="Cerca nella tua raccolta..." value={forSearch} onChange={e => setForSearch(e.target.value)} /></div>
             <div className="pickGrid">{pickable.map(i => <button key={i.id} type="button" role="radio" aria-checked={selected?.id === i.id} aria-label={i.title} className={'pickTile' + (selected?.id === i.id ? ' added' : '')} onClick={() => setSelected(i)}><span className="ptImg">{photoUrls[i.image_path] ? <Photo url={photoUrls[i.image_path]} /> : (i.url ? <Link2 size={20} /> : <PenLine size={20} />)}{selected?.id === i.id && <span className="ptCheck"><Check size={14} /></span>}</span><span className="ptTitle">{i.title}</span></button>)}</div>
             {!pickable.length && <div className="empty compact">{items.length ? 'Nessun risultato.' : 'La tua raccolta è vuota: salva prima qualcosa dalla home.'}</div>}</> })}
-          {forStep === 2 && wizard({ n: 2, total, question: 'A quale amico?', hint: social && accepted.length ? 'Solo lui potrà vederlo, finché vuoi tu.' : 'Aggiungi un amico per aprirgli il ricordo dentro morethere, oppure condividilo con un messaggio.', canNext: external ? true : !!recipientId, onBack: () => setForStep(1), onNext: () => setForStep(3), children: <>
+          {forStep === 2 && wizard({ n: 2, total, question: 'A quale amico?', hint: social && accepted.length ? 'Solo lui potrà vederlo, finché vuoi tu.' : 'Non hai ancora amici su morethere: per ora puoi mandarlo con un\'altra app. Gli amici si aggiungono da Your Circle.', canNext: external ? true : !!recipientId, onBack: () => setForStep(1), onNext: () => setForStep(3), children: <>
             {selected && <div className="chosenItem">{photoUrls[selected.image_path] ? <Photo className="rowthumb" url={photoUrls[selected.image_path]} alt="" /> : <span className="chosenIcon">{selected.url ? <Link2 size={18} /> : <PenLine size={18} />}</span>}<span><strong>{selected.title}</strong><small>{selected.url || selected.note}</small></span><button className="textlink" onClick={() => setForStep(1)}>Cambia</button></div>}
-            {social && peoplePicker([recipientId], id => (id === '__external' ? shareOut() : setRecipientId(id)), { external: true })}
+            {social && peoplePicker([recipientId], id => (id === '__external' ? shareOut() : setRecipientId(id)), { external: true, add: false })}
             <p className="wizNote">Tocca <strong>Fuori app</strong> per mandarlo con WhatsApp, Instagram, Mail o qualsiasi altra app.</p></> })}
           {forStep === 3 && !external && wizard({ n: 3, total, question: `Cosa può fare ${who}?`, onBack: () => setForStep(2), onNext: () => setForStep(4), children: <>
             <div className="opts" role="radiogroup">{option({ on: !thoughtSave, title: 'Solo guardare', desc: 'Lo vede nella tua raccolta, sempre aggiornato.', onClick: () => setThoughtSave(false) })}{option({ on: thoughtSave, title: 'Guardare e salvare', desc: 'Può tenersi una copia.', onClick: () => setThoughtSave(true) })}</div>
