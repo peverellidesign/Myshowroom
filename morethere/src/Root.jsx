@@ -48,7 +48,7 @@ function captureShare() {
 const AUTH_ERRORS = [
   [/Invalid login credentials/i, 'Email o password non corretti.'],
   [/Email not confirmed/i, 'Conferma prima la tua email: controlla la posta.'],
-  [/User already registered/i, 'Esiste già un account con questa email.'],
+  [/User already registered/i, 'Esiste già un account con questa email. Accedi con la tua password o tocca "Password dimenticata?".'],
   [/Password should be at least/i, 'La password deve avere almeno 8 caratteri.'],
   [/rate limit|too many/i, 'Troppi tentativi. Riprova tra qualche minuto.'],
   [/valid email|invalid format/i, 'Inserisci un indirizzo email valido.'],
@@ -91,6 +91,9 @@ function AuthScreen({ hasInvite, recovery, linkError, onRecovered }) {
           email: email.trim(), password, options: { data: { display_name: name.trim() }, emailRedirectTo: returnUrl() },
         });
         if (err) throw err;
+        // An address that already has an account: Supabase sends nothing and
+        // returns a user without identities. Say so instead of waiting for an email.
+        if (!data.session && data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) { setMode('signin'); setPassword(''); throw new Error('User already registered'); }
         if (!data.session) setMode('check');
       } else if (mode === 'reset') {
         const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: returnUrl() });

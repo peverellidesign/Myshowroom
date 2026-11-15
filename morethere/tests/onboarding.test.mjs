@@ -95,6 +95,23 @@ test('the confirmation email opens in a new tab or another device and the invite
   await c.close(); await other.close();
 });
 
+test('signing up again with an address that already has an account says so', async () => {
+  const email = mail('hugo');
+  const c = await phone(); const page = await c.newPage();
+  // What Supabase answers when email confirmation is on: no session, a user without identities, no email.
+  await page.route('**/auth/v1/signup**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: '00000000-0000-0000-0000-000000000002', email, identities: [] }) }));
+  await page.goto(APP);
+  await page.getByRole('button', { name: 'Non hai un account? Creane uno' }).click();
+  await page.getByLabel('COME TI CHIAMI?').fill('Hugo');
+  await page.getByLabel('EMAIL').fill(email);
+  await page.getByLabel('PASSWORD').fill('Hugo-pass-1234');
+  await page.getByRole('button', { name: 'Crea account' }).click();
+  await page.getByText('Esiste già un account con questa email').waitFor();
+  assert.equal(await page.getByText('Controlla la tua email.').count(), 0);
+  await page.getByRole('button', { name: 'Entra' }).waitFor();
+  await c.close();
+});
+
 test('forgot password: real email, link opened on another device, new password works', async () => {
   const email = mail('gina');
   await admin.auth.admin.createUser({ email, password: 'Old-pass-1234', email_confirm: true, user_metadata: { display_name: 'Gina' } });
