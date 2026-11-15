@@ -206,6 +206,9 @@ test('drag and drop: your own order, kept on every device', async () => {
   // With the mouse: the second card goes first.
   const cards = page.locator('.cards .item');
   await cards.nth(0).scrollIntoViewIfNeeded();
+  // Wait until photos have loaded, so the cards do not move while we drag.
+  await page.waitForFunction(() => [...document.querySelectorAll('.cards img')].every(i => i.complete));
+  await page.waitForTimeout(300);
   const from = await cards.nth(1).locator('.itembody').boundingBox();
   const to = await cards.nth(0).locator('.itembody').boundingBox();
   await page.mouse.move(from.x + 20, from.y + 10);
@@ -375,6 +378,62 @@ test('More for you arrives in real time', async () => {
   await toast(bob, 'Salvato nel tuo archivio');
   await close(bob);
   await bob.locator('.item', { hasText: 'example.org' }).waitFor();
+});
+
+test('Chiedi consigli: Bob goes to Florence, Alice answers with her places', async () => {
+  const alice = people.alice.page;
+  const bob = people.bob.page;
+  await bob.goto(APP);
+  await bob.getByRole('button', { name: /Apri Your Circle/ }).click();
+  await bob.getByRole('button', { name: /Chiedi consigli/ }).click();
+  await bob.getByLabel('LA TUA RICHIESTA').fill('Firenze, a maggio');
+  await bob.getByLabel('DETTAGLI').fill('Ristoranti e posti tranquilli');
+  await bob.getByRole('button', { name: /Avanti/ }).click();
+  await bob.getByRole('heading', { name: 'A chi lo chiedi?' }).waitFor();
+  assert.equal(await bob.getByRole('button', { name: 'Aggiungi', exact: true }).count(), 0);
+  await bob.getByRole('button', { name: 'Alice', exact: true }).click();
+  await shot(bob, '09a-ask');
+  await bob.getByRole('button', { name: 'Chiedi', exact: true }).click();
+  await bob.getByRole('heading', { name: 'Chiesto.' }).waitFor();
+  await noWorld(bob);
+
+  // Alice gets the request live and answers with two of her memories.
+  await alice.goto(APP);
+  await alice.locator('.round .badge').waitFor({ timeout: 10000 });
+  await alice.getByRole('button', { name: /Apri Your Circle/ }).click();
+  await alice.getByText('Ti chiedono un consiglio').waitFor();
+  await alice.getByText('Firenze, a maggio').waitFor();
+  await shot(alice, '09b-asked');
+  await alice.getByRole('button', { name: 'Consiglia' }).click();
+  await alice.getByRole('heading', { name: 'Cosa consigli a Bob?' }).waitFor();
+  const tiles = alice.locator('.pickTile');
+  await tiles.nth(0).click();
+  await tiles.nth(1).click();
+  const chosen = await Promise.all([0, 1].map(k => tiles.nth(k).getAttribute('aria-label')));
+  await shot(alice, '09c-answer-pick');
+  await alice.getByRole('button', { name: /Avanti · 2/ }).click();
+  await alice.getByRole('heading', { name: 'Cosa può fare Bob?' }).waitFor();
+  await alice.getByRole('button', { name: /Avanti/ }).click();
+  await alice.getByLabel('IL TUO MESSAGGIO').fill('Da non perdere!');
+  await alice.getByRole('button', { name: 'Manda 2 consigli' }).click();
+  await alice.getByRole('heading', { name: 'Fatto.' }).waitFor();
+  await noWorld(alice);
+
+  // Bob finds the answers under his request, live.
+  await bob.getByRole('button', { name: 'Apri la richiesta' }).click();
+  await bob.getByRole('heading', { name: 'Firenze, a maggio' }).waitFor();
+  for (const t of chosen) await bob.locator('.note', { hasText: t }).waitFor({ timeout: 10000 });
+  await bob.getByText('Da non perdere!').first().waitFor();
+  await shot(bob, '09d-answers');
+  await bob.locator('.note', { hasText: chosen[0] }).getByRole('button', { name: '+ Salva nel mio archivio' }).click();
+  await toast(bob, 'Salvato nel tuo archivio');
+  // Answers live under the request, not mixed into "Ricordi aperti per te".
+  await bob.goto(APP);
+  await bob.getByRole('button', { name: /Apri Your Circle/ }).click();
+  await bob.getByText('Le tue richieste').waitFor();
+  await bob.getByRole('button', { name: /Firenze, a maggio/ }).getByText('2 consigli da 1 amico').waitFor();
+  assert.equal(await bob.locator('.note', { hasText: 'Da non perdere!' }).count(), 0);
+  await close(bob);
 });
 
 test('More of us: as many shared spaces as you like, started from a person', async () => {

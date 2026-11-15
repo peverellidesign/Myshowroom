@@ -422,6 +422,30 @@ export function createRemoteApi(user) {
       }
       return must(res);
     },
+    // ---- Chiedi consigli ----------------------------------------------------
+    // Requests you made (with the friends you asked) and requests to you.
+    async loadAsks() {
+      const [mine, rec] = await Promise.all([
+        supabase.from('asks').select('id, owner_id, title, note, created_at').eq('owner_id', me).order('created_at', { ascending: false }),
+        supabase.from('ask_recipients').select('ask_id, user_id, owner_id'),
+      ]);
+      if (mine.error?.code === '42P01' || mine.error?.code === 'PGRST205') return { mine: [], incoming: [] }; // before the ninth migration
+      const own = must(mine); const rows = must(rec);
+      const incomingIds = rows.filter(r => r.user_id === me).map(r => r.ask_id);
+      const incoming = incomingIds.length ? must(await supabase.from('asks').select('id, owner_id, title, note, created_at').in('id', incomingIds).order('created_at', { ascending: false })) : [];
+      const people = await profilesById([...rows.map(r => r.user_id), ...incoming.map(a => a.owner_id)]);
+      return {
+        mine: own.map(a => ({ ...a, recipients: rows.filter(r => r.ask_id === a.id).map(r => people[r.user_id]).filter(Boolean) })),
+        incoming: incoming.map(a => ({ ...a, owner: people[a.owner_id] })).filter(a => a.owner),
+      };
+    },
+    async createAsk({ title, note, recipientIds }) {
+      return must(await supabase.rpc('create_ask', { p_title: title, p_note: note || '', p_recipients: recipientIds }));
+    },
+    async answerAsk({ askId, itemIds, message, allowSave, allowAi }) {
+      return must(await supabase.rpc('answer_ask', { p_ask: askId, p_items: itemIds, p_message: message || '', p_allow_save: !!allowSave, p_allow_ai_export: !!allowAi }));
+    },
+    async deleteAsk(id) { must(await supabase.from('asks').delete().eq('id', id).eq('owner_id', me)); },
     async markThoughtRead(id) { must(await supabase.rpc('mark_thought_read', { p_thought: id })); },
     async saveThought(thought) {
       const id = must(await supabase.rpc('save_thought', { p_thought: thought.id }));
@@ -534,7 +558,7 @@ export function createRemoteApi(user) {
     // re-read the affected area so state always matches what we may see.
     subscribe(onChange) {
       const tables = ['items', 'collections', 'connections', 'world_shares', 'world_share_collections',
-        'thoughts', 'worlds', 'world_members', 'world_items', 'profiles'];
+        'thoughts', 'worlds', 'world_members', 'world_items', 'profiles', 'asks', 'ask_recipients'];
       const channel = supabase.channel(`sync:${me}`);
       tables.forEach(table => {
         channel.on('postgres_changes', { event: '*', schema: 'public', table }, () => onChange(table));

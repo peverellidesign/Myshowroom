@@ -356,3 +356,21 @@ button,.pick,.railItem,.chip,.opt,.ixr,.tile,.spaceCard{-webkit-user-select:none
 .item.dragging{box-shadow:0 18px 40px #00000026;transform-origin:center;cursor:grabbing;opacity:.96}
 .item:focus-visible{outline:2px solid #999;outline-offset:3px}
 .dragHint{text-align:center;margin:18px 0 0}
+/* Chiedi consigli */
+.askCard{display:flex;align-items:flex-start;gap:12px;border:1px solid #252525;border-radius:18px;padding:14px;margin-bottom:10px;background:#fff}
+.askCard.quiet{border-color:#e8e8e8;margin:4px 0 18px}
+.askCard .av{width:42px;height:42px;flex-shrink:0;border-radius:50%;display:grid;place-items:center;font-weight:700;background:#f1f0ee;overflow:hidden}
+.askBody{flex:1;min-width:0;display:grid;gap:3px}
+.askBody small{color:#8a8a8a;font-size:12px}
+.askBody strong{font-size:17px;letter-spacing:-.2px;overflow-wrap:anywhere}
+.askNote{font-size:13px;color:#555;line-height:1.45;overflow-wrap:anywhere}
+.askBody .askGiven{color:#252525;margin-top:4px}
+.askCard .pill.small{align-self:center;padding:10px 15px;flex-shrink:0}
+.askCard .pill.outline{border-color:#252525}
+.ixt.small{font-size:19px;font-weight:600;letter-spacing:-.3px}
+.askedTo{display:flex;align-items:center;gap:10px;margin:4px 0 8px;color:#777;font-size:13px}
+.askFrom{display:flex;align-items:center;gap:10px}
+.askFrom h2{margin:0}
+.av.small{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:700;background:#f1f0ee;overflow:hidden;font-size:13px}
+.wizBody .wizInput{font-size:18px}
+.wizBody .search input{border:0;background:transparent;padding:0;border-radius:0}

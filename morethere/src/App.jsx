@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   UsersRound, Camera, Search, ArrowLeft, Plus, KeyRound, Sparkles, Trash2, ExternalLink, Copy,
   FolderHeart, Send, Check, Bookmark, PenLine, X, Link2, UserRoundPlus, ChevronRight,
-  ShieldCheck, Download, LogOut, Share, Inbox, UserRoundCheck, ImagePlus, Pencil, UserRound, ArrowRight,
+  ShieldCheck, Download, LogOut, Share, Compass, Inbox, UserRoundCheck, ImagePlus, Pencil, UserRound, ArrowRight,
 } from 'lucide-react';
 import { watermark } from './lib/watermark.js';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -26,6 +26,7 @@ function Sortable({ id, children }) {
 // sent to one friend (a paper plane). More of us: two worlds overlapping into a shared space.
 const MoreOfMeIcon = ({ size = 22 }) => <UserRoundPlus size={size} strokeWidth={1.5} />;
 const MoreForYouIcon = ({ size = 22 }) => <Send size={size} strokeWidth={1.5} />;
+const AskIcon = ({ size = 22 }) => <Compass size={size} strokeWidth={1.5} />;
 const MoreOfUsIcon = ({ size = 22 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><circle cx="9" cy="12" r="6.25" /><circle cx="15" cy="12" r="6.25" /></svg>;
 import { buildAIContext, fromExportRows } from './lib/ai.js';
 import { friendlyError, photoTakenDate } from './lib/api.js';
@@ -72,6 +73,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   const [circle, setCircle] = useState({ connections: [], sharesOut: [], sharesIn: [], invitations: [] });
   const [thoughts, setThoughts] = useState({ sent: [], received: [] });
   const [worlds, setWorlds] = useState([]);
+  const [asks, setAsks] = useState({ mine: [], incoming: [] }); // Chiedi consigli
   const [notes, setNotes] = useState(readNotes); // thoughts shared outside morethere (device only)
   const [syncTick, setSyncTick] = useState(0);
 
@@ -123,6 +125,13 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   const [spaceFilter, setSpaceFilter] = useState('all'); // 'all' | 'cat:<category>' | 'by:<user id>'
   const [spaceView, setSpaceView] = useState('recent');
   const [spaceItem, setSpaceItem] = useState(null);
+  // Chiedi consigli: your request (askNew), an answer to a friend (answer), the answers you got (ask).
+  const [askStep, setAskStep] = useState(1); const [askDone, setAskDone] = useState(null);
+  const [askTitle, setAskTitle] = useState(''); const [askNote, setAskNote] = useState(''); const [askPeople, setAskPeople] = useState([]);
+  const [openAskId, setOpenAskId] = useState(null);
+  const [answering, setAnswering] = useState(null);
+  const [ansStep, setAnsStep] = useState(1); const [ansItems, setAnsItems] = useState([]); const [ansSave, setAnsSave] = useState(true);
+  const [ansAi, setAnsAi] = useState(false); const [ansMsg, setAnsMsg] = useState(''); const [ansDone, setAnsDone] = useState(0); const [ansSearch, setAnsSearch] = useState('');
   const [renameSpace, setRenameSpace] = useState(null);
   const [showAddCollection, setShowAddCollection] = useState(false);
   const [newCollection, setNewCollection] = useState('');
@@ -162,17 +171,18 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   const refreshThoughts = useCallback(async () => { if (social) setThoughts(await api.loadThoughts()); }, [api, social]);
   const refreshWorlds = useCallback(async () => { if (social) setWorlds(await api.loadWorlds()); }, [api, social]);
   const refreshProfile = useCallback(async () => { if (social) setProfile(await api.loadProfile()); }, [api, social]);
+  const refreshAsks = useCallback(async () => { if (social) setAsks(await api.loadAsks()); }, [api, social]);
 
   useEffect(() => {
     let alive = true;
     (async () => {
       try {
-        await Promise.all([refreshArchive(), refreshCircle(), refreshThoughts(), refreshWorlds(), refreshProfile()]);
+        await Promise.all([refreshArchive(), refreshCircle(), refreshThoughts(), refreshWorlds(), refreshProfile(), refreshAsks()]);
       } catch (e) { console.error(e); toast(friendlyError(e)); }
       if (alive) setLoaded(true);
     })();
     return () => { alive = false; };
-  }, [refreshArchive, refreshCircle, refreshThoughts, refreshWorlds, refreshProfile]);
+  }, [refreshArchive, refreshCircle, refreshThoughts, refreshWorlds, refreshProfile, refreshAsks]);
 
   useEffect(() => {
     const pending = new Set();
@@ -180,13 +190,13 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     const areas = {
       items: ['archive'], collections: ['archive'], connections: ['circle'], world_shares: ['circle'],
       world_share_collections: ['circle'], thoughts: ['thoughts'], worlds: ['worlds'], world_members: ['worlds', 'circle'],
-      world_items: ['worlds'], profiles: ['circle', 'profile', 'thoughts'],
+      world_items: ['worlds'], profiles: ['circle', 'profile', 'thoughts', 'asks'], asks: ['asks'], ask_recipients: ['asks'],
     };
     const flush = async () => {
       const todo = [...pending]; pending.clear();
       try {
         await Promise.all(todo.map(a => ({
-          archive: refreshArchive, circle: refreshCircle, thoughts: refreshThoughts, worlds: refreshWorlds, profile: refreshProfile,
+          archive: refreshArchive, circle: refreshCircle, thoughts: refreshThoughts, worlds: refreshWorlds, profile: refreshProfile, asks: refreshAsks,
         })[a]()));
       } catch (e) { console.error(e); }
       setSyncTick(t => t + 1);
@@ -197,11 +207,11 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
       timer = setTimeout(flush, 250);
     });
     // Catch up after the tab was in the background or the device went offline.
-    const onVisible = () => { if (document.visibilityState === 'visible') { ['archive', 'circle', 'thoughts', 'worlds'].forEach(a => pending.add(a)); flush(); } };
+    const onVisible = () => { if (document.visibilityState === 'visible') { ['archive', 'circle', 'thoughts', 'worlds', 'asks'].forEach(a => pending.add(a)); flush(); } };
     document.addEventListener('visibilitychange', onVisible);
     window.addEventListener('online', onVisible);
     return () => { unsubscribe(); clearTimeout(timer); document.removeEventListener('visibilitychange', onVisible); window.removeEventListener('online', onVisible); };
-  }, [api, refreshArchive, refreshCircle, refreshThoughts, refreshWorlds, refreshProfile]);
+  }, [api, refreshArchive, refreshCircle, refreshThoughts, refreshWorlds, refreshProfile, refreshAsks]);
 
   useEffect(() => writeNotes(notes), [notes]);
 
@@ -262,7 +272,10 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   const outgoing = circle.connections.filter(c => c.status === 'pending' && !c.incoming);
   const unread = thoughts.received.filter(t => !t.read_at).length;
   const worldInvites = worlds.filter(w => w.myStatus === 'invited');
-  const attention = incoming.length + unread + worldInvites.length;
+  const answeredBy = id => thoughts.sent.filter(t => t.ask_id === id);
+  const askAnswers = id => thoughts.received.filter(t => t.ask_id === id);
+  const asksToAnswer = asks.incoming.filter(a => !answeredBy(a.id).length);
+  const attention = incoming.length + unread + worldInvites.length + asksToAnswer.length;
   const collectionId = name => collectionRows.find(c => c.name === name)?.id || null;
 
   // ---- archive actions (same behaviour as the prototype) -------------------------
@@ -518,6 +531,18 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     openWorld(w);
   };
   const startMoreOfMe = (personId = '') => { pickShareTarget(personId); setMeStep(personId ? 2 : 1); setMeDone(false); setScreen('settings'); };
+  // ---- Chiedi consigli ----------------------------------------------------------
+  const startAsk = (personIds = []) => { setAskStep(1); setAskDone(null); setAskTitle(''); setAskNote(''); setAskPeople(personIds); setScreen('askNew'); };
+  const sendAsk = async () => {
+    const id = await run(() => api.createAsk({ title: askTitle.trim(), note: askNote.trim(), recipientIds: askPeople }));
+    if (id) { setAskDone(id); refreshAsks(); }
+  };
+  const openAsk = a => { setOpenAskId(a.id); setScreen('ask'); };
+  const startAnswer = a => { setAnswering(a); setAnsStep(1); setAnsItems([]); setAnsSave(true); setAnsAi(false); setAnsMsg(''); setAnsDone(0); setAnsSearch(''); setScreen('answer'); };
+  const sendAnswer = async () => {
+    const n = await run(() => api.answerAsk({ askId: answering.id, itemIds: ansItems, message: ansMsg.trim(), allowSave: ansSave, allowAi: ansAi }));
+    if (n) { setAnsDone(n); refreshThoughts(); }
+  };
   const startMoreOfUs = (memberIds = []) => { setSpaceMembers(memberIds); setWorldName(''); setUsStep(memberIds.length ? 2 : 1); setUsCreating(memberIds.length > 0 || !worlds.length); setScreen('worlds'); };
   const openWorld = (w) => { setSelected(w); setWorldData(null); setSpaceTab('items'); setSpaceFilter('all'); setShowSpaceAdd(false); setSpaceItem(null); setScreen('world'); };
   const reloadWorld = useCallback(async (id) => setWorldData(await api.loadWorld(id)), [api]);
@@ -651,8 +676,18 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   const cover = (paths, cls = 'mosaic') => { const urls = (paths || []).map(x => photoUrls[x]).filter(Boolean).slice(0, 4); return <span className={`${cls} n${urls.length}`} aria-hidden="true">{urls.length ? urls.map(u => <img key={u} src={u} alt="" loading="lazy" />) : <FolderHeart size={22} />}</span>; };
   const memberStack = (profiles, max = 4) => <span className="memberStack" aria-hidden="true">{profiles.slice(0, max).map((p, k) => <span key={k} className="mav">{face(p)}</span>)}{profiles.length > max && <span className="mav more">+{profiles.length - max}</span>}</span>;
   const spaceRow = w => { const others = w.others.filter(m => m.status === 'active'); const waiting = w.others.filter(m => m.status === 'invited'); return <button key={w.id} className="spaceCard" onClick={() => openWorld(w)}>{cover(w.cover_path ? [w.cover_path] : w.covers)}<span className="scBody"><strong>{w.name}</strong><small>{others.length ? 'Con ' + others.map(m => nameOf(m.profile)).join(', ') : 'Solo tu, per ora'}{waiting.length ? ` · ${waiting.length} ${waiting.length === 1 ? 'invito' : 'inviti'} in attesa` : ''}</small><span className="scMeta">{memberStack([profile, ...others.map(m => m.profile)].filter(Boolean))}<span>{w.count} {w.count === 1 ? 'scoperta' : 'scoperte'}</span></span></span><ChevronRight size={18} /></button>; };
-  const title = { home: 'morethere', circle: 'Your Circle', friend: nameOf(friend), worlds: 'More of us', world: 'Spazio condiviso', thought: 'More for you', detail: 'La tua scoperta', settings: 'More of me', export: 'Use with AI', profile: 'Il mio profilo' }[screen] || 'morethere';
+  const title = { home: 'morethere', circle: 'Your Circle', friend: nameOf(friend), worlds: 'More of us', world: 'Spazio condiviso', thought: 'More for you', detail: 'La tua scoperta', settings: 'More of me', export: 'Use with AI', profile: 'Il mio profilo', askNew: 'Chiedi consigli', answer: 'Consiglia', ask: 'I tuoi consigli' }[screen] || 'morethere';
   const signInHint = <p className="hint">Questa versione funziona solo su questo dispositivo. Configura il backend Supabase e accedi per connetterti alle persone di cui ti fidi.</p>;
+
+  // A memory a friend opened to you (also used for answers to your requests).
+  const receivedCard = (t, { grouped = false } = {}) => { const it = t.item; const img = photoUrls[it?.image_path || t.item_image_path]; const url = it ? it.url : t.item_url; return <div className={'note' + (t.read_at ? '' : ' unread')} key={t.id}>{!grouped && <><strong>Da {nameOf(t.sender)}</strong>{t.message && <p>{t.message}</p>}</>}{it ? <>{img && <Photo className="notephoto" url={img} alt={it.title} />}<span className="openedTitle">{it.title}</span>{it.note && <small className="openedNote">{it.note.slice(0, 160)}</small>}</> : <small>{t.item_title} · non è più disponibile</small>}
+          {it && <div className="noteactions">{safeUrl(url || '') && <a className="textlink" href={url} target="_blank" rel="noopener noreferrer" onClick={() => api.markThoughtRead(t.id).then(refreshThoughts).catch(() => {})}>Apri <ExternalLink size={12} /></a>}{t.allow_save && <button className="textlink" disabled={busy} onClick={async () => { const r = await run(() => api.saveThought(t), 'Salvato nel tuo archivio'); if (r) { refreshArchive(); refreshThoughts(); } }}>+ Salva nel mio archivio</button>}{!t.read_at && <button className="textlink" onClick={() => api.markThoughtRead(t.id).then(refreshThoughts).catch(() => {})}>Segna come visto</button>}{t.allow_ai_export && <button className="textlink" onClick={() => exportShared([{ title: it.title, url: it.url, note: t.message ? `${it.note}\nDedication: ${t.message}` : it.note, category: it.category, collection: 'More for you', added_by_name: nameOf(t.sender) }], 'MORETHERE — SHARED CONTEXT', nameOf(t.sender))}>Use with AI</button>}</div>}</div>; };
+  // Opening your request marks its answers as seen.
+  useEffect(() => {
+    if (screen !== 'ask' || !openAskId) return;
+    const unseen = thoughts.received.filter(t => t.ask_id === openAskId && !t.read_at);
+    if (unseen.length) Promise.all(unseen.map(t => api.markThoughtRead(t.id))).then(refreshThoughts).catch(() => {});
+  }, [screen, openAskId, thoughts.received, api, refreshThoughts]);
 
   const friendShare = friendData?.share;
   const friendGroups = useMemo(() => {
@@ -679,16 +714,18 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
       {social && incoming.length > 0 && <section className="block first">{incoming.map(c => <div key={c.id} className="requestCard"><span className="av" aria-hidden="true">{face(c.other)}</span><span className="rq"><strong>{nameOf(c.other)} vuole aggiungerti</strong><small>@{c.other.handle}</small></span><button className="pill light small" disabled={busy} onClick={() => respond(c.id, true)}>Accetta</button><button className="iconbtn onDark" aria-label="Rifiuta" disabled={busy} onClick={() => respond(c.id, false)}><X size={18} /></button></div>)}</section>}
       <section className={'block' + (social && incoming.length ? '' : ' first')}><div className="ix">
         <button className="ixr" onClick={() => startMoreOfMe()}><span className="ixi" aria-hidden="true"><MoreOfMeIcon /></span><span className="ixb"><span className="ixt">More <b>of me.</b></span><span className="ixs">Aggiungi un amico alla tua raccolta.</span></span><span className="ixgo" aria-hidden="true"><ArrowRight size={17} strokeWidth={1.5} /></span></button>
+        <button className="ixr" onClick={() => startAsk()}><span className="ixi" aria-hidden="true"><AskIcon /></span><span className="ixb"><span className="ixt">Chiedi <b>consigli.</b></span><span className="ixs">Parti per Firenze? I tuoi amici ti mandano i loro posti e le loro foto.</span>{(asksToAnswer.length > 0 || asks.mine.length > 0) && <span className="ixmeta">{[asksToAnswer.length ? `${asksToAnswer.length} ${asksToAnswer.length === 1 ? 'amico ti chiede' : 'amici ti chiedono'} un consiglio` : '', asks.mine.length ? `${asks.mine.length} ${asks.mine.length === 1 ? 'tua richiesta' : 'tue richieste'}` : ''].filter(Boolean).join(' · ')}</span>}</span><span className="ixgo" aria-hidden="true"><ArrowRight size={17} strokeWidth={1.5} /></span></button>
         <button className="ixr us" onClick={() => startMoreOfUs()}><span className="ixi" aria-hidden="true"><MoreOfUsIcon /></span><span className="ixb"><span className="ixt">More <b>of us.</b></span><span className="ixs">Crea uno spazio con i tuoi amici: le vostre scoperte, insieme.</span>{(worldInvites.length > 0 || activeSpaces.length > 0) && <span className="ixmeta">{[activeSpaces.length ? `${activeSpaces.length} ${activeSpaces.length === 1 ? 'spazio' : 'spazi'}` : '', worldInvites.length ? `${worldInvites.length} ${worldInvites.length === 1 ? 'invito' : 'inviti'} da accettare` : ''].filter(Boolean).join(' · ')}</span>}</span><span className="ixgo" aria-hidden="true"><ArrowRight size={17} strokeWidth={1.5} /></span></button>
       </div></section>
+      {social && asks.incoming.length > 0 && <section className="block"><div className="blockHead"><h2>Ti chiedono un consiglio</h2></div>{asks.incoming.map(a => { const given = answeredBy(a.id).length; return <div key={a.id} className="askCard"><span className="av" aria-hidden="true">{face(a.owner)}</span><span className="askBody"><small>{nameOf(a.owner)} chiede</small><strong>{a.title}</strong>{a.note && <span className="askNote">{a.note}</span>}{given > 0 && <small className="askGiven"><Check size={12} className="inline" /> Hai mandato {given} {given === 1 ? 'consiglio' : 'consigli'}</small>}</span><button className={'pill small ' + (given ? 'outline' : 'dark')} onClick={() => startAnswer(a)}>{given ? 'Ancora' : 'Consiglia'}</button></div>; })}</section>}
+      {social && asks.mine.length > 0 && <section className="block"><div className="blockHead"><h2>Le tue richieste</h2></div><div className="ix">{asks.mine.map(a => { const got = askAnswers(a.id); const fresh = got.filter(t => !t.read_at).length; const people = new Set(got.map(t => t.sender_id)).size; return <button key={a.id} className="ixr askRow" onClick={() => openAsk(a)}><span className="ixi" aria-hidden="true"><AskIcon size={20} /></span><span className="ixb"><span className="ixt small">{a.title}</span><span className="ixs">{got.length ? `${got.length} ${got.length === 1 ? 'consiglio' : 'consigli'} da ${people} ${people === 1 ? 'amico' : 'amici'}` : `Chiesto a ${a.recipients.map(nameOf).join(', ')}`}{fresh ? ` · ${fresh} ${fresh === 1 ? 'nuovo' : 'nuovi'}` : ''}</span></span><span className="ixgo" aria-hidden="true"><ArrowRight size={17} strokeWidth={1.5} /></span></button>; })}</div></section>}
       {social && <section className="block"><div className="blockHead"><h2>Dai tuoi amici</h2>{accepted.length > 0 && <span className="count">{accepted.length}</span>}</div>
         {accepted.length || outgoing.length ? <><p className="hint railHint lead">Tocca un amico per vedere cosa condivide con te e i vostri spazi.</p><div className="peopleRail">
           {accepted.map(c => { const sh = circle.sharesIn.some(x => x.owner_id === c.other.id); return <button key={c.id} className={'railItem' + (sh ? ' shares' : '')} aria-label={`${nameOf(c.other)}${sh ? ', condivide qualcosa con te' : ''}`} onClick={() => openFriend(c.other)}><span className="av" aria-hidden="true">{face(c.other)}</span><span className="rn">{nameOf(c.other)}</span></button>; })}
           {outgoing.map(c => <button key={c.id} className="railItem pending" aria-label={`${nameOf(c.other)}, richiesta in attesa`} onClick={async () => { if (!window.confirm(`Annullare la richiesta a ${nameOf(c.other)}?`)) return; await run(() => api.removeConnection(c.other.id), 'Richiesta annullata'); refreshCircle(); }}><span className="av" aria-hidden="true">{face(c.other)}</span><span className="rn">In attesa</span></button>)}
         </div>{accepted.some(c => circle.sharesIn.some(x => x.owner_id === c.other.id)) && <p className="hint railHint"><span className="ringDot" aria-hidden="true" /> condivide qualcosa con te</p>}</>
           : <div className="empty compact">Quando aggiungi un amico, qui vedrai cosa condivide con te.</div>}
-        {thoughts.received.length > 0 && <><h3 className="subHead">Ricordi aperti per te</h3>{thoughts.received.map(t => { const it = t.item; const img = photoUrls[it?.image_path || t.item_image_path]; const url = it ? it.url : t.item_url; return <div className={'note' + (t.read_at ? '' : ' unread')} key={t.id}><strong>Da {nameOf(t.sender)}</strong>{t.message && <p>{t.message}</p>}{it ? <>{img && <Photo className="notephoto" url={img} alt={it.title} />}<span className="openedTitle">{it.title}</span>{it.note && <small className="openedNote">{it.note.slice(0, 160)}</small>}</> : <small>{t.item_title} · non è più disponibile</small>}
-          {it && <div className="noteactions">{safeUrl(url || '') && <a className="textlink" href={url} target="_blank" rel="noopener noreferrer" onClick={() => api.markThoughtRead(t.id).then(refreshThoughts).catch(() => {})}>Apri <ExternalLink size={12} /></a>}{t.allow_save && <button className="textlink" disabled={busy} onClick={async () => { const r = await run(() => api.saveThought(t), 'Salvato nel tuo archivio'); if (r) { refreshArchive(); refreshThoughts(); } }}>+ Salva nel mio archivio</button>}{!t.read_at && <button className="textlink" onClick={() => api.markThoughtRead(t.id).then(refreshThoughts).catch(() => {})}>Segna come visto</button>}{t.allow_ai_export && <button className="textlink" onClick={() => exportShared([{ title: it.title, url: it.url, note: t.message ? `${it.note}\nDedication: ${t.message}` : it.note, category: it.category, collection: 'More for you', added_by_name: nameOf(t.sender) }], 'MORETHERE — SHARED CONTEXT', nameOf(t.sender))}>Use with AI</button>}</div>}</div>; })}</>}
+        {thoughts.received.some(t => !t.ask_id) && <><h3 className="subHead">Ricordi aperti per te</h3>{thoughts.received.filter(t => !t.ask_id).map(t => receivedCard(t))}</>}
       </section>}
       {(thoughts.sent.length > 0 || notes.length > 0) && <><h2>Ricordi che hai aperto</h2>{thoughts.sent.map(n => <div className="note" key={n.id}><strong>A {nameOf(n.recipient)}</strong><span className="openedTitle">{n.item?.title || n.item_title}</span><small>{n.allow_save ? 'Può guardare e salvare' : 'Può solo guardare'}{n.allow_ai_export ? ' · AI' : ''} · {n.read_at ? 'Visto' : 'Non ancora visto'} · {fmtDate(n.created_at)}</small>{n.message && <p className="dedication">“{n.message}”</p>}<div className="noteactions"><button className="textlink" onClick={async () => { if (!window.confirm(`Togliere a ${nameOf(n.recipient)} l'accesso a questo ricordo?`)) return; await run(() => api.deleteThought(n.id), 'Accesso tolto'); refreshThoughts(); }}>Togli</button></div></div>)}{notes.map(n => <div className="note" key={n.id}><strong>A {n.recipient}</strong><span className="openedTitle">{n.item?.title}</span><small>Condiviso fuori da morethere, con un messaggio</small></div>)}</>}
       {social && profile && <p className="hint usernameHint">Il tuo nome utente è <strong>@{profile.handle}</strong>: dallo a chi vuoi che ti aggiunga.</p>}</main>}
@@ -790,6 +827,44 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
         : <><h1>{selected.title}</h1>{safeUrl(selected.url || '') && <a className="outlink" href={selected.url} target="_blank" rel="noopener noreferrer">Apri la fonte <ExternalLink size={17} /></a>}{selected.note && <p className="notebody">{selected.note}</p>}
           <div className="detailtools"><button className="textlink" onClick={() => setEdit({ title: selected.title, url: selected.url || '', note: selected.note || '', memory_date: selected.memory_date || '' })}><Pencil size={14} /> Modifica</button><button className="textlink" disabled={busy} onClick={() => pickPhoto(selected.id)}><ImagePlus size={14} /> {selected.image_path ? 'Cambia foto' : 'Aggiungi foto'}</button>{social && safeUrl(selected.url || '') && !selected.image_path && <button className="textlink" disabled={busy} onClick={async () => { setBusy(true); const ok = await enrichLink(selected); setBusy(false); toast(ok ? 'Anteprima aggiornata' : 'Questa pagina non offre un\'anteprima'); if (ok) refreshArchive(); }}><Link2 size={14} /> Aggiorna anteprima</button>}<button className="textlink danger" onClick={async () => { if (!window.confirm(`Eliminare "${selected.title}"?`)) return; await removeItem(selected); goBack(); }}><Trash2 size={14} /> Elimina</button></div></>}
       <div className="panel"><label htmlFor="col">RACCOLTA</label><select id="col" value={selected.collection || ''} onChange={async e => { const v = e.target.value; const id = collectionId(v); setItems(arr => arr.map(i => i.id === selected.id ? { ...i, collection: v, collection_id: id } : i)); setSelected({ ...selected, collection: v, collection_id: id }); try { await api.updateItem(selected.id, { collection_id: id, collection: v }); } catch (err) { toast(friendlyError(err)); refreshArchive(); } }}>{!selected.collection && <option value="">—</option>}{collections.map(c => <option key={c}>{c}</option>)}</select></div><div className="stack"><button className="feature mfyFeature" onClick={() => share(selected)}><span className="ixi" aria-hidden="true"><MoreForYouIcon /></span><span><strong>More for you.</strong><small>Apri questo ricordo a un amico, con una dedica</small></span><ChevronRight /></button><button className="feature" onClick={() => exportAI([selected])}><Sparkles /><span><strong>Use with AI</strong><small>Copia il contesto</small></span><ChevronRight /></button></div></main>}
+
+    {screen === 'askNew' && <main><div className="eyebrow">CHIEDI CONSIGLI</div><h1>Dove vai?</h1>
+      {askDone ? doneView({ title: 'Chiesto.', text: `Quando i tuoi amici rispondono, trovi i loro posti e le loro foto in Your Circle, sotto “${askTitle.trim()}”.`, actions: <><button className="pill dark wide" onClick={() => { setOpenAskId(askDone); setScreen('ask', { replace: true }); }}>Apri la richiesta</button><button className="pill outline wide" onClick={() => setScreen('circle')}>Torna a Your Circle</button></> }) : <>
+        {askStep === 1 && wizard({ n: 1, total: 2, question: 'Dove vai, o cosa cerchi?', hint: 'Per esempio: Firenze, a maggio.', canNext: !!askTitle.trim(), onNext: () => setAskStep(2), children: <>
+          <input className="wizInput" aria-label="LA TUA RICHIESTA" maxLength={120} autoFocus placeholder="Firenze, a maggio" value={askTitle} onChange={e => setAskTitle(e.target.value)} onKeyDown={e => e.key === 'Enter' && askTitle.trim() && setAskStep(2)} />
+          <textarea aria-label="DETTAGLI" rows="3" maxLength={1000} placeholder="Cosa ti piacerebbe? Ristoranti, musei, posti tranquilli…" value={askNote} onChange={e => setAskNote(e.target.value)} /></> })}
+        {askStep === 2 && wizard({ n: 2, total: 2, question: 'A chi lo chiedi?', hint: accepted.length ? 'Solo loro vedranno la tua richiesta.' : 'Non hai ancora amici su morethere: aggiungine uno con More of me.', canNext: askPeople.length > 0, onBack: () => setAskStep(1), onNext: sendAsk, nextLabel: askPeople.length > 1 ? `Chiedi a ${askPeople.length} amici` : 'Chiedi', children: <>
+          {accepted.length ? <>{peoplePicker(askPeople, id => setAskPeople(v => (v.includes(id) ? v.filter(x => x !== id) : [...v, id])), { add: false })}{accepted.length > 1 && <button type="button" className="textlink" onClick={() => setAskPeople(askPeople.length === accepted.length ? [] : accepted.map(c => c.other.id))}>{askPeople.length === accepted.length ? 'Togli tutti' : 'Tutti i miei amici'}</button>}</> : <button type="button" className="pill outline wide" onClick={() => startMoreOfMe()}><MoreOfMeIcon size={18} /> Aggiungi un amico</button>}</> })}
+      </>}</main>}
+
+    {screen === 'answer' && answering && <main><div className="eyebrow">CONSIGLIA</div><h1>{nameOf(answering.owner)} chiede.</h1>
+      <div className="askCard quiet"><span className="av" aria-hidden="true">{face(answering.owner)}</span><span className="askBody"><strong>{answering.title}</strong>{answering.note && <span className="askNote">{answering.note}</span>}</span></div>
+      {ansDone ? doneView({ title: 'Fatto.', text: `${nameOf(answering.owner)} ora vede ${ansDone} ${ansDone === 1 ? 'tuo consiglio' : 'tuoi consigli'}. Restano nella tua raccolta: puoi toglierli quando vuoi da Your Circle.`, actions: <button className="pill dark wide" onClick={() => setScreen('circle')}>Torna a Your Circle</button> }) : (() => {
+        const q = ansSearch.trim().toLowerCase();
+        const pickable = items.filter(i => !q || [i.title, i.note, i.url, i.category, i.collection].join(' ').toLowerCase().includes(q));
+        const who = nameOf(answering.owner); const n = ansItems.length;
+        return <>
+          {ansStep === 1 && wizard({ n: 1, total: 3, question: `Cosa consigli a ${who}?`, hint: 'Scegli uno o più posti e foto dalla tua raccolta.', canNext: n > 0, onNext: () => setAnsStep(2), nextLabel: n ? `Avanti · ${n}` : 'Avanti', children: <>
+            <div className="search"><Search size={19} /><input aria-label="Cerca nel tuo archivio" placeholder="Cerca: Firenze, ristorante…" value={ansSearch} onChange={e => setAnsSearch(e.target.value)} /></div>
+            <div className="pickGrid">{pickable.map(i => { const on = ansItems.includes(i.id); return <button key={i.id} type="button" role="checkbox" aria-checked={on} aria-label={i.title} className={'pickTile' + (on ? ' added' : '')} onClick={() => setAnsItems(v => (on ? v.filter(x => x !== i.id) : [...v, i.id]))}><span className="ptImg">{photoUrls[i.image_path] ? <Photo url={photoUrls[i.image_path]} /> : (i.url ? <Link2 size={20} /> : <PenLine size={20} />)}{on && <span className="ptCheck"><Check size={14} /></span>}</span><span className="ptTitle">{i.title}</span></button>; })}</div>
+            {!pickable.length && <div className="empty compact">{items.length ? 'Nessun risultato.' : 'La tua raccolta è vuota: salva prima qualcosa dalla home.'}</div>}</> })}
+          {ansStep === 2 && wizard({ n: 2, total: 3, question: `Cosa può fare ${who}?`, onBack: () => setAnsStep(1), onNext: () => setAnsStep(3), children: <>
+            <div className="opts" role="radiogroup">{option({ on: ansSave, title: 'Guardare e salvare', desc: 'Può tenersi una copia per il suo viaggio.', onClick: () => setAnsSave(true) })}{option({ on: !ansSave, title: 'Solo guardare', desc: 'Li vede nella tua raccolta, sempre aggiornati.', onClick: () => setAnsSave(false) })}</div>
+            <div className="wizToggle"><Toggle checked={ansAi} onChange={setAnsAi} label="Può usarli con l'AI" hint="Per esempio per farsi preparare un itinerario." /></div></> })}
+          {ansStep === 3 && wizard({ n: 3, total: 3, question: 'Vuoi aggiungere due parole?', hint: 'Puoi anche lasciarlo vuoto.', onBack: () => setAnsStep(2), onNext: sendAnswer, nextLabel: `Manda ${n} ${n === 1 ? 'consiglio' : 'consigli'}`, children: <>
+            <textarea aria-label="IL TUO MESSAGGIO" rows="4" maxLength={1000} placeholder="Da non perdere: chiedi del tavolo in giardino." value={ansMsg} onChange={e => setAnsMsg(e.target.value)} /></> })}
+        </>;
+      })()}</main>}
+
+    {screen === 'ask' && (() => {
+      const a = asks.mine.find(x => x.id === openAskId);
+      if (!a) return <main><div className="empty">Questa richiesta non c'è più.</div></main>;
+      const got = askAnswers(a.id);
+      return <main><div className="eyebrow">LA TUA RICHIESTA</div><h1>{a.title}</h1>{a.note && <p className="muted">{a.note}</p>}
+        <div className="askedTo">{memberStack(a.recipients, 6)}<span>Chiesto a {a.recipients.map(nameOf).join(', ')}</span></div>
+        {a.recipients.map(r => { const mine = got.filter(t => t.sender_id === r.id); return <section key={r.id} className="block"><div className="blockHead askFrom"><span className="av small" aria-hidden="true">{face(r)}</span><h2>{nameOf(r)}</h2>{mine.length > 0 && <span className="count">{mine.length}</span>}</div>{mine.length ? <>{[...new Set(mine.map(t => t.message).filter(Boolean))].map(m => <p key={m} className="dedication">“{m}”</p>)}{mine.map(t => receivedCard(t, { grouped: true }))}</> : <div className="empty compact">Non ha ancora risposto.</div>}</section>; })}
+        <button className="textlink danger" onClick={async () => { if (!window.confirm('Eliminare questa richiesta? I consigli ricevuti restano finché i tuoi amici non li tolgono.')) return; const r = await run(() => api.deleteAsk(a.id), 'Richiesta eliminata'); if (r) { await refreshAsks(); goBack(); } }}><Trash2 size={13} /> Elimina la richiesta</button></main>;
+    })()}
 
     {screen === 'thought' && <main><div className="eyebrow">SCOPERTA PERSONALE</div><h1>More for you.</h1>
       {(() => {
