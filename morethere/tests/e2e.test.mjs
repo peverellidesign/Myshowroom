@@ -192,7 +192,7 @@ test('edit an item, rename and delete a collection', async () => {
   page.once('dialog', d => d.accept());
   await page.getByRole('button', { name: 'Elimina raccolta' }).click();
   await toast(page, 'Raccolta eliminata');
-  assert.equal(await page.getByRole('button', { name: 'Design e casa', exact: true }).count(), 0);
+  await page.getByRole('button', { name: 'Design e casa', exact: true }).waitFor({ state: 'detached' });
 });
 
 test('drag and drop: your own order, kept on every device', async () => {
@@ -628,6 +628,15 @@ test('profile: edit, export data, sign out', async () => {
   await toast(alice, 'Foto profilo aggiornata');
   await alice.locator('.profileHero img.faceImg').waitFor();
   assert.ok(await alice.locator('.profileHero img.faceImg').evaluate(img => img.complete && img.naturalWidth > 0), 'own photo loads');
+  // Tap the photo to see it large; tap again to close.
+  await alice.getByRole('button', { name: 'Ingrandisci la tua foto' }).click();
+  const big = alice.getByRole('dialog', { name: /Foto di Alice/ });
+  await big.locator('img').waitFor();
+  await alice.waitForTimeout(400); // the photo grows in
+  assert.ok((await big.locator('img').boundingBox()).width > 300, 'shown large');
+  await shot(alice, '11a-photo-large');
+  await big.click();
+  await big.waitFor({ state: 'detached' });
   const bob = people.bob.page;
   await bob.goto(APP);
   await bob.getByRole('button', { name: /Apri Your Circle/ }).click();
