@@ -408,3 +408,16 @@ header{gap:12px}
   .ixt{font-size:22px}
   .wizQ{font-size:21px}
 }
+/* iPhone (Safari/WebKit): no native look, no surprise zoom or tap flashes. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
+body{-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}
+button,a{-webkit-tap-highlight-color:transparent}
+input:not([type=checkbox]):not([type=radio]):not([type=file]),textarea,select{-webkit-appearance:none;appearance:none;border-radius:16px;box-shadow:none;color:#252525}
+input::placeholder,textarea::placeholder{color:#a3a3a3;opacity:1}
+select{background-color:#fff!important;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23252525' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")!important;background-repeat:no-repeat!important;background-position:right 16px center!important;padding-right:42px!important}
+input[type=date]{min-height:54px;display:flex;align-items:center;text-align:left;background:#fff}
+input[type=date]::-webkit-date-and-time-value{text-align:left;margin:0}
+input[type=date]::-webkit-calendar-picker-indicator{opacity:.55}
+input[type=date].empty::before{content:'Scegli una data';color:#a3a3a3}
+input[type=date].empty:focus::before{content:''}
+h1.first{margin-top:4px}

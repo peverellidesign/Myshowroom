@@ -488,7 +488,7 @@ test('More of us: as many shared spaces as you like, started from a person', asy
   // The back arrow goes back one step at a time: space → More of us → Bob → Circle → home.
   const backArrow = alice.getByRole('button', { name: /^Indietro/ });
   await backArrow.click();
-  await alice.getByRole('heading', { name: 'More of us.' }).waitFor();
+  await alice.getByRole('button', { name: /Nuovo spazio/ }).waitFor();
   await backArrow.click();
   await alice.getByRole('heading', { name: 'Bob' }).waitFor();
   await backArrow.click();
