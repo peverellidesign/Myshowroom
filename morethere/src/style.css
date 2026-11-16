@@ -385,3 +385,26 @@ button,.pick,.railItem,.chip,.opt,.ixr,.tile,.spaceCard{-webkit-user-select:none
 .sentToggle span:first-child{flex:1}
 .sentToggle svg{transition:transform .15s}
 .sentToggle svg.turned{transform:rotate(90deg)}
+/* Phones: nothing may push the page sideways. */
+.app{overflow-x:clip}
+.stack>*,.spaceCard{min-width:0}
+.ptTitle{overflow-wrap:anywhere}
+@media(max-width:380px){.peopleRail{margin:0 -17px;padding-left:17px;padding-right:17px}}
+/* Header title: one line, never taller than the bar. */
+header>div{min-width:0;flex:1}
+.brand{max-width:100%;min-width:0}
+.brandText{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+header .pill,header .headActions{flex-shrink:0}
+header{gap:12px}
+.itemtitle{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+/* Narrow phones (iPhone SE, mini): calmer type sizes. */
+@media(max-width:380px){
+  .brand{font-size:22px}
+  h1{font-size:26px;margin:18px 0 12px}
+  .heroTitle h1{font-size:26px}
+  .personHero h1{font-size:24px}
+  .itemtitle{font-size:15px;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .itembody{padding:12px}
+  .ixt{font-size:22px}
+  .wizQ{font-size:21px}
+}
