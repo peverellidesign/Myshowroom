@@ -6,7 +6,7 @@
 //   * every hostname is resolved and *all* its addresses must be public;
 //     the connection is pinned to the address we checked (no DNS rebinding);
 //   * redirects are re-checked hop by hop (max 3);
-//   * 5 s timeout, 512 KB read limit, HTML only;
+//   * 5 s timeout, 1.5 MB read limit, HTML only;
 //   * per-user rate limit; results cached for an hour.
 
 import dns from 'node:dns/promises';
@@ -17,7 +17,7 @@ import https from 'node:https';
 const SUPABASE_URL = (process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL || '').replace(/\/$/, '');
 const SUPABASE_KEY = process.env.VITE_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
 const ALLOW_PRIVATE = process.env.PREVIEW_ALLOW_PRIVATE === '1'; // tests only
-const MAX_BYTES = 512 * 1024;
+const MAX_BYTES = 1536 * 1024;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const IMAGE_TYPES = /^image\/(jpeg|png|webp|gif|avif)\b/i;
 const TIMEOUT_MS = 5000;
@@ -115,7 +115,10 @@ function meta(html, keys) {
 }
 
 export function parsePreview(html) {
-  const head = html.slice(0, 200000);
+  // The whole <head>: some builders (Wix, Shopify) put hundreds of KB of
+  // scripts before the og: tags.
+  const end = html.search(/<\/head>/i);
+  const head = end > 0 ? html.slice(0, end) : html;
   const title = meta(head, ['og:title', 'twitter:title']) || decode(head.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] || '');
   const description = meta(head, ['og:description', 'twitter:description', 'description']);
   const site = meta(head, ['og:site_name', 'application-name']);
@@ -183,7 +186,7 @@ async function previewUncached(raw) {
     let value = { ...parsed, image: absolute(parsed.image, url), url: url.href };
     // Missing title or image: try the oEmbed description the page links to.
     if (!value.title || !value.image) {
-      const tag = text.slice(0, 200000).match(/<link\b[^>]*type\s*=\s*["']application\/json\+oembed["'][^>]*>/i)?.[0];
+      const tag = text.slice(0, 1_000_000).match(/<link\b[^>]*type\s*=\s*["']application\/json\+oembed["'][^>]*>/i)?.[0];
       const href = tag?.match(/href\s*=\s*("([^"]*)"|'([^']*)')/i);
       const endpoint = absolute(href ? decode(href[2] ?? href[3] ?? '') : '', url);
       if (endpoint) {

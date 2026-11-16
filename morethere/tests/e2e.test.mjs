@@ -618,7 +618,10 @@ test('share to morethere from another app, and from morethere to other apps', as
 test('profile: edit, export data, sign out', async () => {
   const alice = people.alice.page;
   await alice.goto(APP);
-  // The profile is one tap away from the home page.
+  // The profile is one tap away from the home page, at the right edge of the bar.
+  const pb = await alice.getByRole('button', { name: 'Il mio profilo' }).boundingBox();
+  const vw = alice.viewportSize().width;
+  assert.ok(vw - (pb.x + pb.width) < 40, `profile button sits at the right edge (${Math.round(pb.x + pb.width)} of ${vw})`);
   await alice.getByRole('button', { name: 'Il mio profilo' }).click();
   // Profile photo: square, private, seen by her people.
   await alice.getByTestId('avatar-input').setInputFiles(EXIF_PHOTO);

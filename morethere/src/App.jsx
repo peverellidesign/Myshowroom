@@ -295,10 +295,14 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   // Title, description and cover image from the page. Never overwrites what
   // the person wrote: the title only while it is still the bare hostname,
   // the note only while empty, the photo only while there is none.
+  // One preview per link at a time (saving a link and the background pass could both ask).
+  const enrichingIds = useRef(new Set());
   const enrichLink = async (item) => {
     const url = safeUrl(item.url || '');
-    if (!url) return false;
+    if (!url || enrichingIds.current.has(item.id)) return false;
+    enrichingIds.current.add(item.id);
     try {
+      try { const t = JSON.parse(localStorage.getItem('mt_enriched') || '[]'); if (!t.includes(item.id)) localStorage.setItem('mt_enriched', JSON.stringify([...t, item.id].slice(-500))); } catch { /* ignore */ }
       const p = await api.linkPreview(url);
       if (!p) return false;
       const patch = {};
@@ -314,6 +318,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
       setSelected(sel => (sel?.id === item.id ? { ...sel, ...patch } : sel));
       return true;
     } catch { return false; } // previews are best effort
+    finally { enrichingIds.current.delete(item.id); }
   };
   useEffect(() => {
     setExtFile(null);
