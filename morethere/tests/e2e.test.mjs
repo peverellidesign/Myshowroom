@@ -615,6 +615,30 @@ test('share to morethere from another app, and from morethere to other apps', as
   assert.equal(await card.locator('.preview img').getAttribute('src').catch(() => original), original, 'the archive photo is unchanged');
 });
 
+test('Use with AI: copy only a trip, with the question already written', async () => {
+  const alice = people.alice.page;
+  await alice.goto(APP);
+  await alice.getByRole('button', { name: 'Il mio profilo' }).click();
+  await alice.getByRole('button', { name: /Use with AI/ }).click();
+  await alice.getByRole('heading', { name: "Su cosa vuoi chiedere all'AI?" }).waitFor();
+  await alice.getByRole('radio', { name: /Un luogo o un tema/ }).click();
+  await alice.getByLabel('Luogo o tema').fill('kyoto');
+  const rows = alice.locator('.aiRow');
+  await rows.first().waitFor();
+  const found = await rows.allInnerTexts();
+  assert.ok(found.length >= 2 && found.every(t => /kyoto/i.test(t)), 'only Kyoto memories');
+  await rows.last().click(); // leave one out
+  await alice.getByRole('button', { name: 'Organizzami un itinerario' }).click();
+  await shot(alice, '11c-ai');
+  await alice.getByRole('button', { name: new RegExp(`Copia per l'AI · ${found.length - 1}`) }).click();
+  await toast(alice, 'Contesto copiato');
+  const text = await alice.evaluate(() => navigator.clipboard.readText());
+  assert.match(text, /Scope: everything about "kyoto"/);
+  assert.match(text, /My request: Organizzami un itinerario/);
+  assert.doesNotMatch(text, /example\.org/);
+  assert.doesNotMatch(text, new RegExp(found[found.length - 1].trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')));
+});
+
 test('profile: edit, export data, sign out', async () => {
   const alice = people.alice.page;
   await alice.goto(APP);

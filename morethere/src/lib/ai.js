@@ -1,12 +1,13 @@
 // AI Context Builder — same output format as the original prototype, extended
 // with the source of each entry so the assistant can tell whose it is.
 
-export function buildAIContext(data, { heading = 'MORETHERE — PERSONAL CONTEXT', source } = {}) {
+export function buildAIContext(data, { heading = 'MORETHERE — PERSONAL CONTEXT', source, scope, request } = {}) {
   const lines = [
     heading,
     'Use these references to answer my next request. Distinguish notes from external sources. Do not assume links were verified.',
   ];
   if (source) lines.push(`Shared with permission by: ${source}`);
+  if (scope) lines.push(`Scope: ${scope}`);
   lines.push('');
   data.forEach((i, n) => {
     const parts = [
@@ -20,6 +21,7 @@ export function buildAIContext(data, { heading = 'MORETHERE — PERSONAL CONTEXT
     if (i.from) parts.push(`From: ${i.from}`);
     lines.push(parts.join('\n'));
   });
+  if (request) lines.push('', `My request: ${request}`);
   return lines.join('\n');
 }
 

@@ -131,6 +131,9 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   const [askTitle, setAskTitle] = useState(''); const [askNote, setAskNote] = useState(''); const [askPeople, setAskPeople] = useState([]);
   const [showSent, setShowSent] = useState(false);
   const [bigFace, setBigFace] = useState(null); // a profile photo, enlarged
+  // Use with AI: what to give the assistant (everything, collections, a place or theme, or a hand-picked set).
+  const [aiMode, setAiMode] = useState('all'); const [aiCols, setAiCols] = useState([]); const [aiQuery, setAiQuery] = useState('');
+  const [aiPicked, setAiPicked] = useState([]); const [aiSkip, setAiSkip] = useState([]); const [aiAsk, setAiAsk] = useState('');
   const [askPlace, setAskPlace] = useState(''); const [hereBusy, setHereBusy] = useState(false);
   const [openAskId, setOpenAskId] = useState(null);
   const [answering, setAnswering] = useState(null);
@@ -478,6 +481,19 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     try { await navigator.clipboard.writeText(text); toast('Contesto copiato. Incollalo nel tuo assistente AI.'); } catch { setExportText(text); setScreen('export'); }
   };
   const exportAI = async (data = items) => deliverAI(buildAIContext(data));
+  const startAI = () => { setAiMode('all'); setAiCols([]); setAiQuery(''); setAiPicked([]); setAiSkip([]); setAiAsk(''); setScreen('ai'); };
+  const foldText = x => (x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const aiFound = useMemo(() => {
+    const words = foldText(aiQuery).split(/[\s,]+/).filter(Boolean);
+    if (!words.length) return [];
+    return items.filter(i => { const t = foldText([i.title, i.note, i.url, i.collection, i.category].join(' ')); return words.every(w => t.includes(w)); });
+  }, [items, aiQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+  const aiItems = aiMode === 'all' ? items
+    : aiMode === 'collection' ? items.filter(i => aiCols.includes(i.collection))
+    : aiMode === 'search' ? aiFound.filter(i => !aiSkip.includes(i.id))
+    : items.filter(i => aiPicked.includes(i.id));
+  const aiScope = aiMode === 'all' ? 'my whole collection' : aiMode === 'collection' ? `collections ${aiCols.map(c => `"${c}"`).join(', ')}` : aiMode === 'search' ? `everything about "${aiQuery.trim()}"` : 'discoveries I chose';
+  const copyForAI = () => (aiItems.length ? deliverAI(buildAIContext(aiItems, { scope: aiScope, request: aiAsk.trim() })) : toast('Scegli almeno una scoperta.'));
   const exportShared = async (rows, heading, source) => {
     if (!rows?.length) return toast('Nessun contenuto disponibile per l\'AI.');
     return deliverAI(buildAIContext(fromExportRows(rows), { heading, source }));
@@ -697,7 +713,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   const cover = (paths, cls = 'mosaic') => { const urls = (paths || []).map(x => photoUrls[x]).filter(Boolean).slice(0, 4); return <span className={`${cls} n${urls.length}`} aria-hidden="true">{urls.length ? urls.map(u => <img key={u} src={u} alt="" loading="lazy" />) : <FolderHeart size={22} />}</span>; };
   const memberStack = (profiles, max = 4) => <span className="memberStack" aria-hidden="true">{profiles.slice(0, max).map((p, k) => <span key={k} className="mav">{face(p)}</span>)}{profiles.length > max && <span className="mav more">+{profiles.length - max}</span>}</span>;
   const spaceRow = w => { const others = w.others.filter(m => m.status === 'active'); const waiting = w.others.filter(m => m.status === 'invited'); return <button key={w.id} className="spaceCard" onClick={() => openWorld(w)}>{cover(w.cover_path ? [w.cover_path] : w.covers)}<span className="scBody"><strong>{w.name}</strong><small>{others.length ? 'Con ' + others.map(m => nameOf(m.profile)).join(', ') : 'Solo tu, per ora'}{waiting.length ? ` · ${waiting.length} ${waiting.length === 1 ? 'invito' : 'inviti'} in attesa` : ''}</small><span className="scMeta">{memberStack([profile, ...others.map(m => m.profile)].filter(Boolean))}<span>{w.count} {w.count === 1 ? 'scoperta' : 'scoperte'}</span></span></span><ChevronRight size={18} /></button>; };
-  const title = { home: 'morethere', circle: 'Your Circle', friend: firstName(friend), worlds: 'More of us', world: 'Spazio condiviso', thought: 'More for you', detail: 'La tua scoperta', settings: 'More of me', export: 'Use with AI', profile: 'Il mio profilo', askNew: 'Chiedi consigli', answer: 'Consiglia', ask: 'I tuoi consigli' }[screen] || 'morethere';
+  const title = { home: 'morethere', circle: 'Your Circle', friend: firstName(friend), worlds: 'More of us', world: 'Spazio condiviso', thought: 'More for you', detail: 'La tua scoperta', settings: 'More of me', export: 'Use with AI', profile: 'Il mio profilo', askNew: 'Chiedi consigli', answer: 'Consiglia', ask: 'I tuoi consigli', ai: 'Use with AI' }[screen] || 'morethere';
   const signInHint = <p className="hint">Questa versione funziona solo su questo dispositivo. Configura il backend Supabase e accedi per connetterti alle persone di cui ti fidi.</p>;
 
   // A memory a friend opened to you (also used for answers to your requests).
@@ -952,9 +968,29 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
       <p className="hint">La tua foto la vedono solo le persone del tuo Circle e chi condivide uno spazio con te.</p>
       <div className="panel"><label htmlFor="pn">NOME</label><input id="pn" maxLength={60} value={profileDraft.display_name} onChange={e => setProfileDraft({ ...profileDraft, display_name: e.target.value })} /><label htmlFor="ph">NOME UTENTE</label><input id="ph" maxLength={31} autoCapitalize="none" autoCorrect="off" value={profileDraft.handle} onChange={e => setProfileDraft({ ...profileDraft, handle: e.target.value })} /><label htmlFor="ps">DI COSA TI OCCUPI</label><input id="ps" maxLength={120} placeholder="Travel · Food · Architecture" value={profileDraft.subtitle} onChange={e => setProfileDraft({ ...profileDraft, subtitle: e.target.value })} /><button className="pill dark wide" disabled={busy} onClick={saveProfile}><Check size={18} /> Salva</button></div>
       <p className="hint">Il tuo nome e la descrizione sono visibili solo alle persone del tuo Circle e degli spazi condivisi.</p>
-      <div className="stack"><button className="feature" onClick={() => exportAI(items)}><Sparkles /><span><strong>Use with AI</strong><small>Copia tutto il tuo archivio come contesto</small></span><ChevronRight /></button><button className="feature" disabled={busy} onClick={async () => exportShared(await run(() => api.aiExportThoughts()), 'MORETHERE — THOUGHTS SHARED WITH ME')}><Inbox /><span><strong>Pensieri con AI</strong><small>I pensieri ricevuti che puoi usare con AI</small></span><ChevronRight /></button><button className="feature" disabled={busy} onClick={downloadData}><Download /><span><strong>Esporta i miei dati</strong><small>Scarica tutto in formato JSON</small></span><ChevronRight /></button></div>
+      <div className="stack"><button className="feature" onClick={startAI}><Sparkles /><span><strong>Use with AI</strong><small>Scegli cosa dare all'AI: tutto, un viaggio, i ristoranti…</small></span><ChevronRight /></button><button className="feature" disabled={busy} onClick={async () => exportShared(await run(() => api.aiExportThoughts()), 'MORETHERE — THOUGHTS SHARED WITH ME')}><Inbox /><span><strong>Pensieri con AI</strong><small>I pensieri ricevuti che puoi usare con AI</small></span><ChevronRight /></button><button className="feature" disabled={busy} onClick={downloadData}><Download /><span><strong>Esporta i miei dati</strong><small>Scarica tutto in formato JSON</small></span><ChevronRight /></button></div>
       <button className="pill outline wide" onClick={() => api.signOut()}><LogOut size={18} /> Esci</button>
       <button className="textlink danger" onClick={deleteAccount}>Elimina il mio account</button></main>}
+
+    {screen === 'ai' && <main>
+      <h2 className="wizQ">Su cosa vuoi chiedere all'AI?</h2><p className="wizHint">Copi solo quello che scegli e lo incolli nel tuo assistente (ChatGPT, Claude, Gemini…).</p>
+      <div className="opts" role="radiogroup" aria-label="Cosa copiare">
+        {option({ on: aiMode === 'all', title: 'Tutto', desc: `${items.length} ${items.length === 1 ? 'scoperta' : 'scoperte'}`, onClick: () => setAiMode('all') })}
+        {option({ on: aiMode === 'collection', title: 'Una raccolta', desc: collections.slice(0, 3).join(', ') + (collections.length > 3 ? '…' : ''), onClick: () => setAiMode('collection') })}
+        {option({ on: aiMode === 'search', title: 'Un luogo o un tema', desc: 'Firenze, ristoranti, Giappone…', onClick: () => setAiMode('search') })}
+        {option({ on: aiMode === 'pick', title: 'Scelgo io', desc: 'Una per una', onClick: () => setAiMode('pick') })}
+      </div>
+      {aiMode === 'collection' && <div className="chips aiChips">{collections.map(c => { const on = aiCols.includes(c); const n = items.filter(i => i.collection === c).length; return <button key={c} className={'chip' + (on ? ' active' : '')} aria-pressed={on} onClick={() => setAiCols(v => (on ? v.filter(x => x !== c) : [...v, c]))}>{c} · {n}</button>; })}</div>}
+      {aiMode === 'search' && <>
+        <div className="search aiSearch"><Search size={19} /><input aria-label="Luogo o tema" autoFocus placeholder="Firenze, ristoranti…" value={aiQuery} onChange={e => { setAiQuery(e.target.value); setAiSkip([]); }} /></div>
+        {aiQuery.trim() && (aiFound.length ? <div className="aiList">{aiFound.map(i => { const on = !aiSkip.includes(i.id); return <button key={i.id} type="button" role="checkbox" aria-checked={on} className={'aiRow' + (on ? ' on' : '')} onClick={() => setAiSkip(v => (on ? [...v, i.id] : v.filter(x => x !== i.id)))}><span className="optMark" aria-hidden="true">{on && <Check size={13} />}</span><span className="aiThumb">{photoUrls[i.image_path] ? <Photo url={photoUrls[i.image_path]} /> : (i.url ? <Link2 size={16} /> : <PenLine size={16} />)}</span><span className="aiTitle">{i.title}</span></button>; })}</div> : <div className="empty compact">Niente su “{aiQuery.trim()}” nella tua raccolta.</div>)}
+      </>}
+      {aiMode === 'pick' && <div className="pickGrid">{items.map(i => { const on = aiPicked.includes(i.id); return <button key={i.id} type="button" role="checkbox" aria-checked={on} aria-label={i.title} className={'pickTile' + (on ? ' added' : '')} onClick={() => setAiPicked(v => (on ? v.filter(x => x !== i.id) : [...v, i.id]))}><span className="ptImg">{photoUrls[i.image_path] ? <Photo url={photoUrls[i.image_path]} /> : (i.url ? <Link2 size={20} /> : <PenLine size={20} />)}{on && <span className="ptCheck"><Check size={14} /></span>}</span><span className="ptTitle">{i.title}</span></button>; })}</div>}
+      <label className="aiAskLabel" htmlFor="ai-ask">COSA VUOI CHIEDERE? <span>(facoltativo)</span></label>
+      <div className="chips aiSuggest">{['Organizzami un itinerario', 'Dove mangio?', 'Riassumi', 'Cosa mi piace davvero?'].map(t => <button key={t} className={'chip' + (aiAsk === t ? ' active' : '')} onClick={() => setAiAsk(aiAsk === t ? '' : t)}>{t}</button>)}</div>
+      <textarea id="ai-ask" className="aiAsk" rows="2" maxLength={500} placeholder="Per esempio: un weekend a Firenze a maggio, con i posti che ho salvato." value={aiAsk} onChange={e => setAiAsk(e.target.value)} />
+      <button className="pill dark wide aiCopy" disabled={!aiItems.length} onClick={copyForAI}><Copy size={18} /> Copia per l'AI · {aiItems.length} {aiItems.length === 1 ? 'scoperta' : 'scoperte'}</button>
+    </main>}
 
     {screen === 'export' && <main><h1>AI Context</h1><textarea readOnly rows="16" value={exportText} /><button className="pill dark wide" onClick={() => navigator.clipboard?.writeText(exportText).then(() => toast('Copiato'))}><Copy size={18} /> Copia</button></main>}
 

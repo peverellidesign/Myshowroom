@@ -433,3 +433,20 @@ h1.first{margin-top:4px}
 @keyframes faceIn{from{opacity:0}to{opacity:1}}
 @keyframes faceZoom{from{transform:scale(.6)}to{transform:scale(1)}}
 @media(prefers-reduced-motion:reduce){.faceView,.faceView img{animation:none}}
+/* Use with AI */
+.aiChips{flex-wrap:wrap;padding:14px 0 4px}
+.aiSearch{margin-top:14px}
+.aiSearch input{border:0;background:transparent;outline:0;min-width:0;width:100%;font-size:16px}
+.aiList{display:grid;gap:2px;margin:12px 0 0}
+.aiRow{display:flex;align-items:center;gap:12px;border:0;background:none;padding:8px 0;text-align:left;width:100%;min-width:0}
+.aiRow:not(.on){opacity:.5}
+.aiThumb{width:42px;height:42px;border-radius:10px;overflow:hidden;background:#f4f4f2;display:grid;place-items:center;flex-shrink:0;color:#888}
+.aiThumb img{width:100%;height:100%;object-fit:cover}
+.aiTitle{flex:1;min-width:0;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.aiAskLabel{display:block;margin-top:28px}
+.aiAskLabel span{letter-spacing:0;text-transform:none;color:#aaa}
+.aiSuggest{flex-wrap:wrap;padding:10px 0 10px}
+.aiAsk{width:100%;border:1px solid #e2e2e2;border-radius:16px;padding:14px 13px;font-size:16px;outline:none;resize:vertical}
+.aiAsk:focus{border-color:#999}
+.aiCopy{margin-top:18px}
+.aiRow .optMark{border-radius:7px}.aiRow.on .optMark{background:#252525;border-color:#252525;color:#fff}
