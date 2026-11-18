@@ -201,11 +201,45 @@ async function previewUncached(raw) {
   throw new Error('too_many_redirects');
 }
 
+// Social posts describe themselves badly: Facebook puts view and reaction
+// counts, the whole post and the author in one title; Instagram writes
+// 'Name on Instagram: "…"'. Turn that into a short title, the post as the
+// description, and who posted it.
+const SOCIAL = [[/(^|\.)facebook\.com$|^fb\.watch$|^fb\.me$/, 'Facebook'], [/(^|\.)instagram\.com$/, 'Instagram'], [/(^|\.)threads\.(net|com)$/, 'Threads']];
+const STATS = /^(visualizzazioni|reazioni|commenti|condivisioni|mi piace|views|reactions|comments|shares|likes|plays|riproduzioni)\b/i;
+export function shortTitle(text, max = 80) {
+  const t = text.replace(/\s+/g, ' ').trim();
+  if (t.length <= max) return t;
+  // The first sentence; an emoji (🇮🇹, ✨) often ends one in social captions.
+  const sentence = t.match(/^(.{20,}?(?:[.!?…]|\p{Extended_Pictographic}|\p{Regional_Indicator}{2}))\s/u)?.[1];
+  if (sentence && sentence.length <= max) return sentence;
+  const cut = t.slice(0, max - 1);
+  return (cut.lastIndexOf(' ') > 40 ? cut.slice(0, cut.lastIndexOf(' ')) : cut).replace(/[\s,;:.\-–—|]+$/, '') + '…';
+}
+export function tidyPreview(v, pageUrl) {
+  const host = new URL(pageUrl).hostname.replace(/^(www|m|web|l)\./, '');
+  const network = SOCIAL.find(([re]) => re.test(host))?.[1] || '';
+  let title = (v.title || '').trim(); let description = (v.description || '').trim(); let author = '';
+  if (network) {
+    const parts = title.split(/\s+\|\s+/).filter(Boolean);
+    while (parts.length > 1 && STATS.test(parts[0])) parts.shift();
+    if (parts.length > 1) author = parts.pop();
+    title = parts.join(' | ');
+    const ig = title.match(/^(.+?) (?:on|su) (?:Instagram|Threads)\s*[:·]\s*["“]([\s\S]*?)["”]?\s*$/);
+    if (ig) { author = author || ig[1]; title = ig[2]; }
+    if (/^(facebook|instagram|threads|log in|accedi|login)\b/i.test(title) || STATS.test(title)) title = '';
+    if (author && /^(facebook|instagram|threads)$/i.test(author)) author = '';
+  }
+  if (title.length > 90) { if (description.length < title.length) description = title; title = shortTitle(title); }
+  return { ...v, title, description, site: network || v.site, author: author.slice(0, 80) };
+}
+
 export async function fetchPreview(raw) {
   const key = new URL(raw).href;
   const cached = resultCache.get(key);
   if (cached && cached.exp > Date.now()) return cached.value;
-  const value = await previewUncached(raw);
+  const found = await previewUncached(raw);
+  const value = tidyPreview(found, found.url || raw);
   if (resultCache.size > 500) resultCache.delete(resultCache.keys().next().value);
   resultCache.set(key, { value, exp: Date.now() + 3600_000 });
   return value;

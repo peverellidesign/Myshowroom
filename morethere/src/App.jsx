@@ -36,6 +36,11 @@ const safeUrl = (s) => { try { const u = new URL(s); return ['http:', 'https:'].
 const readNotes = () => { try { return JSON.parse(localStorage.getItem('mt_notes')) ?? []; } catch { return []; } };
 const writeNotes = (v) => { try { localStorage.setItem('mt_notes', JSON.stringify(v)); } catch { /* ignore */ } };
 const nameOf = (p) => p?.display_name || 'Qualcuno';
+// A link waiting for its preview gets a readable name: "Post su Facebook", not "facebook.com".
+const SOCIAL_LINKS = [[/(^|\.)facebook\.com$|^fb\.watch$|^fb\.me$/, 'Post su Facebook'], [/(^|\.)instagram\.com$/, 'Post su Instagram'], [/(^|\.)threads\.(net|com)$/, 'Post su Threads'], [/(^|\.)tiktok\.com$/, 'Video su TikTok'], [/(^|\.)youtube\.com$|^youtu\.be$/, 'Video su YouTube']];
+const linkHost = url => new URL(url).hostname.replace(/^(www|m|web)\./, '');
+const linkLabel = url => SOCIAL_LINKS.find(([re]) => re.test(linkHost(url)))?.[1] || linkHost(url);
+const isVideoLink = url => /\/(share\/[vr]|reel|reels|videos?|watch)\b|youtu\.be|tiktok\.com/i.test(url);
 const firstName = (p) => nameOf(p).trim().split(/\s+/)[0];
 const fmtDate = (d) => new Date(d).toLocaleDateString('it-IT', { day: 'numeric', month: 'short' });
 // memory_date is a calendar date (YYYY-MM-DD): format it without timezone shifts.
@@ -289,7 +294,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   const add = async () => {
     const raw = entry.trim(); if (!raw) return;
     const url = safeUrl(raw);
-    const draft = { title: url ? new URL(url).hostname.replace(/^www\./, '') : raw.slice(0, 70), url: url || '', note: url ? '' : raw, category: url ? 'Pagine' : 'Appunti', collection: 'Idee', collection_id: collectionId('Idee') };
+    const draft = { title: url ? linkLabel(url) : raw.slice(0, 70), url: url || '', note: url ? '' : raw, category: url ? (isVideoLink(url) ? 'Video' : 'Pagine') : 'Appunti', collection: 'Idee', collection_id: collectionId('Idee') };
     const saved = await run(() => api.addItem(draft), 'Salvato nella tua raccolta');
     if (!saved) return;
     setEntry(''); await refreshArchive();
@@ -311,8 +316,12 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
       if (!p) return false;
       const patch = {};
       const host = new URL(url).hostname.replace(/^www\./, '');
-      if (p.title && (!item.title || item.title === host)) patch.title = p.title.slice(0, 300);
-      if (p.description && !item.note) patch.note = p.description.slice(0, 600);
+      const placeholder = !item.title || item.title === host || item.title === linkHost(url) || item.title === linkLabel(url);
+      if (p.title && placeholder) patch.title = p.title.slice(0, 300);
+      // The post's text, then who posted it ("— Adam Glyn su Facebook").
+      const by = p.author ? `— ${p.author}${p.site ? ` su ${p.site}` : ''}` : '';
+      const note = [p.description, by].filter(Boolean).join('\n\n');
+      if (note && !item.note) patch.note = note.slice(0, 1200);
       if (p.image && !item.image_path && api.photosEnabled !== false) {
         const blob = await api.previewImage(p.image);
         if (blob) patch.image_path = await api.uploadPhoto(blob);
@@ -359,7 +368,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
           const image_path = await api.uploadPhoto(file);
           draft = { title: (s.title || words.split('\n')[0] || `Foto del ${fmtMemory(taken)}`).slice(0, 300), url: url || '', note: s.title ? words : '', category: 'Foto', image_path, memory_date: taken };
         } else if (url) {
-          draft = { title: new URL(url).hostname.replace(/^www\./, ''), url, note: words.slice(0, 10000), category: 'Pagine' };
+          draft = { title: linkLabel(url), url, note: words.slice(0, 10000), category: isVideoLink(url) ? 'Video' : 'Pagine' };
         } else if (words) {
           draft = { title: words.slice(0, 70), url: '', note: words.slice(0, 10000), category: 'Appunti' };
         } else return;
