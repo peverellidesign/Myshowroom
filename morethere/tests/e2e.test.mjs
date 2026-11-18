@@ -138,6 +138,22 @@ test('link preview: real page title and cover image, stored as a private photo',
   await page.locator('.notebody', { hasText: '• Indirizzo: Via Solferino 12, Milano' }).waitFor();
   await page.locator('.notebody', { hasText: '• Dal 1962 la Trattoria da Mario serve a Milano' }).waitFor();
   await page.getByText('Un posto da provare.').waitFor();
+  await close(page);
+  // Personal "why": a second link about the same place points to the first one you saved.
+  await page.getByPlaceholder('Incolla un link o scrivi...').fill(`${pageUrl}?di-nuovo`);
+  await page.getByPlaceholder('Incolla un link o scrivi...').press('Enter');
+  await toast(page, 'Salvato nella tua raccolta');
+  // Read the saved note (the server keeps it), then remove the extra copy.
+  let again;
+  for (let k = 0; k < 40 && !again; k++) {
+    const { data } = await admin.from('items').select('id, note').like('url', '%di-nuovo%');
+    again = data?.find(r => /Collegato a «Trattoria da Mario — Milano», che hai salvato il/.test(r.note));
+    if (!again) await page.waitForTimeout(500);
+  }
+  assert.ok(again, 'the second link points to the first one');
+  await admin.from('items').delete().eq('id', again.id);
+  await page.reload();
+  await page.locator('.item', { hasText: 'Trattoria da Mario' }).first().locator('.itemtitle').click();
   await shot(page, '03b-in-breve');
   await close(page);
 });

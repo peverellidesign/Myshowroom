@@ -24,8 +24,8 @@ test('a restaurant: cuisine, address, prices and rating from its structured data
 });
 
 test('vague collection names never decide the match', () => {
-  assert.equal(whyItMatters({ kind: 'cook', text: 'Spaghetti alla carbonara, la ricetta', interests: ['Posti da provare', 'Idee', 'Ricette'] }), 'Va con la tua raccolta «Ricette». Da cucinare.');
-  assert.equal(whyItMatters({ kind: 'read', text: 'Una storia di posti e idee', interests: ['Posti da provare', 'Idee'] }), 'Da leggere con calma.');
+  assert.equal(whyItMatters({ kind: 'cook', title: 'Spaghetti alla carbonara, la ricetta', interests: ['Posti da provare', 'Idee', 'Ricette'] }), 'Va con la tua raccolta «Ricette». Da cucinare.');
+  assert.equal(whyItMatters({ kind: 'read', title: 'Una storia di posti e idee', interests: ['Posti da provare', 'Idee'] }), 'Da leggere con calma.');
 });
 
 test('events, products and articles', () => {
@@ -56,7 +56,7 @@ test('an empty page gives no digest', () => {
 test('social posts: emoji labels become facts, the title is not repeated, a cut title is completed', () => {
   const reel = makeDigest({ url: 'https://www.facebook.com/reel/1/', html: '', title: '🚨 SPEED RECORD ALERT: 151.83 km/h on a skateboard 🚨',
     description: '🚨 SPEED RECORD ALERT: 151.83 km/h on a skateboard 🚨 🛹: Diego Poncelet 🤝: Prada 📍: Red Bull España' });
-  assert.deepEqual(reel, { points: ['🛹 Diego Poncelet', 'Con: Prada', 'Dove: Red Bull España'], why: 'Da guardare.' });
+  assert.deepEqual([reel.points, reel.why], [['🛹 Diego Poncelet', 'Con: Prada', 'Dove: Red Bull España'], 'Da guardare.']);
   const cut = makeDigest({ url: 'https://www.facebook.com/reel/2/', html: '', title: 'Mark Zuckerberg, co-founder and CEO of Meta, says he only hires people he…',
     description: 'Mark Zuckerberg, co-founder and CEO of Meta, says he only hires people he could imagine working for himself. Zuckerberg asks whether he would willingly join their company if the roles were reversed.' });
   assert.match(cut.points[0], /could imagine working for himself/);

@@ -203,7 +203,10 @@ export function markedPoints(html, { skip = [] } = {}) {
 
   const body = articleBody(html);
   if (body) {
-    const paras = [...body.matchAll(/<(p|li)\b[^>]*>([\s\S]*?)<\/\1>/gi)];
+    // Photo captions are not part of the story.
+    const story = body.replace(/<(figure|figcaption|aside)\b[\s\S]*?<\/\1>/gi, ' ')
+      .replace(/<(p|span|div)\b[^>]*class\s*=\s*["'][^"']*(caption|didascalia|credit)[^"']*["'][^>]*>[\s\S]*?<\/\1>/gi, ' ');
+    const paras = [...story.matchAll(/<(p|li)\b[^>]*>([\s\S]*?)<\/\1>/gi)];
     paras.forEach((m, i) => {
       const inner = m[2]; const text = tagText(inner);
       if (text.length < 20) return;
@@ -257,7 +260,38 @@ export function captionFacts(text) {
   return facts.slice(0, 4);
 }
 
-// ---- 3. why it matters ------------------------------------------------------------
+// ---- 3. compact points ------------------------------------------------------------
+// A point fits in about a line and a half: drop asides in brackets, then cut at a
+// clause boundary (comma, semicolon, dash) rather than mid-sentence; never mid-word.
+export function compact(s, max = 150) {
+  let t = s.replace(/\s+/g, ' ').replace(/\s+([,.;:!?])/g, '$1').trim();
+  t = t.replace(/\s*[-–—|]\s*(Notizie|News|Ansa\.it|Il Post|Corriere|la Repubblica)[^.]*$/i, '');
+  if (t.length > max) t = t.replace(/\s*\([^)]{3,80}\)/g, '');
+  if (t.length > max) {
+    const head = t.slice(0, max);
+    const cut = Math.max(head.lastIndexOf(', '), head.lastIndexOf('; '), head.lastIndexOf(' – '), head.lastIndexOf(' - '));
+    // Keep most of the sentence: a clause boundary late enough to keep its meaning.
+    t = cut >= 95 ? head.slice(0, cut) : `${head.replace(/\s+\S*$/, '')}…`;
+    t = t.replace(/\s+(che|e|ed|o|di|da|del|della|con|per|a|in|su|the|and|of|to)(…)?$/i, '…');
+  }
+  t = t.replace(/…\s*$/, m => (/\w…$/.test(t) && t.length > max - 5 ? m : '')).replace(/[\s,;:.]+$/, '');
+  return t ? t[0].toUpperCase() + t.slice(1) : t;
+}
+
+// The editor's own summary (description) is usually the best mini-summary of
+// a news story: split it into its sentences, short ones included.
+export function summarySentences(description, title = '') {
+  const d = decodeEntities(decodeEntities(description || '')).replace(/\s+/g, ' ').trim();
+  if (!d) return [];
+  const tw = new Set(words(title));
+  return d.split(/(?<=[.!?;])\s+(?=[A-ZÀ-ÝÈÉ0-9«"“'])/)
+    .map(x => x.trim())
+    .filter(x => words(x).length >= 2 && x.length >= 10 && !NOISE.test(x) && !/^—\s/.test(x))
+    .filter(x => { const ws = words(x); return ws.filter(w => tw.has(w)).length / Math.max(1, ws.length) < 0.75; })
+    .filter(x => !/^\p{Extended_Pictographic}/u.test(x) || words(x).length >= 4);
+}
+
+// ---- 4. why it matters ------------------------------------------------------------
 const WHY = {
   eat: 'Un posto da provare.', stay: 'Un posto dove dormire, da tenere per il prossimo viaggio.', visit: 'Da visitare.',
   shop: 'Un negozio da ricordare.', buy: 'Da tenere d\'occhio se ti interessa.', event: 'Segnati la data.', cook: 'Da cucinare.',
@@ -265,39 +299,67 @@ const WHY = {
 };
 // Words in collection names that say nothing about the subject.
 const VAGUE = new Set('posti posto cose cosa idee idea provare vedere fare leggere varie vario altro altre preferiti salvati salvate miei mie nuovi nuove belle bello ispirazione ispirazioni lista liste raccolta tutto stuff things ideas places'.split(' '));
-export function whyItMatters({ kind, text, interests = [], when }) {
-  const t = fold(text);
-  // The collection whose own words (singular or plural) appear most in the page.
+export function whyItMatters({ kind, title = '', points = [], interests = [], when, section = '' }) {
+  // A collection goes with the page only when its words are in the title (or, for
+  // names of two words or more, in the points too): "viaggio" in a news story
+  // about a president's trip is not your "Viaggi".
+  const inTitle = fold(title); const inPoints = fold(points.join(' '));
   let match = ''; let best = 0;
   for (const name of interests) {
     const ws = words(name).filter(w => !STOP.has(w) && !VAGUE.has(w) && w.length >= 4);
-    const hits = ws.filter(w => new RegExp(`\\b${w.length > 5 ? w.slice(0, -1) : w}`).test(t)).length;
-    if (hits && hits / ws.length >= 0.5 && hits > best) { best = hits; match = name; }
+    if (!ws.length) continue;
+    const re = w => new RegExp(`\\b${w.length > 5 ? w.slice(0, -1) : w}`);
+    const hitsTitle = ws.filter(w => re(w).test(inTitle)).length;
+    const hitsAll = ws.filter(w => re(w).test(inTitle) || re(w).test(inPoints)).length;
+    const ok = hitsTitle >= 1 && hitsAll / ws.length >= 0.5;
+    if (ok && hitsAll > best) { best = hitsAll; match = name; }
   }
-  const base = kind === 'event' && when ? `Segnati la data: ${when}.` : WHY[kind] ?? WHY[''];
+  const base = kind === 'event' && when ? `Segnati la data: ${when}.` : kind === 'read' && section ? `Da leggere: ${section}.` : WHY[kind] ?? WHY[''];
   return match ? `Va con la tua raccolta «${match}». ${base}` : base;
 }
 
+const sectionOf = (nodes, html) => {
+  const s = nodes.map(n => asArray(n.articleSection)[0]).find(Boolean) || metaContent(html, ['article:section']);
+  const t = str(s);
+  return t && t.length <= 30 && !/^https?:/.test(t) && !/^(notizie|news|home|ultima ora|ultim[ae] notizie|articol[oi]|blog|post|corporate news|generale|varie)$/i.test(t) ? t : '';
+};
+const overlap = (a, b) => { const A = new Set(words(a).filter(w => !STOP.has(w))); const B = [...new Set(words(b).filter(w => !STOP.has(w)))]; return B.filter(w => A.has(w)).length / Math.max(1, Math.min(A.size, B.length)); };
+
+// A point that mostly says what the title says (most of its words are in the title).
+const repeats = (title, t) => { const A = new Set(words(title).filter(w => !STOP.has(w))); const B = [...new Set(words(t).filter(w => !STOP.has(w)))]; return B.length > 0 && B.filter(w => A.has(w)).length / B.length > 0.7; };
+
 // ---- all together -------------------------------------------------------------------
 export function makeDigest({ html = '', title = '', description = '', interests = [], url = '' }) {
-  const s = structuredFacts(jsonLd(html));
+  const nodes = jsonLd(html);
+  const s = structuredFacts(nodes);
   const m = s.facts.length ? { facts: [], kind: '' } : metaFacts(html);
-  const facts = [...s.facts, ...m.facts, ...captionFacts([title, description].join('\n'))];
   const kind = s.kind || m.kind || (/\/(reel|reels|videos?|watch|shorts)\b|youtu\.be|tiktok\.com|vimeo\.com|\/share\/[vr]\//i.test(url) ? 'watch' : '');
-  // The caption without its emoji-labelled bits, which became facts above.
-  const caption = description.replace(/(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*)\s*[:：]\s*[^\p{Extended_Pictographic}\n|]{2,80}/gu, ' ').replace(/#[\p{L}\p{N}_]+/gu, ' ');
-  const text = [caption, htmlText(html)].filter(Boolean).join('\n');
-  const room = facts.length >= 3 ? 1 : 3 - Math.min(facts.length, 1);
-  // What the author marked as important first; the most telling sentences fill the rest.
-  const marked = markedPoints(html, { skip: [title] }).slice(0, room);
-  const extra = keySentences(text, { max: room, skip: [title, ...marked] })
-    .filter(x => !marked.some(m => { const a = new Set(words(m)); const b = words(x); return b.filter(w => a.has(w)).length / Math.max(1, b.length) > 0.6; }));
-  const sentences = [...marked, ...extra].slice(0, room);
-  const points = [...sentences, ...facts].slice(0, 4);
-  const when = facts.find(f => f.startsWith('Quando: '))?.slice(8);
-  // Which collection it goes with is judged on what the page is about (title, summary,
-  // chosen points), not on menus or related links elsewhere on the page.
-  return points.length ? { points, why: whyItMatters({ kind, text: [title, description, ...points].join(' '), interests, when }) } : null;
+  const caption = description.replace(/(\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic})*)\s*[:：]\s*[^\p{Extended_Pictographic}\n|]{2,80}/gu, ' ').replace(/#[\p{L}\p{N}_]+/gu, ' ');
+  const captionLabels = captionFacts([title, description].join('\n'));
+  // Places, products, events and recipes: their facts are the point. News and the
+  // rest: the story first; author and date only when there is nothing else.
+  const hardFacts = [...s.facts.filter(f => !/^(Di |Pubblicato)/.test(f)), ...m.facts.filter(f => !/^(Di |Pubblicato)/.test(f)), ...captionLabels];
+  const byline = [...s.facts, ...m.facts].filter(f => /^(Di |Pubblicato)/.test(f));
+
+  const candidates = [
+    ...summarySentences(caption, title),
+    ...markedPoints(html, { skip: [title] }),
+    ...keySentences([caption, htmlText(html)].filter(Boolean).join('\n'), { max: 3, skip: [title] }),
+  ];
+  const story = [];
+  for (const c of candidates) {
+    const t = compact(c);
+    if (t.length < 8 || repeats(title, t)) continue;
+    // Same thing said twice: keep the richer wording.
+    const twin = story.findIndex(o => overlap(o, t) > 0.6);
+    if (twin >= 0) { if (t.length > story[twin].length * 1.5 && words(t).length > words(story[twin]).length + 3) story[twin] = t; continue; }
+    story.push(t);
+  }
+  const room = hardFacts.length ? Math.max(1, 4 - hardFacts.length) : 3;
+  let points = [...story.slice(0, room), ...hardFacts].slice(0, 4);
+  if (points.length < 2) points = [...points, ...byline].slice(0, 3);
+  const when = hardFacts.find(f => f.startsWith('Quando: '))?.slice(8);
+  return points.length ? { points, why: whyItMatters({ kind, title, points, interests, when, section: sectionOf(nodes, html) }), kind } : null;
 }
 
 const json = (res, status, body) => {

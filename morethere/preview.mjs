@@ -103,7 +103,9 @@ const ENTITIES = {
   agrave: 'à', aacute: 'á', egrave: 'è', eacute: 'é', igrave: 'ì', iacute: 'í', ograve: 'ò', oacute: 'ó', ugrave: 'ù', uacute: 'ú',
   ccedil: 'ç', ntilde: 'ñ', auml: 'ä', ouml: 'ö', uuml: 'ü', szlig: 'ß',
 };
-const decode = s => s
+// Entities are decoded twice: some sites encode them twice ("&amp;nbsp;").
+const decode = s => decodeOnce(decodeOnce(s));
+const decodeOnce = s => s
   .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
   .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
   .replace(/&([a-z]+);/gi, (m, n) => { const v = ENTITIES[n.toLowerCase()]; return v === undefined ? m : n[0] === n[0].toUpperCase() && n.length > 4 ? v.toUpperCase() : v; })
@@ -398,7 +400,8 @@ export async function pageHtml(raw) {
 export function htmlText(html, max = 20000) {
   const body = html.replace(/^[\s\S]*?<body\b[^>]*>/i, '');
   return body
-    .replace(/<(script|style|noscript|svg|template|iframe|nav|footer|header|form|aside|button|select)\b[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<(script|style|noscript|svg|template|iframe|nav|footer|header|form|aside|button|select|figure|figcaption)\b[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<(p|span|div)\b[^>]*class\s*=\s*["'][^"']*(caption|didascalia|credit|photo-credit)[^"']*["'][^>]*>[\s\S]*?<\/\1>/gi, ' ')
     .replace(/<\/(p|div|li|h[1-6]|br|section|article|tr|td|blockquote)>|<br\s*\/?>/gi, '\n')
     .replace(/<[^>]+>/g, ' ')
     .split('\n').map(l => decode(l)).filter(l => l.length > 1).join('\n')
