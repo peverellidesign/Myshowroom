@@ -114,8 +114,12 @@ const words = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').matc
 const NOISE = /cookie|privacy|newsletter|iscriviti|abbonati|accedi|login|registrati|tutti i diritti|copyright|seguici|condividi|leggi anche|pubblicit|subscribe|sign in|all rights reserved|javascript/i;
 
 export function keySentences(text, { max = 3, skip = [] } = {}) {
+  // A sentence that opens with the title keeps only what it adds.
+  const heads = skip.map(t => t.replace(/[…\s]+$/, '').trim()).filter(t => t.length >= 20);
+  const trimHead = s => { const h = heads.find(t => s.startsWith(t) && s.length - t.length >= 40); return h ? s.slice(h.length).replace(/^[\s:,.;\-–—]+/, '') : s; };
   const sentences = text.replace(/\s*\n\s*/g, '\n').split(/(?<=[.!?…])\s+|\n+/)
-    .map(s => s.replace(/\s+/g, ' ').trim())
+    .map(s => trimHead(s.replace(/\s+/g, ' ').trim()))
+    .filter((s, i, all) => i < all.length - 1 || /[.!?…"”»)]$/.test(s) || !/[a-zà-ÿ]$/i.test(s)) // drop a last sentence cut mid-word
     .filter(s => s.length >= 40 && s.length <= 260 && words(s).length >= 6 && !NOISE.test(s));
   if (!sentences.length) return [];
   const freq = new Map();
