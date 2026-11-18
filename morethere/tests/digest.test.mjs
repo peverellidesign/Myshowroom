@@ -1,56 +1,52 @@
-// "In breve": the server asks Claude for key facts and why they matter.
-// Claude is replaced by a local stand-in that answers like the Messages API,
-// so the test checks what we send and how we read the answer.
-import { test, before, after } from 'node:test';
+// "In breve" without AI: facts from the page's structured data, its most
+// informative sentences, and why it matters from the person's collections.
+import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createServer } from 'node:http';
+import { makeDigest, keySentences, whyItMatters, structuredFacts, jsonLd } from '../digest.mjs';
 
-let fake; const seen = [];
-let answer = { points: ['Sculture luminose e mobili mid-century italiani', 'Nuovi arrivi disponibili a Tel Aviv'], why: 'Per la tua raccolta Design, pezzi da tenere d\'occhio.' };
-before(async () => {
-  fake = createServer((req, res) => {
-    let body = ''; req.on('data', c => { body += c; });
-    req.on('end', () => {
-      seen.push({ url: req.url, headers: req.headers, body: JSON.parse(body) });
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ id: 'msg_1', type: 'message', role: 'assistant', model: 'claude-opus-5-5', stop_reason: 'end_turn', stop_details: null, usage: { input_tokens: 10, output_tokens: 10 }, content: [{ type: 'text', text: JSON.stringify(answer) }] }));
-    });
-  });
-  await new Promise(r => fake.listen(0, '127.0.0.1', r));
-  process.env.ANTHROPIC_API_KEY = 'test-key';
-  process.env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${fake.address().port}`;
-});
-after(() => fake?.close());
+const restaurant = `<html><head><script type="application/ld+json">${JSON.stringify({
+  '@context': 'https://schema.org', '@type': 'Restaurant', name: 'Trattoria da Mario', servesCuisine: ['Lombarda', 'Milanese'],
+  address: { streetAddress: 'Via Solferino 12', addressLocality: 'Milano' }, priceRange: '€€', telephone: '+39 02 123456',
+  aggregateRating: { ratingValue: 4.6, reviewCount: 812 },
+})}</script></head><body><nav>Home Menu Contatti</nav>
+<p>Dal 1962 la Trattoria da Mario serve a Milano la cucina lombarda di casa, con il risotto giallo e la cotoletta come piatti simbolo.</p>
+<p>Il locale ha quaranta coperti e un piccolo giardino interno aperto da maggio a settembre, da prenotare con qualche giorno di anticipo.</p>
+<p>Accetta cookie e privacy policy per continuare la navigazione sul nostro sito web e ricevere la newsletter.</p></body></html>`;
 
-test('asks Claude for Italian key facts with a JSON schema and reads them back', async () => {
-  const { makeDigest } = await import('../digest.mjs');
-  const d = await makeDigest({ url: 'https://www.facebook.com/share/r/x/', title: 'A fresh look at our latest Italian finds', description: 'From sculptural lighting…', text: '', interests: ['Design', 'Viaggi'] });
-  assert.deepEqual(d, answer);
-  const sent = seen.at(-1);
-  assert.match(sent.url, /\/v1\/messages/);
-  assert.equal(sent.body.model, 'claude-opus-5-5');
-  assert.equal(sent.body.output_config.format.type, 'json_schema');
-  assert.equal(sent.body.fallbacks, 'default');
-  assert.match(sent.headers['anthropic-beta'], /server-side-fallback-2026-07-01/);
-  assert.match(sent.body.system, /italiano/);
-  assert.match(sent.body.messages[0].content, /Le raccolte di questa persona: Design, Viaggi/);
+test('a restaurant: cuisine, address, prices and rating from its structured data', () => {
+  const d = makeDigest({ html: restaurant, title: 'Trattoria da Mario — Milano', interests: ['Idee', 'Posti da provare', 'Milano'] });
+  assert.ok(d.points.some(p => p === 'Cucina: Lombarda, Milanese'));
+  assert.ok(d.points.some(p => p === 'Indirizzo: Via Solferino 12, Milano'));
+  assert.ok(d.points.some(p => /^Dal 1962 la Trattoria da Mario/.test(p)), 'the most telling sentence of the page');
+  assert.ok(!d.points.some(p => /cookie|newsletter/i.test(p)), 'no cookie banners');
+  assert.ok(d.points.length <= 4);
+  assert.equal(d.why, 'Va con la tua raccolta «Milano». Un posto da provare.');
 });
 
-test('nothing useful back -> no digest; long answers are trimmed', async () => {
-  const { makeDigest } = await import('../digest.mjs');
-  answer = { points: [], why: '' };
-  assert.equal(await makeDigest({ url: 'https://example.com/' }), null);
-  answer = { points: ['a', 'b', 'c', 'd', 'e', 'f'], why: 'x'.repeat(500) };
-  const d = await makeDigest({ url: 'https://example.com/' });
-  assert.equal(d.points.length, 4);
-  assert.equal(d.why.length, 300);
+test('vague collection names never decide the match', () => {
+  assert.equal(whyItMatters({ kind: 'cook', text: 'Spaghetti alla carbonara, la ricetta', interests: ['Posti da provare', 'Idee', 'Ricette'] }), 'Va con la tua raccolta «Ricette». Da cucinare.');
+  assert.equal(whyItMatters({ kind: 'read', text: 'Una storia di posti e idee', interests: ['Posti da provare', 'Idee'] }), 'Da leggere con calma.');
 });
 
-test('only signed-in people can ask', async () => {
-  const { handleDigest } = await import('../digest.mjs');
-  const r = await new Promise(resolve => {
-    const res = { writeHead(status) { this.status = status; }, end(body) { resolve({ status: this.status, body }); } };
-    handleDigest({ headers: {}, [Symbol.asyncIterator]: async function* () {} }, res);
-  });
-  assert.equal(r.status, 401);
+test('events, products and articles', () => {
+  const ev = structuredFacts(jsonLd(`<script type="application/ld+json">{"@type":"MusicEvent","startDate":"2027-05-14T21:00","location":{"name":"Teatro Verdi","address":{"addressLocality":"Firenze"}},"offers":{"price":"25","priceCurrency":"EUR"}}</script>`));
+  assert.deepEqual(ev, { kind: 'event', facts: ['Quando: 14 maggio 2027, ore 21:00', 'Dove: Teatro Verdi, Firenze', 'Biglietti da 25 €'] });
+  const pr = structuredFacts(jsonLd(`<script type="application/ld+json">{"@graph":[{"@type":"Product","brand":{"name":"Tod's"},"offers":{"price":"590.00","priceCurrency":"EUR","availability":"https://schema.org/InStock"}}]}</script>`));
+  assert.deepEqual(pr, { kind: 'buy', facts: ['Marca: Tod\'s', 'Prezzo: 590,00 €'] });
+  const ar = structuredFacts(jsonLd(`<script type="application/ld+json">{"@type":"NewsArticle","author":[{"name":"Contributori di Wikimedia"}],"datePublished":"2026-11-16T08:00:00Z"}</script>`));
+  assert.deepEqual(ar, { kind: 'read', facts: ['Pubblicato il 16 novembre 2026, ore 08:00'] });
+});
+
+test('key sentences: informative, not repeating the title, in page order', () => {
+  const text = 'Benvenuti. ' + 'Il Ponte Vecchio di Firenze fu costruito nel 1345 dopo una piena dell’Arno che distrusse il ponte precedente. '
+    + 'Ospita dal 1593 le botteghe degli orafi, volute dal granduca Ferdinando I al posto dei macellai. '
+    + 'È uno dei simboli più fotografati della città e si attraversa a piedi in pochi minuti.';
+  const s = keySentences(text, { max: 2, skip: ['Ponte Vecchio'] });
+  assert.equal(s.length, 2);
+  assert.ok(s.every(x => x.length >= 40));
+  assert.ok(text.indexOf(s[0]) < text.indexOf(s[1]), 'kept in the order of the page');
+});
+
+test('an empty page gives no digest', () => {
+  assert.equal(makeDigest({ html: '<html><body>Ciao</body></html>', title: 'x' }), null);
 });

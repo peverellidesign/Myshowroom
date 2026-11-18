@@ -396,7 +396,8 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
         } else return;
         const saved = await api.addItem({ ...draft, collection: 'Idee', collection_id: collectionId('Idee') });
         let item = { ...draft, id: saved.id, collection: 'Idee', collection_id: collectionId('Idee'), created: Date.now(), image_path: draft.image_path || null };
-        if (url && !file) { const done = await enrichLink({ ...item, note: '' }); summarize(done || item, { fresh: !item.note }); }
+        // Saved and shown at once; the cover, title and "In breve" follow in the background.
+        if (url && !file) enrichLink({ ...item, note: '' }).then(done => { refreshArchive(); summarize(done || item, { fresh: !item.note }); });
         await refreshArchive();
         setSelected(sel => (sel?.id === item.id ? sel : item));
         setScreen('detail');

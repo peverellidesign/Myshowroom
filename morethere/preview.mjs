@@ -97,11 +97,16 @@ function checkUrl(u) {
   if (u.port && !['80', '443'].includes(u.port) && !ALLOW_PRIVATE) throw new Error('bad_port');
 }
 
-const ENTITIES = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+const ENTITIES = {
+  amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', laquo: '«', raquo: '»', ndash: '–', mdash: '—', hellip: '…',
+  rsquo: '’', lsquo: '‘', rdquo: '”', ldquo: '“', euro: '€', copy: '©', deg: '°', middot: '·', bull: '•',
+  agrave: 'à', aacute: 'á', egrave: 'è', eacute: 'é', igrave: 'ì', iacute: 'í', ograve: 'ò', oacute: 'ó', ugrave: 'ù', uacute: 'ú',
+  ccedil: 'ç', ntilde: 'ñ', auml: 'ä', ouml: 'ö', uuml: 'ü', szlig: 'ß',
+};
 const decode = s => s
   .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCodePoint(parseInt(h, 16)))
   .replace(/&#(\d+);/g, (_, d) => String.fromCodePoint(Number(d)))
-  .replace(/&([a-z]+);/gi, (m, n) => ENTITIES[n.toLowerCase()] ?? m)
+  .replace(/&([a-z]+);/gi, (m, n) => { const v = ENTITIES[n.toLowerCase()]; return v === undefined ? m : n[0] === n[0].toUpperCase() && n.length > 4 ? v.toUpperCase() : v; })
   .replace(/\s+/g, ' ').trim();
 
 function meta(html, keys) {
@@ -375,23 +380,28 @@ export async function userFromRequest(req) {
   return token ? userFromToken(token) : null;
 }
 
-// The readable text of a page (no scripts, styles or markup), for summaries.
-// Same safety rules as previews: public addresses only, size and time limits.
-export async function pageText(raw, max = 12000) {
+// A page's HTML for summaries. Same safety rules as previews: public
+// addresses only, size and time limits, redirects re-checked.
+export async function pageHtml(raw) {
   let url = new URL(raw);
   for (let hop = 0; hop <= 3; hop++) {
     checkUrl(url);
     const r = await fetchOnce(url);
     if (r.redirect) { url = r.redirect; continue; }
     const charset = r.type.match(/charset=([\w-]+)/i)?.[1] || 'utf-8';
-    let html;
-    try { html = new TextDecoder(charset).decode(r.body); } catch { html = new TextDecoder('utf-8').decode(r.body); }
-    const body = html.replace(/^[\s\S]*?<body\b[^>]*>/i, '');
-    return decode(body
-      .replace(/<(script|style|noscript|svg|template|iframe|nav|footer|header|form)\b[\s\S]*?<\/\1>/gi, ' ')
-      .replace(/<\/(p|div|li|h[1-6]|br|section|article|tr)>/gi, '\n')
-      .replace(/<[^>]+>/g, ' '))
-      .slice(0, max);
+    try { return { html: new TextDecoder(charset).decode(r.body), url: url.href }; } catch { return { html: new TextDecoder('utf-8').decode(r.body), url: url.href }; }
   }
   throw new Error('too_many_redirects');
 }
+
+// The readable text of an HTML page: no scripts, styles, menus or markup.
+export function htmlText(html, max = 20000) {
+  const body = html.replace(/^[\s\S]*?<body\b[^>]*>/i, '');
+  return body
+    .replace(/<(script|style|noscript|svg|template|iframe|nav|footer|header|form|aside|button|select)\b[\s\S]*?<\/\1>/gi, ' ')
+    .replace(/<\/(p|div|li|h[1-6]|br|section|article|tr|td|blockquote)>|<br\s*\/?>/gi, '\n')
+    .replace(/<[^>]+>/g, ' ')
+    .split('\n').map(l => decode(l)).filter(l => l.length > 1).join('\n')
+    .slice(0, max);
+}
+export { decode as decodeEntities, meta as metaContent };

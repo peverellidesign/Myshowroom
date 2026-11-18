@@ -113,16 +113,16 @@ The app is served by `server.mjs` (static files, SPA fallback, CSP and security 
 4. **Build the frontend** with `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (or the publishable key) and host `dist/` on any static host (Vercel, Netlify, Cloudflare Pages, Render static site). The anon key is meant for browsers: every request is authorized by RLS. **Never ship the service-role key to the client.**
 5. Serve over HTTPS. A strict CSP is recommended: `default-src 'self'; connect-src 'self' https://<ref>.supabase.co wss://<ref>.supabase.co; font-src https://fonts.gstatic.com; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'`.
 
-### "In breve" (optional, Claude)
+### "In breve" (no AI)
 
-When `ANTHROPIC_API_KEY` is set on the server, saving a link adds 2–4 key facts
-and "Perché ti interessa" to its note (`POST /api/digest`, `digest.mjs`, model
-`claude-opus-5-5`, low effort, JSON schema output, server-side refusal
-fallback). The server sends Anthropic the page's own text (fetched with the
-same SSRF-safe fetcher as previews) and the names of the person's collections;
-nothing is stored server-side. Signed-in users only, 30 summaries per hour each.
-Without the key the feature is hidden (`GET /api/digest` → `{ enabled: false }`).
-Tests use a local stand-in for the API (`ANTHROPIC_BASE_URL`).
+Saving a link turns its note into 2–4 key facts and "Perché ti interessa"
+(`POST /api/digest`, `digest.mjs`). Everything is computed on our server with
+rules: schema.org JSON-LD and og: tags (a restaurant's cuisine, address,
+prices and rating; a product's price; an event's date and place; a recipe's
+time and ingredients; an article's author and date), the most informative
+sentences of the page (extractive, never rewritten), and the person's
+collection names matched against the page. No third party sees anything
+beyond the request to the page itself. Signed-in users only, rate limited.
 
 ## Security model
 
