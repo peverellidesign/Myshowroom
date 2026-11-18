@@ -1,7 +1,7 @@
 // morethere service worker: fast, resilient app shell.
 // Only same-origin static files are cached. Supabase (data, auth, photos) and
 // /api/* are never cached, so private content never sits in this cache.
-const VERSION = 'mt-v2';
+const VERSION = 'mt-v3';
 const SHELL = ['/', '/manifest.webmanifest', '/icon-192.png'];
 
 self.addEventListener('install', (e) => {

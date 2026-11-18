@@ -50,3 +50,14 @@ test('key sentences: informative, not repeating the title, in page order', () =>
 test('an empty page gives no digest', () => {
   assert.equal(makeDigest({ html: '<html><body>Ciao</body></html>', title: 'x' }), null);
 });
+
+test('social posts: emoji labels become facts, the title is not repeated, a cut title is completed', () => {
+  const reel = makeDigest({ url: 'https://www.facebook.com/reel/1/', html: '', title: '🚨 SPEED RECORD ALERT: 151.83 km/h on a skateboard 🚨',
+    description: '🚨 SPEED RECORD ALERT: 151.83 km/h on a skateboard 🚨 🛹: Diego Poncelet 🤝: Prada 📍: Red Bull España' });
+  assert.deepEqual(reel, { points: ['🛹 Diego Poncelet', 'Con: Prada', 'Dove: Red Bull España'], why: 'Da guardare.' });
+  const cut = makeDigest({ url: 'https://www.facebook.com/reel/2/', html: '', title: 'Mark Zuckerberg, co-founder and CEO of Meta, says he only hires people he…',
+    description: 'Mark Zuckerberg, co-founder and CEO of Meta, says he only hires people he could imagine working for himself. Zuckerberg asks whether he would willingly join their company if the roles were reversed.' });
+  assert.match(cut.points[0], /could imagine working for himself/);
+  const same = makeDigest({ html: '', title: 'Il nuovo ponte sul fiume è stato inaugurato oggi in città', description: 'Il nuovo ponte sul fiume è stato inaugurato oggi in città con una festa.' });
+  assert.equal(same, null, 'nothing beyond the title: the note stays as it is');
+});

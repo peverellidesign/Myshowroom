@@ -106,6 +106,8 @@ export function metaFacts(html) {
   return { facts: facts.map(f => f[0].toUpperCase() + f.slice(1)), kind };
 }
 
+const fold = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+
 // ---- 2. the most informative sentences -------------------------------------------
 const STOP = new Set(('il lo la i gli le un uno una di a da in con su per tra fra e ed o ma se che chi cui non più come anche già solo del dello della dei degli delle al allo alla ai agli alle dal dallo dalla dai dagli dalle nel nello nella nei negli nelle sul sullo sulla sui sugli sulle è sono era erano essere ha hanno ho abbiamo questo questa questi queste quello quella quelli quelle suo sua suoi sue loro mio mia nostro nostra ci si mi ti vi ne c è stato stata fa fare molto tutto tutti ogni dove quando perché quindi poi così ancora sempre mai oltre dopo prima the a an and or but of to in on for with at by from is are was were be been has have had this that these those it its as not no so than then too very can will just our your their we you they he she his her them us my me i about into over more most some such only own same other also all any each few both out up down off again further once here there why how what which who whom').split(' '));
 const words = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').match(/[a-z0-9]{3,}/g) || [];
@@ -119,6 +121,8 @@ export function keySentences(text, { max = 3, skip = [] } = {}) {
   const freq = new Map();
   for (const s of sentences) for (const w of new Set(words(s))) if (!STOP.has(w)) freq.set(w, (freq.get(w) || 0) + 1);
   const seenWords = new Set(skip.flatMap(words));
+  // A shortened title ("…") is completed by its sentence, so that one stays.
+  const starts = skip.filter(t => !/…\s*$/.test(t)).map(t => fold(t).slice(0, 60)).filter(t => t.length >= 20);
   const scored = sentences.map((s, i) => {
     const ws = words(s).filter(w => !STOP.has(w));
     let score = ws.reduce((a, w) => a + Math.log(1 + (freq.get(w) || 0)), 0) / Math.sqrt(ws.length || 1);
@@ -126,11 +130,12 @@ export function keySentences(text, { max = 3, skip = [] } = {}) {
     if (/\s[A-ZÀ-Ý][a-zà-ÿ]+/.test(s.slice(1))) score *= 1.1; // names, places
     score *= 1 + 0.6 / (1 + i / 3); // early sentences carry the point
     const overlap = ws.filter(w => seenWords.has(w)).length / (ws.length || 1);
-    if (overlap > 0.7) score *= 0.3; // already said by the title
+    if (overlap > 0.7 || starts.some(t => fold(s).startsWith(t))) score = -1; // already said by the title
     return { s, i, score };
   }).sort((a, b) => b.score - a.score);
   const chosen = [];
   for (const c of scored) {
+    if (c.score < 0) continue;
     const ws = new Set(words(c.s));
     if (chosen.some(o => { const ow = new Set(words(o.s)); return [...ws].filter(w => ow.has(w)).length / Math.min(ws.size, ow.size) > 0.6; })) continue;
     chosen.push(c);
@@ -139,13 +144,29 @@ export function keySentences(text, { max = 3, skip = [] } = {}) {
   return chosen.sort((a, b) => a.i - b.i).map(c => (c.s.length > 200 ? `${c.s.slice(0, 197).replace(/\s+\S*$/, '')}…` : c.s));
 }
 
+// ---- social captions -------------------------------------------------------------
+// Posts often label facts with emoji: "🛹: Diego Poncelet 🤝: Prada 📍: Red Bull España".
+const EMOJI_LABELS = [[/📍|🗺|🏠|🏢/u, 'Dove'], [/📅|🗓|⏰|🕒/u, 'Quando'], [/🤝/u, 'Con'], [/🎥|🎬|📹/u, 'Video'], [/📸|📷/u, 'Foto'], [/🎵|🎶|🎧/u, 'Musica'], [/👤|🧑|👨|👩/u, 'Chi'], [/💰|💶|💲|🏷/u, 'Prezzo'], [/🔗/u, 'Link']];
+export function captionFacts(text) {
+  const facts = [];
+  const re = /(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*)\s*[:：]\s*([^\p{Extended_Pictographic}\n|]{2,80})/gu;
+  for (const [, emoji, value] of text.matchAll(re)) {
+    const v = value.trim().replace(/[\s,;.\-–]+$/, '');
+    if (!v) continue;
+    const label = EMOJI_LABELS.find(([r]) => r.test(emoji))?.[1];
+    facts.push(label ? `${label}: ${v}` : `${emoji} ${v}`);
+  }
+  const tags = [...new Set([...text.matchAll(/#([\p{L}\p{N}_]{3,30})/gu)].map(m => m[1]))].slice(0, 4);
+  if (tags.length) facts.push(`Temi: ${tags.map(t => `#${t}`).join(' ')}`);
+  return facts.slice(0, 4);
+}
+
 // ---- 3. why it matters ------------------------------------------------------------
 const WHY = {
   eat: 'Un posto da provare.', stay: 'Un posto dove dormire, da tenere per il prossimo viaggio.', visit: 'Da visitare.',
   shop: 'Un negozio da ricordare.', buy: 'Da tenere d\'occhio se ti interessa.', event: 'Segnati la data.', cook: 'Da cucinare.',
   read: 'Da leggere con calma.', watch: 'Da guardare.', '': 'Da ritrovare quando ti serve.',
 };
-const fold = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 // Words in collection names that say nothing about the subject.
 const VAGUE = new Set('posti posto cose cosa idee idea provare vedere fare leggere varie vario altro altre preferiti salvati salvate miei mie nuovi nuove belle bello ispirazione ispirazioni lista liste raccolta tutto stuff things ideas places'.split(' '));
 export function whyItMatters({ kind, text, interests = [], when }) {
@@ -162,12 +183,14 @@ export function whyItMatters({ kind, text, interests = [], when }) {
 }
 
 // ---- all together -------------------------------------------------------------------
-export function makeDigest({ html = '', title = '', description = '', interests = [] }) {
+export function makeDigest({ html = '', title = '', description = '', interests = [], url = '' }) {
   const s = structuredFacts(jsonLd(html));
   const m = s.facts.length ? { facts: [], kind: '' } : metaFacts(html);
-  const facts = [...s.facts, ...m.facts];
-  const kind = s.kind || m.kind;
-  const text = [description, htmlText(html)].filter(Boolean).join('\n');
+  const facts = [...s.facts, ...m.facts, ...captionFacts([title, description].join('\n'))];
+  const kind = s.kind || m.kind || (/\/(reel|reels|videos?|watch|shorts)\b|youtu\.be|tiktok\.com|vimeo\.com|\/share\/[vr]\//i.test(url) ? 'watch' : '');
+  // The caption without its emoji-labelled bits, which became facts above.
+  const caption = description.replace(/(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*)\s*[:：]\s*[^\p{Extended_Pictographic}\n|]{2,80}/gu, ' ').replace(/#[\p{L}\p{N}_]+/gu, ' ');
+  const text = [caption, htmlText(html)].filter(Boolean).join('\n');
   const sentences = keySentences(text, { max: facts.length >= 3 ? 1 : 3 - Math.min(facts.length, 1), skip: [title] });
   const points = [...sentences, ...facts].slice(0, 4);
   const when = facts.find(f => f.startsWith('Quando: '))?.slice(8);
@@ -201,7 +224,7 @@ export async function handleDigest(req, res) {
     if (!/^https?:\/\//i.test(url) || url.length > 2048) return json(res, 400, { error: 'bad_url' });
     const interests = (Array.isArray(body.interests) ? body.interests : []).map(String).map(s => s.slice(0, 60)).slice(0, 30);
     const page = await pageHtml(url).catch(() => ({ html: '' }));
-    const d = makeDigest({ html: page.html, title: String(body.title || '').slice(0, 300), description: String(body.description || '').slice(0, 3000), interests });
+    const d = makeDigest({ html: page.html, title: String(body.title || '').slice(0, 300), description: String(body.description || '').slice(0, 3000), interests, url });
     return d ? json(res, 200, d) : json(res, 422, { error: 'no_digest' });
   } catch {
     return json(res, 502, { error: 'unavailable' });
