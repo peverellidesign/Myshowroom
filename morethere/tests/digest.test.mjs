@@ -2,7 +2,7 @@
 // informative sentences, and why it matters from the person's collections.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { makeDigest, keySentences, whyItMatters, structuredFacts, jsonLd } from '../digest.mjs';
+import { makeDigest, keySentences, whyItMatters, structuredFacts, jsonLd, markedPoints } from '../digest.mjs';
 
 const restaurant = `<html><head><script type="application/ld+json">${JSON.stringify({
   '@context': 'https://schema.org', '@type': 'Restaurant', name: 'Trattoria da Mario', servesCuisine: ['Lombarda', 'Milanese'],
@@ -33,8 +33,10 @@ test('events, products and articles', () => {
   assert.deepEqual(ev, { kind: 'event', facts: ['Quando: 14 maggio 2027, ore 21:00', 'Dove: Teatro Verdi, Firenze', 'Biglietti da 25 €'] });
   const pr = structuredFacts(jsonLd(`<script type="application/ld+json">{"@graph":[{"@type":"Product","brand":{"name":"Tod's"},"offers":{"price":"590.00","priceCurrency":"EUR","availability":"https://schema.org/InStock"}}]}</script>`));
   assert.deepEqual(pr, { kind: 'buy', facts: ['Marca: Tod\'s', 'Prezzo: 590,00 €'] });
-  const ar = structuredFacts(jsonLd(`<script type="application/ld+json">{"@type":"NewsArticle","author":[{"name":"Contributori di Wikimedia"}],"datePublished":"2026-11-16T08:00:00Z"}</script>`));
+  const ar = structuredFacts(jsonLd(`<script type="application/ld+json">{"@type":"NewsArticle","author":[{"name":"Redazione"}],"datePublished":"2026-11-16T08:00:00Z"}</script>`));
   assert.deepEqual(ar, { kind: 'read', facts: ['Pubblicato il 16 novembre 2026, ore 08:00'] });
+  const wiki = structuredFacts(jsonLd(`<script type="application/ld+json">{"@type":"Article","author":{"name":"Contributori ai progetti Wikimedia"},"datePublished":"2006-02-09"}</script>`));
+  assert.deepEqual(wiki, { kind: 'read', facts: [] }, 'no meaningless page-creation date');
 });
 
 test('key sentences: informative, not repeating the title, in page order', () => {
@@ -60,4 +62,31 @@ test('social posts: emoji labels become facts, the title is not repeated, a cut 
   assert.match(cut.points[0], /could imagine working for himself/);
   const same = makeDigest({ html: '', title: 'Il nuovo ponte sul fiume è stato inaugurato oggi in città', description: 'Il nuovo ponte sul fiume è stato inaugurato oggi in città con una festa.' });
   assert.equal(same, null, 'nothing beyond the title: the note stays as it is');
+});
+
+const article = `<html><head><title>x</title></head><body>
+<nav><ul><li><strong>Abbonati ora</strong> a soli 1 euro al mese per leggere tutto</li></ul></nav>
+<h1>La legge di bilancio cambierà ancora</h1>
+<h2 class="article-subtitle">Come ogni anno il governo corregge quel che aveva promesso: soprattutto scuola, banche e pensioni</h2>
+<div class="article-body">
+<p>Il testo arriverà in aula la prossima settimana dopo un lungo esame in commissione al Senato.</p>
+<p>Nella prima versione erano previsti <strong>tagli per 4.925 posti di docenti</strong> a partire dall'anno scolastico 2027/2028, poi ridotti.</p>
+<p><b>Le pensioni</b> Il governo ha rinviato di un anno l'aumento dell'età per la pensione anticipata. Altre frasi seguono qui.</p>
+<p>Un paragrafo qualunque senza nulla di particolare da segnalare, scritto solo per riempire la pagina di testo.</p>
+<p>Per accedere senza limiti a tutti i contenuti <strong>abbonati al nostro giornale</strong> oggi stesso.</p>
+</div><aside><h2>Leggi anche</h2><p><strong>Un altro articolo del tutto diverso che parla di calcio e di mercato</strong></p></aside>
+</body></html>`;
+
+test('what the author marked: the summary, sentences with bold words, bold labels with what follows', () => {
+  const p = markedPoints(article, { skip: ['La legge di bilancio cambierà ancora'] });
+  assert.equal(p[0], 'Come ogni anno il governo corregge quel che aveva promesso: soprattutto scuola, banche e pensioni');
+  assert.ok(p.includes("Nella prima versione erano previsti tagli per 4.925 posti di docenti a partire dall'anno scolastico 2027/2028, poi ridotti."), 'the whole sentence around the bold words');
+  assert.ok(p.includes("Le pensioni: Il governo ha rinviato di un anno l'aumento dell'età per la pensione anticipata."), 'a bold label heads its paragraph');
+  assert.ok(!p.some(x => /abbonati|calcio/i.test(x)), 'no paywall, no related articles');
+});
+
+test('Wikipedia-style: the bold term opens the definition', () => {
+  const html = `<h1>Bistecca alla fiorentina</h1><div class="mw-parser-output"><div class="mw-content-text"><p>La <b>bistecca alla fiorentina</b> è un taglio di carne di vitellone o di scottona, di razza Chianina, cotto sulla brace. È uno dei piatti più noti della cucina toscana.</p>${'<p>Altro testo della voce che continua per un bel po\' di righe senza grassetti né segni particolari di alcun tipo.</p>'.repeat(4)}</div></div>`;
+  const p = markedPoints(html, { skip: ['Bistecca alla fiorentina - Wikipedia'] });
+  assert.equal(p[0], 'La bistecca alla fiorentina è un taglio di carne di vitellone o di scottona, di razza Chianina, cotto sulla brace.');
 });

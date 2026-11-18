@@ -78,8 +78,10 @@ export function structuredFacts(nodes) {
     const r = rating(product.aggregateRating); if (r) facts.push(r);
   } else if (article) {
     kind = 'read';
-    const author = asArray(article.author).map(str).filter(a => a && !/contribut|wikimedia|redazione|staff|admin/i.test(a)).slice(0, 2).join(' e ');
-    const when = itDate(article.datePublished);
+    const authors = asArray(article.author).map(str);
+    const author = authors.filter(a => a && !/contribut|wikimedia|redazione|staff|admin/i.test(a)).slice(0, 2).join(' e ');
+    // A wiki page's "date" is when the page was created: meaningless here.
+    const when = authors.some(a => /contribut|wikimedia/i.test(a)) ? '' : itDate(article.datePublished);
     if (author || when) facts.push([author && `Di ${author}`, when && `pubblicato il ${when}`].filter(Boolean).join(', '));
   } else if (video) {
     kind = 'watch';
@@ -111,14 +113,14 @@ const fold = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '
 // ---- 2. the most informative sentences -------------------------------------------
 const STOP = new Set(('il lo la i gli le un uno una di a da in con su per tra fra e ed o ma se che chi cui non più come anche già solo del dello della dei degli delle al allo alla ai agli alle dal dallo dalla dai dagli dalle nel nello nella nei negli nelle sul sullo sulla sui sugli sulle è sono era erano essere ha hanno ho abbiamo questo questa questi queste quello quella quelli quelle suo sua suoi sue loro mio mia nostro nostra ci si mi ti vi ne c è stato stata fa fare molto tutto tutti ogni dove quando perché quindi poi così ancora sempre mai oltre dopo prima the a an and or but of to in on for with at by from is are was were be been has have had this that these those it its as not no so than then too very can will just our your their we you they he she his her them us my me i about into over more most some such only own same other also all any each few both out up down off again further once here there why how what which who whom').split(' '));
 const words = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').match(/[a-z0-9]{3,}/g) || [];
-const NOISE = /cookie|privacy|newsletter|iscriviti|abbonati|accedi|login|registrati|tutti i diritti|copyright|seguici|condividi|leggi anche|pubblicit|subscribe|sign in|all rights reserved|javascript/i;
+const NOISE = /cookie|privacy|newsletter|iscriviti|abbonati|abbonamento|accedi|accedere|login|registrati|tutti i diritti|copyright|seguici|condividi|leggi anche|pubblicit|subscribe|sign in|all rights reserved|javascript|wikisource|wikimedia|commons contiene|contiene una pagina|contiene immagini|portale\s/i;
 
 export function keySentences(text, { max = 3, skip = [] } = {}) {
   // A sentence that opens with the title keeps only what it adds.
   const heads = skip.map(t => t.replace(/[…\s]+$/, '').trim()).filter(t => t.length >= 20);
   const trimHead = s => { const h = heads.find(t => s.startsWith(t) && s.length - t.length >= 40); return h ? s.slice(h.length).replace(/^[\s:,.;\-–—]+/, '') : s; };
   const sentences = text.replace(/\s*\n\s*/g, '\n').split(/(?<=[.!?…])\s+|\n+/)
-    .map(s => trimHead(s.replace(/\s+/g, ' ').trim()))
+    .map(s => trimHead(s.replace(/\s+/g, ' ').replace(/\s+([,.;:!?])/g, '$1').trim()))
     .filter((s, i, all) => i < all.length - 1 || /[.!?…"”»)]$/.test(s) || !/[a-zà-ÿ]$/i.test(s)) // drop a last sentence cut mid-word
     .filter(s => s.length >= 40 && s.length <= 260 && words(s).length >= 6 && !NOISE.test(s));
   if (!sentences.length) return [];
@@ -146,6 +148,96 @@ export function keySentences(text, { max = 3, skip = [] } = {}) {
     if (chosen.length === max) break;
   }
   return chosen.sort((a, b) => a.i - b.i).map(c => (c.s.length > 200 ? `${c.s.slice(0, 197).replace(/\s+\S*$/, '')}…` : c.s));
+}
+
+// ---- 2b. what the author marked as important --------------------------------------
+// Writers flag the key passages themselves: the summary under the headline
+// (sommario, occhiello), sentences with words in bold, the subheadings of the
+// article and its short lists. Only the body of the article counts: menus,
+// "leggi anche", paywall and cookie banners are left out.
+// Tags may carry quoted attributes containing ">" (Wikipedia does): skip them whole.
+const TAG = /<(?:[^>"']|"[^"]*"|'[^']*')*>/g;
+const tagText = h => decodeEntities(h.replace(/<(sup|style|script)\b[\s\S]*?<\/\1>/gi, ' ').replace(/<br\s*\/?>/gi, ' ').replace(TAG, ' ')).replace(/\s+/g, ' ').replace(/\s+([,.;:!?])/g, '$1').trim();
+const BLOCK = /<\/?(div|article|section|main)\b[^>]*>/gi;
+// The element that holds the article: articleBody, <article>, or a body-like class;
+// the one with the most paragraph text wins.
+export function articleBody(html) {
+  const starts = [];
+  const re = /<(div|article|section|main)\b[^>]*(itemprop\s*=\s*["']articleBody["']|class\s*=\s*["'][^"']*\b(article[-_]?body|articleBody|entry-content|post-content|post__content|story-body|news-txt|single-content|article-content|article__body|content-body|mw-parser-output|testo|corpo)\b[^"']*["'])[^>]*>|<(article|main)\b[^>]*>/gi;
+  for (const m of html.matchAll(re)) starts.push(m.index);
+  let best = ''; let bestScore = 0;
+  for (const start of starts.slice(0, 40)) {
+    BLOCK.lastIndex = start; let depth = 0; let end = html.length; let t;
+    while ((t = BLOCK.exec(html))) { depth += t[0][1] === '/' ? -1 : 1; if (depth === 0) { end = t.index + t[0].length; break; } }
+    const part = html.slice(start, end);
+    const score = [...part.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)].reduce((a, m) => a + tagText(m[1]).length, 0);
+    if (score > bestScore) { bestScore = score; best = part; }
+  }
+  return bestScore >= 300 ? best : '';
+}
+
+const firstSentence = t => (t.match(/^(.{30,}?[.!?…])(\s|$)/)?.[1] || t).slice(0, 220);
+const sentenceAround = (text, piece) => {
+  const at = text.indexOf(piece); if (at < 0) return '';
+  const from = Math.max(0, ...['. ', '! ', '? '].map(p => text.lastIndexOf(p, at)).filter(i => i >= 0).map(i => i + 2));
+  const stop = text.slice(at + piece.length).search(/[.!?…](\s|$)/);
+  return text.slice(from, stop < 0 ? text.length : at + piece.length + stop + 1).trim();
+};
+const tidy = s => (s.length > 220 ? `${s.slice(0, 217).replace(/\s+\S*$/, '')}…` : s);
+
+export function markedPoints(html, { skip = [] } = {}) {
+  const found = []; // { text, weight, pos }
+  const add = (text, weight, pos) => {
+    const t = tidy(text.replace(/\s+/g, ' ').trim());
+    if (t.length < 25 || words(t).length < 5 || NOISE.test(t)) return;
+    found.push({ text: t, weight, pos });
+  };
+  // Summary right under the headline, by class name or as the first heading/paragraph after <h1>.
+  const h1 = html.search(/<h1\b/i);
+  const near = h1 >= 0 ? html.slice(h1, h1 + 6000) : '';
+  const byClass = html.match(/<(p|h2|div|span)\b[^>]*class\s*=\s*["'][^"']*\b(summary|sommario|occhiello|catenaccio|excerpt|subtitle|sottotitolo|standfirst|abstract|lead|dek|intro|article-description|post-excerpt)\b[^"']*["'][^>]*>([\s\S]*?)<\/\1>/i)?.[3];
+  const after = near.match(/<\/h1>[\s\S]{0,1500}?<(h2|p)\b[^>]*>([\s\S]*?)<\/\1>/i);
+  // A subheading right under the title is the summary; a first paragraph gives its first sentence.
+  const summary = byClass ? tagText(byClass) : after ? (after[1].toLowerCase() === 'h2' ? tagText(after[2]) : firstSentence(tagText(after[2]))) : '';
+  if (summary) add(summary, 10, -1);
+
+  const body = articleBody(html);
+  if (body) {
+    const paras = [...body.matchAll(/<(p|li)\b[^>]*>([\s\S]*?)<\/\1>/gi)];
+    paras.forEach((m, i) => {
+      const inner = m[2]; const text = tagText(inner);
+      if (text.length < 20) return;
+      const bolds = [...inner.matchAll(/<(strong|b)\b[^>]*>([\s\S]*?)<\/\1>/gi)].map(b => tagText(b[2])).filter(b => b.length >= 4);
+      for (const b of bolds) {
+        // A short bold label opening the paragraph ("La spesa per i farmaci") heads what follows.
+        if (text.startsWith(b) && words(b).length <= 8) add(`${b.replace(/[:.\s]+$/, '')}: ${firstSentence(text.slice(b.length).replace(/^[\s:.\-–—]+/, ''))}`, 6 + Math.min(b.length, 60) / 30, i);
+        else add(b.length >= 60 ? b : sentenceAround(text, b), 6 + Math.min(b.length, 60) / 30, i);
+      }
+      if (m[1].toLowerCase() === 'li' && paras.filter(x => x[1].toLowerCase() === 'li').length <= 8) add(text, 3, i);
+    });
+    // Subheadings with the first sentence that follows them.
+    for (const h of body.matchAll(/<(h2|h3)\b[^>]*>([\s\S]*?)<\/\1>\s*(?:<[^p][^>]*>\s*)*<p\b[^>]*>([\s\S]*?)<\/p>/gi)) {
+      const head = tagText(h[2]); const next = firstSentence(tagText(h[3]));
+      if (head.length >= 4 && next) add(`${head.replace(/[:.\s]+$/, '')}: ${next}`, 4, h.index);
+    }
+  }
+  // Wikipedia and many guides: the bold term opens the first paragraph, which is the definition.
+  if (!found.some(f => f.weight >= 6) && body) {
+    const lead = [...body.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)].map(m => m[1]).find(p => /<(b|strong)\b/i.test(p.slice(0, 300)) && tagText(p).length > 60);
+    if (lead) add(firstSentence(tagText(lead)), 7, 0);
+  }
+  // Drop what the title already says and near-duplicates; best first, then page order.
+  const seen = skip.map(t => new Set(words(t)));
+  const out = [];
+  for (const f of found.sort((a, b) => b.weight - a.weight)) {
+    const ws = new Set(words(f.text));
+    const same = set => [...ws].filter(w => set.has(w)).length / Math.max(1, Math.min(ws.size, set.size));
+    if (seen.some(set => same(set) > 0.8)) continue;
+    if (out.some(o => same(new Set(words(o.text))) > 0.6)) continue;
+    out.push(f);
+    if (out.length === 3) break;
+  }
+  return out.sort((a, b) => a.pos - b.pos).map(f => f.text);
 }
 
 // ---- social captions -------------------------------------------------------------
@@ -195,10 +287,17 @@ export function makeDigest({ html = '', title = '', description = '', interests 
   // The caption without its emoji-labelled bits, which became facts above.
   const caption = description.replace(/(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic})*)\s*[:：]\s*[^\p{Extended_Pictographic}\n|]{2,80}/gu, ' ').replace(/#[\p{L}\p{N}_]+/gu, ' ');
   const text = [caption, htmlText(html)].filter(Boolean).join('\n');
-  const sentences = keySentences(text, { max: facts.length >= 3 ? 1 : 3 - Math.min(facts.length, 1), skip: [title] });
+  const room = facts.length >= 3 ? 1 : 3 - Math.min(facts.length, 1);
+  // What the author marked as important first; the most telling sentences fill the rest.
+  const marked = markedPoints(html, { skip: [title] }).slice(0, room);
+  const extra = keySentences(text, { max: room, skip: [title, ...marked] })
+    .filter(x => !marked.some(m => { const a = new Set(words(m)); const b = words(x); return b.filter(w => a.has(w)).length / Math.max(1, b.length) > 0.6; }));
+  const sentences = [...marked, ...extra].slice(0, room);
   const points = [...sentences, ...facts].slice(0, 4);
   const when = facts.find(f => f.startsWith('Quando: '))?.slice(8);
-  return points.length ? { points, why: whyItMatters({ kind, text: [title, text].join(' '), interests, when }) } : null;
+  // Which collection it goes with is judged on what the page is about (title, summary,
+  // chosen points), not on menus or related links elsewhere on the page.
+  return points.length ? { points, why: whyItMatters({ kind, text: [title, description, ...points].join(' '), interests, when }) } : null;
 }
 
 const json = (res, status, body) => {
