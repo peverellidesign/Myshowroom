@@ -266,15 +266,18 @@ export function captionFacts(text) {
 export function compact(s, max = 150) {
   let t = s.replace(/\s+/g, ' ').replace(/\s+([,.;:!?])/g, '$1').trim();
   t = t.replace(/\s*[-–—|]\s*(Notizie|News|Ansa\.it|Il Post|Corriere|la Repubblica)[^.]*$/i, '');
+  // Text the site itself cut ("aiuti mil…"): drop the broken word, keep the ellipsis.
+  let cut = false;
+  if (/…$/.test(t)) { t = t.slice(0, -1).replace(/\s+\S*$/, ''); cut = true; }
   if (t.length > max) t = t.replace(/\s*\([^)]{3,80}\)/g, '');
   if (t.length > max) {
     const head = t.slice(0, max);
-    const cut = Math.max(head.lastIndexOf(', '), head.lastIndexOf('; '), head.lastIndexOf(' – '), head.lastIndexOf(' - '));
-    // Keep most of the sentence: a clause boundary late enough to keep its meaning.
-    t = cut >= 95 ? head.slice(0, cut) : `${head.replace(/\s+\S*$/, '')}…`;
-    t = t.replace(/\s+(che|e|ed|o|di|da|del|della|con|per|a|in|su|the|and|of|to)(…)?$/i, '…');
+    const at = Math.max(head.lastIndexOf(', '), head.lastIndexOf('; '), head.lastIndexOf(' – '), head.lastIndexOf(' - '));
+    // A clause boundary late enough to keep the meaning; otherwise a word boundary.
+    if (at >= 95) { t = head.slice(0, at); cut = true; } else { t = head.replace(/\s+\S*$/, ''); cut = true; }
   }
-  t = t.replace(/…\s*$/, m => (/\w…$/.test(t) && t.length > max - 5 ? m : '')).replace(/[\s,;:.]+$/, '');
+  t = t.replace(/[\s,;:.]+$/, '');
+  if (cut) t = t.replace(/\s+(che|e|ed|o|di|da|del|della|dei|delle|con|per|a|al|alla|in|su|il|la|lo|i|gli|le|un|una|the|and|of|to|a)$/i, '') + '…';
   return t ? t[0].toUpperCase() + t.slice(1) : t;
 }
 
@@ -341,18 +344,20 @@ export function makeDigest({ html = '', title = '', description = '', interests 
   const hardFacts = [...s.facts.filter(f => !/^(Di |Pubblicato)/.test(f)), ...m.facts.filter(f => !/^(Di |Pubblicato)/.test(f)), ...captionLabels];
   const byline = [...s.facts, ...m.facts].filter(f => /^(Di |Pubblicato)/.test(f));
 
+  const editor = summarySentences(caption, title);
   const candidates = [
-    ...summarySentences(caption, title),
+    ...editor,
     ...markedPoints(html, { skip: [title] }),
     ...keySentences([caption, htmlText(html)].filter(Boolean).join('\n'), { max: 3, skip: [title] }),
   ];
-  const story = [];
+  const story = []; const fixed = new Set(editor.map(e => compact(e)));
   for (const c of candidates) {
     const t = compact(c);
     if (t.length < 8 || repeats(title, t)) continue;
     // Same thing said twice: keep the richer wording.
     const twin = story.findIndex(o => overlap(o, t) > 0.6);
-    if (twin >= 0) { if (t.length > story[twin].length * 1.5 && words(t).length > words(story[twin]).length + 3) story[twin] = t; continue; }
+    // (The editor's own summary stays: it is written to be short.)
+    if (twin >= 0) { if (!fixed.has(story[twin]) && !/…$/.test(t) && t.length > story[twin].length * 1.5 && words(t).length > words(story[twin]).length + 3) story[twin] = t; continue; }
     story.push(t);
   }
   const room = hardFacts.length ? Math.max(1, 4 - hardFacts.length) : 3;
