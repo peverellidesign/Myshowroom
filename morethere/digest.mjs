@@ -350,7 +350,9 @@ export function makeDigest({ html = '', title = '', description = '', interests 
     ...markedPoints(html, { skip: [title] }),
     ...keySentences([caption, htmlText(html)].filter(Boolean).join('\n'), { max: 3, skip: [title] }),
   ];
-  const story = []; const fixed = new Set(editor.map(e => compact(e)));
+  // The editor's summary is protected for stories; for places, products and events the
+  // structured facts already cover it, so a richer sentence from the page may replace it.
+  const story = []; const fixed = new Set(hardFacts.length ? [] : editor.map(e => compact(e)));
   for (const c of candidates) {
     const t = compact(c);
     if (t.length < 8 || repeats(title, t)) continue;
