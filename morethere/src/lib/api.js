@@ -265,6 +265,18 @@ export function createRemoteApi(user) {
     },
 
     // ---- link previews (server-side fetch, signed-in users only) ------------
+    // "In breve": key facts and why it matters, written by the server with Claude.
+    async digestEnabled() {
+      try { const r = await fetch('/api/digest'); return r.ok && (await r.json()).enabled === true; } catch { return false; }
+    },
+    async digest({ url, title, description, interests }) {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token) return null;
+      const res = await fetch('/api/digest', { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ url, title, description, interests }) });
+      if (!res.ok) return null;
+      return res.json();
+    },
     async linkPreview(url) {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;

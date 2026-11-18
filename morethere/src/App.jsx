@@ -136,6 +136,8 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   const [askTitle, setAskTitle] = useState(''); const [askNote, setAskNote] = useState(''); const [askPeople, setAskPeople] = useState([]);
   const [showSent, setShowSent] = useState(false);
   const [bigFace, setBigFace] = useState(null); // a profile photo, enlarged
+  const [digestOn, setDigestOn] = useState(false); // "In breve" available on this server
+  const [digesting, setDigesting] = useState(null); // id of the discovery being summarised
   // Use with AI: what to give the assistant (everything, collections, a place or theme, or a hand-picked set).
   const [aiMode, setAiMode] = useState('all'); const [aiCols, setAiCols] = useState([]); const [aiQuery, setAiQuery] = useState('');
   const [aiPicked, setAiPicked] = useState([]); const [aiSkip, setAiSkip] = useState([]); const [aiAsk, setAiAsk] = useState('');
@@ -299,11 +301,31 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     if (!saved) return;
     setEntry(''); await refreshArchive();
     // Enrich links with the real page title and cover image, in the background.
-    if (url) { await enrichLink({ ...draft, id: saved.id, image_path: null }); await refreshArchive(); }
+    if (url) { const done = await enrichLink({ ...draft, id: saved.id, image_path: null }); await refreshArchive(); summarize(done || { ...draft, id: saved.id }, { fresh: true }); }
   };
   // Title, description and cover image from the page. Never overwrites what
   // the person wrote: the title only while it is still the bare hostname,
   // the note only while empty, the photo only while there is none.
+  useEffect(() => { if (social && api.digestEnabled) api.digestEnabled().then(setDigestOn); }, [api, social]);
+  // "In breve": a few key facts and why it may matter, at the top of the note.
+  // On a fresh save it replaces the page's own description; on request it is
+  // added above what you wrote.
+  const digestText = d => [...d.points.map(p => `• ${p}`), d.why ? `\nPerché ti interessa: ${d.why}` : ''].filter(Boolean).join('\n');
+  const summarize = async (item, { fresh = false } = {}) => {
+    const url = safeUrl(item.url || '');
+    if (!url || !digestOn || digesting === item.id) return false;
+    setDigesting(item.id);
+    try {
+      const d = await api.digest({ url, title: item.title, description: item.note, interests: collections });
+      if (!d?.points?.length) { if (!fresh) toast('Non riesco a riassumere questa pagina.'); return false; }
+      const byline = (item.note || '').split('\n').filter(l => /^— /.test(l)).join('\n');
+      const note = fresh ? [digestText(d), byline].filter(Boolean).join('\n\n') : [digestText(d), item.note].filter(Boolean).join('\n\n');
+      await api.updateItem(item.id, { note: note.slice(0, 10000) });
+      setItems(arr => arr.map(i => (i.id === item.id ? { ...i, note } : i)));
+      setSelected(sel => (sel?.id === item.id ? { ...sel, note } : sel));
+      return true;
+    } catch { return false; } finally { setDigesting(null); }
+  };
   // One preview per link at a time (saving a link and the background pass could both ask).
   const enrichingIds = useRef(new Set());
   const enrichLink = async (item) => {
@@ -329,7 +351,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
       if (!Object.keys(patch).length) return false;
       await api.updateItem(item.id, patch);
       setSelected(sel => (sel?.id === item.id ? { ...sel, ...patch } : sel));
-      return true;
+      return { ...item, ...patch };
     } catch { return false; } // previews are best effort
     finally { enrichingIds.current.delete(item.id); }
   };
@@ -374,7 +396,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
         } else return;
         const saved = await api.addItem({ ...draft, collection: 'Idee', collection_id: collectionId('Idee') });
         let item = { ...draft, id: saved.id, collection: 'Idee', collection_id: collectionId('Idee'), created: Date.now(), image_path: draft.image_path || null };
-        if (url && !file) { await enrichLink({ ...item, note: '' }); }
+        if (url && !file) { const done = await enrichLink({ ...item, note: '' }); summarize(done || item, { fresh: !item.note }); }
         await refreshArchive();
         setSelected(sel => (sel?.id === item.id ? sel : item));
         setScreen('detail');
@@ -870,8 +892,8 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     {screen === 'detail' && selected && <main><div className="eyebrow">{selected.category}{selected.memory_date && !edit ? <> · {fmtMemory(selected.memory_date)}</> : null}</div>
       {photoUrls[selected.image_path] && <Photo className="hero" url={photoUrls[selected.image_path]} alt={selected.title} />}
       {edit ? <div className="panel"><label htmlFor="e-title">TITOLO</label><input id="e-title" maxLength={300} autoFocus={!!edit.fresh} onFocus={e => edit.fresh && e.target.select()} value={edit.title} onChange={e => setEdit({ ...edit, title: e.target.value })} /><label htmlFor="e-url">LINK</label><input id="e-url" inputMode="url" autoCapitalize="none" placeholder="https://…" value={edit.url} onChange={e => setEdit({ ...edit, url: e.target.value })} /><label htmlFor="e-note">NOTA</label><textarea id="e-note" rows="5" maxLength={10000} placeholder={edit.fresh ? 'Dove eravate, con chi, cosa ricordi…' : ''} value={edit.note} onChange={e => setEdit({ ...edit, note: e.target.value })} /><label htmlFor="e-date">DATA DEL RICORDO</label><div className="dateRow"><input id="e-date" type="date" className={edit.memory_date ? '' : 'empty'} aria-describedby="e-date-hint" min="1800-01-01" max="2200-12-31" value={edit.memory_date || ''} onChange={e => setEdit({ ...edit, memory_date: e.target.value })} />{edit.memory_date ? <button type="button" className="textlink" onClick={() => setEdit({ ...edit, memory_date: '' })}>Togli</button> : <button type="button" className="textlink" onClick={() => setEdit({ ...edit, memory_date: todayIso() })}>Oggi</button>}</div><button className="pill dark wide" disabled={busy} onClick={saveEdit}><Check size={18} /> Salva</button><button className="pill outline wide" onClick={() => setEdit(null)}>Annulla</button></div>
-        : <><h1>{selected.title}</h1>{safeUrl(selected.url || '') && <a className="outlink" href={selected.url} target="_blank" rel="noopener noreferrer">Apri la fonte <ExternalLink size={17} /></a>}{selected.note && <p className="notebody">{selected.note}</p>}
-          <div className="detailtools"><button className="textlink" onClick={() => setEdit({ title: selected.title, url: selected.url || '', note: selected.note || '', memory_date: selected.memory_date || '' })}><Pencil size={14} /> Modifica</button><button className="textlink" disabled={busy} onClick={() => pickPhoto(selected.id)}><ImagePlus size={14} /> {selected.image_path ? 'Cambia foto' : 'Aggiungi foto'}</button>{social && safeUrl(selected.url || '') && !selected.image_path && <button className="textlink" disabled={busy} onClick={async () => { setBusy(true); const ok = await enrichLink(selected); setBusy(false); toast(ok ? 'Anteprima aggiornata' : 'Questa pagina non offre un\'anteprima'); if (ok) refreshArchive(); }}><Link2 size={14} /> Aggiorna anteprima</button>}<button className="textlink danger" onClick={async () => { if (!window.confirm(`Eliminare "${selected.title}"?`)) return; await removeItem(selected); goBack(); }}><Trash2 size={14} /> Elimina</button></div></>}
+        : <><h1>{selected.title}</h1>{safeUrl(selected.url || '') && <a className="outlink" href={selected.url} target="_blank" rel="noopener noreferrer">Apri la fonte <ExternalLink size={17} /></a>}{digesting === selected.id && <p className="digestWait"><Sparkles size={14} className="inline" /> Sto scrivendo i punti salienti…</p>}{selected.note && <p className="notebody">{selected.note.split(/(Perché ti interessa:)/).map((part, k) => (part === 'Perché ti interessa:' ? <strong key={k}>{part}</strong> : part))}</p>}
+          <div className="detailtools"><button className="textlink" onClick={() => setEdit({ title: selected.title, url: selected.url || '', note: selected.note || '', memory_date: selected.memory_date || '' })}><Pencil size={14} /> Modifica</button><button className="textlink" disabled={busy} onClick={() => pickPhoto(selected.id)}><ImagePlus size={14} /> {selected.image_path ? 'Cambia foto' : 'Aggiungi foto'}</button>{social && safeUrl(selected.url || '') && !selected.image_path && <button className="textlink" disabled={busy} onClick={async () => { setBusy(true); const ok = await enrichLink(selected); setBusy(false); toast(ok ? 'Anteprima aggiornata' : 'Questa pagina non offre un\'anteprima'); if (ok) refreshArchive(); }}><Link2 size={14} /> Aggiorna anteprima</button>}{digestOn && safeUrl(selected.url || '') && <button className="textlink" disabled={digesting === selected.id} onClick={() => summarize(selected)}><Sparkles size={14} /> {digesting === selected.id ? 'Riassumo…' : 'In breve'}</button>}<button className="textlink danger" onClick={async () => { if (!window.confirm(`Eliminare "${selected.title}"?`)) return; await removeItem(selected); goBack(); }}><Trash2 size={14} /> Elimina</button></div></>}
       <div className="panel"><label htmlFor="col">RACCOLTA</label><select id="col" value={selected.collection || ''} onChange={async e => { const v = e.target.value; const id = collectionId(v); setItems(arr => arr.map(i => i.id === selected.id ? { ...i, collection: v, collection_id: id } : i)); setSelected({ ...selected, collection: v, collection_id: id }); try { await api.updateItem(selected.id, { collection_id: id, collection: v }); } catch (err) { toast(friendlyError(err)); refreshArchive(); } }}>{!selected.collection && <option value="">—</option>}{collections.map(c => <option key={c}>{c}</option>)}</select></div><div className="stack"><button className="feature mfyFeature" onClick={() => share(selected)}><span className="ixi" aria-hidden="true"><MoreForYouIcon /></span><span><strong>More for you.</strong><small>Apri questo ricordo a un amico, con una dedica</small></span><ChevronRight /></button><button className="feature" onClick={() => exportAI([selected])}><Sparkles /><span><strong>Use with AI</strong><small>Copia il contesto</small></span><ChevronRight /></button></div></main>}
 
     {screen === 'askNew' && <main>

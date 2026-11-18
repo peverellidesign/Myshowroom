@@ -28,7 +28,7 @@ let browser;
 const ctx = {};
 const PHOTO = fileURLToPath(new URL('../public/icon-512.png', import.meta.url));
 const EXIF_PHOTO = fileURLToPath(new URL('./fixtures/photo-exif.jpg', import.meta.url));
-let pageServer; let pageUrl;
+let pageServer; let pageUrl; let fakeClaude; let claudeAsked = [];
 
 const shot = async (page, name) => {
   if (!SHOTS) return;
@@ -62,6 +62,19 @@ before(async () => {
   });
   await new Promise(r => pageServer.listen(0, '127.0.0.1', r));
   pageUrl = `http://127.0.0.1:${pageServer.address().port}/trattoria`;
+  // "In breve": the dev server talks to a stand-in for the Claude API on port 54399
+  // (started with ANTHROPIC_BASE_URL pointing here), so no real key is needed.
+  claudeAsked = [];
+  fakeClaude = createServer((req, res) => {
+    let body = ''; req.on('data', c => { body += c; });
+    req.on('end', () => {
+      claudeAsked.push(JSON.parse(body || '{}'));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ id: 'msg_e2e', type: 'message', role: 'assistant', model: 'claude-opus-5-5', stop_reason: 'end_turn', stop_details: null, usage: { input_tokens: 1, output_tokens: 1 },
+        content: [{ type: 'text', text: JSON.stringify({ points: ['Cucina lombarda dal 1962', 'A Milano'], why: 'Da provare la prossima volta che sei a Milano.' }) }] }));
+    });
+  });
+  await new Promise(r => fakeClaude.listen(54399, '127.0.0.1', r)).catch(() => {});
   browser = await playwright.chromium.launch();
   for (const n of Object.keys(people)) {
     ctx[n] = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, permissions: ['clipboard-read', 'clipboard-write'] });
@@ -72,6 +85,7 @@ before(async () => {
 
 after(async () => {
   pageServer?.close();
+  fakeClaude?.close();
   await browser?.close();
   const { data } = await admin.auth.admin.listUsers({ perPage: 200 });
   for (const u of data?.users || []) if (u.email?.endsWith(`${run}@e2e.morethere.local`)) await admin.auth.admin.deleteUser(u.id);
@@ -130,6 +144,15 @@ test('link preview: real page title and cover image, stored as a private photo',
   assert.ok(await card.locator('.preview img').evaluate(img => img.complete && img.naturalWidth > 0), 'cover image loads');
   assert.match(await card.locator('.preview img').getAttribute('src'), /\/storage\/v1\/object\/sign\/media\//, 'served from private storage, not the original site');
   await shot(page, '03a-link-preview');
+  // "In breve": the note becomes key facts and why it matters.
+  await card.locator('.itemtitle').click();
+  await page.locator('.notebody', { hasText: '• Cucina lombarda dal 1962' }).waitFor({ timeout: 15000 });
+  await page.getByText('Perché ti interessa: Da provare la prossima volta che sei a Milano.').waitFor();
+  const asked = claudeAsked.at(-1);
+  assert.match(asked.messages[0].content, /Trattoria da Mario/, 'the page text was sent');
+  assert.match(asked.messages[0].content, /Le raccolte di questa persona: .*Idee/, 'with the collection names');
+  await shot(page, '03b-in-breve');
+  await close(page);
 });
 
 test('a new photo opens its memory in edit mode, dated from the camera', async () => {

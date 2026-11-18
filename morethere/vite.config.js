@@ -9,6 +9,8 @@ function previewApi() {
       const { handlePreview, handlePreviewImage, handleWhere } = await import('./preview.mjs');
       // Connect strips the mount path; the handler only reads the query string.
       server.middlewares.use('/api/where', (req, res) => handleWhere(req, res));
+      const { handleDigest, handleDigestStatus } = await import('./digest.mjs');
+      server.middlewares.use('/api/digest', (req, res) => (req.method === 'POST' ? handleDigest(req, res) : handleDigestStatus(req, res)));
       server.middlewares.use('/api/preview-image', (req, res) => handlePreviewImage(req, res));
       server.middlewares.use('/api/preview', (req, res) => handlePreview(req, res));
     },

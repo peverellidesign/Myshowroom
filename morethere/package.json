@@ -9,11 +9,12 @@
     "preview": "vite preview --host 0.0.0.0",
     "db:start": "supabase start",
     "db:reset": "supabase db reset",
-    "test:authz": "node --test --test-concurrency=1 tests/authz.test.mjs tests/media.test.mjs tests/asks.test.mjs tests/where.test.mjs tests/preview.test.mjs",
+    "test:authz": "node --test --test-concurrency=1 tests/authz.test.mjs tests/media.test.mjs tests/asks.test.mjs tests/where.test.mjs tests/preview.test.mjs tests/digest.test.mjs",
     "test:e2e": "node --test --test-concurrency=1 tests/e2e.test.mjs tests/onboarding.test.mjs",
     "start": "node server.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.10.0",
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",

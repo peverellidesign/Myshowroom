@@ -450,3 +450,4 @@ h1.first{margin-top:4px}
 .aiAsk:focus{border-color:#999}
 .aiCopy{margin-top:18px}
 .aiRow .optMark{border-radius:7px}.aiRow.on .optMark{background:#252525;border-color:#252525;color:#fff}
+.digestWait{color:#8a8a8a;font-size:13px;margin:6px 0 0;animation:pulse 1.4s ease-in-out infinite}@keyframes pulse{50%{opacity:.45}}

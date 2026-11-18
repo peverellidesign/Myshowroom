@@ -368,3 +368,30 @@ export async function handleWhere(req, res) {
     return json(res, 502, { error: 'geocoder_unavailable' });
   }
 }
+
+// ---- shared with digest.mjs -------------------------------------------------
+export async function userFromRequest(req) {
+  const token = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+  return token ? userFromToken(token) : null;
+}
+
+// The readable text of a page (no scripts, styles or markup), for summaries.
+// Same safety rules as previews: public addresses only, size and time limits.
+export async function pageText(raw, max = 12000) {
+  let url = new URL(raw);
+  for (let hop = 0; hop <= 3; hop++) {
+    checkUrl(url);
+    const r = await fetchOnce(url);
+    if (r.redirect) { url = r.redirect; continue; }
+    const charset = r.type.match(/charset=([\w-]+)/i)?.[1] || 'utf-8';
+    let html;
+    try { html = new TextDecoder(charset).decode(r.body); } catch { html = new TextDecoder('utf-8').decode(r.body); }
+    const body = html.replace(/^[\s\S]*?<body\b[^>]*>/i, '');
+    return decode(body
+      .replace(/<(script|style|noscript|svg|template|iframe|nav|footer|header|form)\b[\s\S]*?<\/\1>/gi, ' ')
+      .replace(/<\/(p|div|li|h[1-6]|br|section|article|tr)>/gi, '\n')
+      .replace(/<[^>]+>/g, ' '))
+      .slice(0, max);
+  }
+  throw new Error('too_many_redirects');
+}

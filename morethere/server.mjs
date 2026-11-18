@@ -6,6 +6,7 @@ import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { brotliCompressSync, gzipSync, constants as zlib } from 'node:zlib';
 import { handlePreview, handlePreviewImage, handleWhere } from './preview.mjs';
+import { handleDigest, handleDigestStatus } from './digest.mjs';
 
 const root = join(fileURLToPath(new URL('.', import.meta.url)), 'dist');
 const port = Number(process.env.PORT) || 8080;
@@ -72,6 +73,8 @@ createServer(async (req, res) => {
     if (path === '/api/preview' && req.method === 'GET') return await handlePreview(req, res);
     if (path === '/api/preview-image' && req.method === 'GET') return await handlePreviewImage(req, res);
     if (path === '/api/where' && req.method === 'GET') return await handleWhere(req, res);
+    if (path === '/api/digest' && req.method === 'POST') return await handleDigest(req, res);
+    if (path === '/api/digest' && req.method === 'GET') return handleDigestStatus(req, res);
     if (path === '/share-target' && req.method === 'POST') { req.resume(); res.writeHead(303, { Location: '/?share=1' }); return res.end(); }
     const file = normalize(join(root, path));
     if (file.startsWith(root) && path !== '/' && (await stat(file).catch(() => null))?.isFile()) {
