@@ -64,7 +64,9 @@ export function interestReason({ text, kind = '', sector = '', items = [], profi
     const key = String(o.url || o.title).replace(/[?#].*$/, '').toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);
-    if (themesOf(`${o.title} ${o.note || ''}`).includes(theme.id)) n += 1;
+    // Only what the discovery says, not morethere's own lines ("Segui spesso i temi economici").
+    const own = String(o.note || '').split('\n').filter(l => !/^(Perché ti interessa:|Contesto:|— )/.test(l.trim())).join(' ');
+    if (themesOf(`${o.title} ${own}`).includes(theme.id)) n += 1;
   }
   if (n >= 3) return `Segui spesso ${theme.phrase}.`;
   if (n >= 1) return `Ti stai avvicinando ${theme.to}.`;

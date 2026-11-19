@@ -60,7 +60,7 @@ export function explainWhy({ item, points = [], kind = '', base = '', fallback =
   const others = items.filter(i => i.id !== item.id);
   const signals = []; // { score, text }
   const body = fold(text);
-  const kindOf = f => (o => f.kinds.includes(o.kind) || f.words.some(w => fold(`${o.title} ${o.note || ''}`).includes(w)));
+  const kindOf = f => (o => f.kinds.includes(o.kind) || f.words.some(w => fold(`${o.title} ${ownWords(o.note)}`).includes(w)));
 
   // 0. Already in your collection: the same link saved before.
   const norm = u => String(u || '').replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase();
@@ -73,7 +73,7 @@ export function explainWhy({ item, points = [], kind = '', base = '', fallback =
   const seen = new Map();
   for (const o of others) {
     if (item.url && o.url && norm(o.url) === norm(item.url)) continue; // copies of the same link do not count
-    const theirs = termsIn(`${o.title} ${o.note || ''}`);
+    const theirs = termsIn(`${o.title} ${ownWords(o.note)}`);
     for (const t of terms) if (theirs.has(t)) { const list = seen.get(t) || []; list.push(o); seen.set(t, list); }
   }
   const byName = [...seen.entries()].filter(([t]) => [...names].some(n => stem(n) === t));
@@ -95,7 +95,7 @@ export function explainWhy({ item, points = [], kind = '', base = '', fallback =
   const fit = new Map();
   for (const o of others) {
     if (!o.collection || /^(idee|inbox|da vedere|varie)$/i.test(o.collection)) continue;
-    const shared = [...termsIn(`${o.title} ${o.note || ''}`)].filter(t => terms.has(t)).length;
+    const shared = [...termsIn(`${o.title} ${ownWords(o.note)}`)].filter(t => terms.has(t)).length;
     if (shared) fit.set(o.collection, (fit.get(o.collection) || 0) + 1);
   }
   const home = [...fit.entries()].sort((a, b) => b[1] - a[1])[0];
@@ -165,9 +165,14 @@ export function explainWhy({ item, points = [], kind = '', base = '', fallback =
  * brands, places) weigh most, then shared topic words. Copies of the same link,
  * and loose matches, are left out.
  */
+// Only what the discovery says: morethere's own lines ("Perché ti interessa: …",
+// "Contesto: …", "— autore su Facebook") are the same on many items and would
+// make unrelated things look alike.
+export const ownWords = note => String(note || '').split('\n').filter(l => !/^(Perché ti interessa:|Contesto:|— )/.test(l.trim())).join('\n');
+
 export function relatedItems(item, items, max = 3) {
   const norm = u => String(u || '').replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase();
-  const text = `${item.title} ${item.note || ''}`;
+  const text = `${item.title} ${ownWords(item.note)}`;
   const names = new Set([...namesIn(text)].map(stem));
   const terms = termsIn(text);
   const seen = new Set([norm(item.url) || item.id]);
@@ -175,11 +180,11 @@ export function relatedItems(item, items, max = 3) {
   return items
     .filter(o => o.id !== item.id)
     .map(o => {
-      const theirs = termsIn(`${o.title} ${o.note || ''}`);
+      const theirs = termsIn(`${o.title} ${ownWords(o.note)}`);
       const shared = [...theirs].filter(t => terms.has(t));
       const score = shared.filter(t => names.has(t)).length * 2 + shared.filter(t => !names.has(t)).length;
       // Same name, different worlds (Como the town, Como the club): needs much more in common.
-      const sameTheme = themesTouched(`${o.title} ${o.note || ''}`).some(t => mine.includes(t));
+      const sameTheme = themesTouched(`${o.title} ${ownWords(o.note)}`).some(t => mine.includes(t));
       return { o, score: sameTheme ? score : score - 3 };
     })
     .filter(x => x.score >= 2)

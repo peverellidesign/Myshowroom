@@ -4,7 +4,7 @@ import {
   FolderHeart, Send, Check, Bookmark, PenLine, X, Link2, UserRoundPlus, ChevronRight,
   ShieldCheck, Download, LogOut, Share, Compass, MapPin, Inbox, UserRoundCheck, ImagePlus, Pencil, UserRound, ArrowRight,
 } from 'lucide-react';
-import { explainWhy, relatedItems } from './lib/why.js';
+import { explainWhy, relatedItems, ownWords } from './lib/why.js';
 import { judge } from './lib/judge.js';
 import { interestReason, themesOf } from './lib/interests.js';
 import { watermark } from './lib/watermark.js';
@@ -327,7 +327,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
       const ctx = res.topic ? await api.context(res.topic).catch(() => null) : null;
       // Earlier saves on the subject, but only of the same kind of theme (Como the club is not Como the town).
       const mineThemes = themesOf([item.title, ...d.points].join(' '), { kind: d.kind, sector: ctx?.sector || '' });
-      const before = res.related.filter(o => themesOf(`${o.title} ${o.note || ''}`).some(t => mineThemes.includes(t)))
+      const before = res.related.filter(o => themesOf(`${o.title} ${ownWords(o.note)}`).some(t => mineThemes.includes(t)))
         .flatMap(o => [o.title, ...(o.note || '').split('\n').filter(l => l.startsWith('• ')).map(l => l.slice(2))]);
       // First why it is yours ("Ti interessa perché segui spesso i temi economici"),
       // then the judgment on the subject, if the facts allow one.

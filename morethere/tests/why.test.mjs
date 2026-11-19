@@ -79,3 +79,11 @@ test('Collegati: same subject first, not the same name in another world, no copi
   assert.deepEqual(relatedItems(all[0], all).map(o => o.id), ['n3']);
   assert.deepEqual(relatedItems(all[4], all).map(o => o.id), [], 'the club is not the town');
 });
+
+test("morethere's own lines never make two discoveries look alike", () => {
+  const all = [
+    { id: 'x1', title: 'Nvidia supera 100 miliardi di ricavi', note: '• Fatturato in aumento\n\nPerché ti interessa: Segui spesso i temi economici.', created: 1 },
+    { id: 'x2', title: 'Botteghe storiche a Como', note: '• Il fascino dei negozi di un tempo\n\nPerché ti interessa: Segui spesso i temi economici.', created: 2 },
+  ];
+  assert.deepEqual(relatedItems(all[1], all), []);
+});
