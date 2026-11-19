@@ -229,6 +229,14 @@ test('edit an item, rename and delete a collection', async () => {
 
 test('drag and drop: your own order, kept on every device', async () => {
   const { page } = people.alice;
+  // Dynamic filters: themes and sources worked out from the discoveries themselves.
+  await page.getByRole('button', { name: 'Tema: Cibo' }).waitFor();
+  await page.getByRole('button', { name: 'Fonte: Note' }).click();
+  assert.ok(await page.locator('.cards .item', { hasText: 'Idea segreta' }).count() >= 1, 'notes filter shows notes');
+  assert.equal(await page.locator('.cards .item', { hasText: 'Trattoria da Mario' }).count(), 0, 'and not links');
+  await page.getByRole('button', { name: 'Tema: Cibo' }).click();
+  await page.locator('.cards .item', { hasText: 'Trattoria da Mario' }).first().waitFor();
+  await shot(page, '05c-filters');
   await page.getByRole('button', { name: 'Tutti', exact: true }).click();
   const titles = () => page.locator('.cards .item .itemtitle').allInnerTexts();
   const start = await titles();

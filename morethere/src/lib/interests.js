@@ -8,23 +8,23 @@
 const fold = s => ` ${String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['’]/g, ' ')} `;
 
 export const THEMES = [
-  { id: 'economy', to: 'ai temi economici', phrase: 'i temi economici', profile: ['economia', 'finanza', 'finance', 'business', 'investimenti', 'borsa', 'impresa', 'imprese', 'lavoro'],
+  { id: 'economy', label: 'Economia', to: 'ai temi economici', phrase: 'i temi economici', profile: ['economia', 'finanza', 'finance', 'business', 'investimenti', 'borsa', 'impresa', 'imprese', 'lavoro'],
     words: [' economi', ' finanz', ' borsa', ' mercat', ' azion', ' investiment', ' banca', ' banche', ' ricavi', ' fatturat', ' utile ', ' bilanci', ' impres', ' aziend', ' attivita commercial', ' attivita storiche', ' negozi', ' botteg', ' commerc', ' marchio', ' fisco', ' tasse', ' pil ', ' inflazion', ' lavoro', ' occupazion', ' export', ' dazi', ' ipo ', ' quotazion', ' startup', ' manovra', ' legge di bilancio', ' euro ', ' dollari'] },
-  { id: 'tech', to: 'alla tecnologia', phrase: 'la tecnologia', profile: ['tech', 'tecnologia', 'technology', 'ai', 'innovazione', 'digitale'],
+  { id: 'tech', label: 'Tecnologia', to: 'alla tecnologia', phrase: 'la tecnologia', profile: ['tech', 'tecnologia', 'technology', 'ai', 'innovazione', 'digitale'],
     words: [' tecnolog', ' nvidia', ' apple', ' google', ' microsoft', ' meta ', ' zuckerberg', ' anthropic', ' openai', ' chip', ' semicondutt', ' software', ' intelligenza artificiale', ' smartphone', ' app ', ' digital', ' algoritm', ' robot', ' silicon valley', ' processori'] },
-  { id: 'sport', to: 'allo sport', phrase: 'lo sport', profile: ['sport', 'calcio', 'fitness', 'running', 'tennis', 'bici'],
+  { id: 'sport', label: 'Sport', to: 'allo sport', phrase: 'lo sport', profile: ['sport', 'calcio', 'fitness', 'running', 'tennis', 'bici'],
     words: [' partita', ' serie a', ' campionat', ' giornata', ' stadio', ' gol ', ' allenator', ' attaccant', ' fantacalcio', ' squadra', ' calcio', ' tennis', ' record di velocita', ' skate', ' atleta', ' olimpi', ' formula 1', ' motogp', ' sfida', ' match'] },
-  { id: 'design', to: 'al design e all’arredamento', phrase: 'il design e l’arredamento', profile: ['design', 'architettura', 'architecture', 'interior', 'arredamento', 'casa'],
+  { id: 'design', label: 'Design', to: 'al design e all’arredamento', phrase: 'il design e l’arredamento', profile: ['design', 'architettura', 'architecture', 'interior', 'arredamento', 'casa'],
     words: [' design', ' architett', ' arred', ' mobili', ' divan', ' poltron', ' lampad', ' interni', ' furniture', ' mid-century', ' midcentury', ' flexform', ' cassina', ' biancheria', ' tessuti', ' progettist'] },
-  { id: 'travel', to: 'ai viaggi', phrase: 'i viaggi', profile: ['travel', 'viaggi', 'viaggio', 'turismo', 'trip'], kinds: ['stay', 'visit'],
+  { id: 'travel', label: 'Viaggi', to: 'ai viaggi', phrase: 'i viaggi', profile: ['travel', 'viaggi', 'viaggio', 'turismo', 'trip'], kinds: ['stay', 'visit'],
     words: [' viaggi', ' hotel', ' relais', ' resort', ' villa ', ' ville ', ' lago ', ' spiaggia', ' isola', ' volo ', ' voli ', ' itinerari', ' weekend', ' vacanz', ' turist', ' gstaad', ' b&b'] },
-  { id: 'food', to: 'al buon cibo e ai ristoranti', phrase: 'il buon cibo e i ristoranti', profile: ['food', 'cibo', 'cucina', 'ristoranti', 'vino', 'gastronomia'], kinds: ['eat', 'cook'],
+  { id: 'food', label: 'Cibo', to: 'al buon cibo e ai ristoranti', phrase: 'il buon cibo e i ristoranti', profile: ['food', 'cibo', 'cucina', 'ristoranti', 'vino', 'gastronomia'], kinds: ['eat', 'cook'],
     words: [' ristorant', ' trattoria', ' osteria', ' cucina', ' ricett', ' chef', ' pizza', ' gelat', ' vino', ' cantina', ' piatto', ' menu ', ' food'] },
-  { id: 'art', to: 'all’arte e alla cultura', phrase: 'l’arte e la cultura', profile: ['arte', 'art', 'cultura', 'mostre', 'musei'],
+  { id: 'art', label: 'Arte e cultura', to: 'all’arte e alla cultura', phrase: 'l’arte e la cultura', profile: ['arte', 'art', 'cultura', 'mostre', 'musei'],
     words: [' mostra', ' museo', ' musei', ' artista', ' galleria', ' pittura', ' scultura', ' biennale', ' libro', ' scrittore', ' teatro', ' cinema'] },
-  { id: 'fashion', to: 'alla moda', phrase: 'la moda', profile: ['moda', 'fashion', 'stile'], kinds: ['shop'],
+  { id: 'fashion', label: 'Moda', to: 'alla moda', phrase: 'la moda', profile: ['moda', 'fashion', 'stile'], kinds: ['shop'],
     words: [' moda', ' fashion', ' stilista', ' sfilata', ' collezione', ' abito', ' scarpe', ' mocassin', ' prada', ' gucci', ' armani'] },
-  { id: 'world', to: 'alla politica e all’attualità internazionale', phrase: 'la politica e l’attualità internazionale', profile: ['politica', 'esteri', 'attualita', 'news'],
+  { id: 'world', label: 'Attualità', to: 'alla politica e all’attualità internazionale', phrase: 'la politica e l’attualità internazionale', profile: ['politica', 'esteri', 'attualita', 'news'],
     words: [' president', ' governo', ' vertice', ' ministr', ' elezion', ' parlament', ' trump', ' putin', ' xi ', ' guerra', ' ucraina', ' russia', ' cina ', ' ue ', ' nato'] },
 ];
 
@@ -77,3 +77,24 @@ export function interestReason({ text, kind = '', sector = '', items = [], profi
 export function themesTouched(text, opts = {}) {
   return scores(text, opts).filter(x => x.s >= 1).map(x => x.th.id);
 }
+
+// Where a discovery comes from, for the filters: the social network of its link,
+// or your own photo or note.
+const SOURCES = [
+  [/(^|\.)(facebook\.com|fb\.watch|fb\.me)$/, 'facebook', 'Facebook'],
+  [/(^|\.)instagram\.com$/, 'instagram', 'Instagram'],
+  [/(^|\.)tiktok\.com$/, 'tiktok', 'TikTok'],
+  [/(^|\.)(youtube\.com|youtu\.be)$/, 'youtube', 'YouTube'],
+  [/(^|\.)(x\.com|twitter\.com)$/, 'x', 'X'],
+  [/(^|\.)linkedin\.com$/, 'linkedin', 'LinkedIn'],
+  [/(^|\.)threads\.(net|com)$/, 'threads', 'Threads'],
+  [/(^|\.)pinterest\.[a-z.]+$/, 'pinterest', 'Pinterest'],
+];
+export function sourceOf(item) {
+  if (!item.url) return item.image_path ? { id: 'photo', label: 'Foto' } : { id: 'note', label: 'Note' };
+  let host = '';
+  try { host = new URL(item.url).hostname.replace(/^(www|m|web)\./, ''); } catch { return null; }
+  const hit = SOURCES.find(([re]) => re.test(host));
+  return hit ? { id: hit[1], label: hit[2] } : null;
+}
+export const themeLabel = id => THEMES.find(t => t.id === id)?.label || id;

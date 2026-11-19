@@ -460,3 +460,9 @@ h1.first{margin-top:4px}
 .relatedText{flex:1;min-width:0;display:grid;gap:2px}
 .relatedText strong{font-size:14px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .relatedText small{font-size:12px;color:#8a8a8a}
+/* Dynamic filters: themes and sources with counts, then collections */
+.chipN{font-size:11px;opacity:.6;margin-left:3px}
+.chip.active .chipN{opacity:.8}
+.chipSep{flex:0 0 1px;align-self:stretch;background:#e5e5e5;margin:6px 4px}
+.chip.collection{border-style:dashed}
+.chip.collection.active{border-style:solid}

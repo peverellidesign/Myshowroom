@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { explainWhy, relatedItems, ownWords } from './lib/why.js';
 import { judge } from './lib/judge.js';
-import { interestReason, themesOf } from './lib/interests.js';
+import { interestReason, themesOf, sourceOf, themeLabel } from './lib/interests.js';
 import { watermark } from './lib/watermark.js';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable';
@@ -480,7 +480,16 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     const ok = await run(() => api.deleteCollection(activeCollection.id), 'Raccolta eliminata');
     if (ok !== undefined) { setFilter('Tutti'); refreshArchive(); }
   };
-  const filtered = useMemo(() => items.filter(i => (filter === 'Tutti' || i.category === filter || i.collection === filter) && [i.title, i.note, i.url].join(' ').toLowerCase().includes(search.toLowerCase())), [items, filter, search]);
+  // Dynamic filters: the themes and sources your discoveries actually have, worked out
+  // from what each one says (not morethere's own lines), plus your collections.
+  const facets = useMemo(() => new Map(items.map(i => [i.id, { themes: themesOf(`${i.title} ${ownWords(i.note)}`, { kind: '' }), source: sourceOf(i)?.id || '' }])), [items]);
+  const matches = (i, f) => {
+    if (f === 'Tutti') return true;
+    if (f.startsWith('tema:')) return facets.get(i.id)?.themes.includes(f.slice(5));
+    if (f.startsWith('fonte:')) return facets.get(i.id)?.source === f.slice(6);
+    return i.collection === f;
+  };
+  const filtered = useMemo(() => items.filter(i => matches(i, filter) && [i.title, i.note, i.url].join(' ').toLowerCase().includes(search.toLowerCase())), [items, filter, search, facets]); // eslint-disable-line react-hooks/exhaustive-deps
   // "Per data": by the date of the memory (or when it was saved), grouped by month.
   const posOf = i => i.position ?? -i.created;
   // Mouse: drag after a few pixels. Touch: long press, so scrolling still works.
@@ -517,7 +526,18 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     }
     return groups;
   }, [sorted, view]); // eslint-disable-line react-hooks/exhaustive-deps
-  const cats = ['Tutti', ...new Set([...items.map(i => i.category), ...collections])];
+  const count = (list, key) => list.reduce((m, k) => m.set(k, (m.get(k) || 0) + 1), new Map());
+  const themeCounts = [...count([...facets.values()].flatMap(f => f.themes)).entries()].sort((a, b) => b[1] - a[1]);
+  const sourceCounts = [...count([...facets.values()].map(f => f.source).filter(Boolean)).entries()].sort((a, b) => b[1] - a[1]);
+  const SOURCE_LABEL = { facebook: 'Facebook', instagram: 'Instagram', tiktok: 'TikTok', youtube: 'YouTube', x: 'X', linkedin: 'LinkedIn', threads: 'Threads', pinterest: 'Pinterest', photo: 'Foto', note: 'Note' };
+  const chips = [
+    { key: 'Tutti', label: 'Tutti' },
+    ...themeCounts.map(([id, n]) => ({ key: `tema:${id}`, label: themeLabel(id), n, aria: `Tema: ${themeLabel(id)}` })),
+    ...sourceCounts.map(([id, n]) => ({ key: `fonte:${id}`, label: SOURCE_LABEL[id] || id, n, aria: `Fonte: ${SOURCE_LABEL[id] || id}`, source: true })),
+    ...collections.map(c => ({ key: c, label: c, collection: true })),
+  ];
+  // A filter that no longer applies (its last discovery was removed) falls back to all.
+  useEffect(() => { if (/^(tema|fonte):/.test(filter) && loaded && !chips.some(c => c.key === filter)) setFilter('Tutti'); }, [filter, chips.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const back = () => { setTrail([]); screenRef.current = 'home'; setScreenRaw('home'); setSelected(null); setFriend(null); setFriendData(null); setWorldData(null); setEdit(null); };
   const goBack = () => {
     const prev = trail[trail.length - 1];
@@ -797,7 +817,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
 
     {screen === 'home' && <main>
       {legacy && <div className="panel"><strong>Hai {legacy.items.length} {legacy.items.length === 1 ? 'scoperta salvata' : 'scoperte salvate'} su questo dispositivo</strong><small>Vuoi portarle nel tuo account privato? Resteranno visibili solo a te. Dopo l'importazione verranno rimosse da questo dispositivo.</small><div className="choices"><button className="chosen" disabled={busy} onClick={importLegacy}>Importa</button><button onClick={() => setLegacy(null)}>Non ora</button></div></div>}
-      <div className="eyebrow">NUOVO INGRESSO</div><div className="entry"><input value={entry} onChange={e => setEntry(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()} placeholder="Incolla un link o scrivi..." /><button className="square" title={entry ? 'Salva una nota o un link' : 'Aggiungi una foto'} aria-label={entry ? 'Salva' : 'Aggiungi una foto'} disabled={busy} onClick={() => (entry ? add() : pickPhoto())}>{entry ? <Plus /> : <Camera />}</button><input ref={fileInput} type="file" accept="image/*" hidden aria-hidden="true" onChange={onPhotoChosen} /></div><div className="search"><Search size={21} /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca nell'archivio..." /></div><div className="chips">{cats.map(c => <button key={c} className={'chip ' + (filter === c ? 'active' : '')} onClick={() => setFilter(c)}>{c}</button>)}<button className="chip" aria-label="Nuova raccolta" onClick={() => setShowAddCollection(true)}><Plus size={15} /></button></div>{activeCollection && <div className="collectionTools"><button className="textlink" onClick={() => setCollectionDialog({ id: activeCollection.id, name: activeCollection.name })}><Pencil size={13} /> Rinomina</button><button className="textlink danger" onClick={deleteCollection}><Trash2 size={13} /> Elimina raccolta</button></div>}<div className="sectionRow"><div className="sectionLabel">{activeCollection ? activeCollection.name : 'La tua raccolta'}</div><div className="viewToggle" role="group" aria-label="Ordina"><button className={view === 'recent' ? 'on' : ''} aria-pressed={view === 'recent'} onClick={() => chooseView('recent')}>Recenti</button><button className={view === 'date' ? 'on' : ''} aria-pressed={view === 'date'} onClick={() => chooseView('date')}>Per data</button></div></div>{view === 'date' ? byMonth.map(g => <section key={g.key} className="monthGroup"><h3 className="monthLabel">{g.label}</h3><div className="cards">{g.items.map(renderCard)}</div></section>) : <DndContext sensors={dragSensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}><SortableContext items={sorted.map(i => i.id)} strategy={rectSortingStrategy}><div className="cards">{sorted.map(i => <Sortable key={i.id} id={i.id}>{d => renderCard(i, d)}</Sortable>)}</div></SortableContext></DndContext>}{view === 'recent' && sorted.length > 1 && <p className="hint dragHint">Tieni premuta una scoperta e trascinala per cambiare l'ordine.</p>}{loaded && !filtered.length && <div className="empty">Il tuo mondo comincia da una scoperta. Salva qualcosa che vale la pena ricordare.</div>}</main>}
+      <div className="eyebrow">NUOVO INGRESSO</div><div className="entry"><input value={entry} onChange={e => setEntry(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()} placeholder="Incolla un link o scrivi..." /><button className="square" title={entry ? 'Salva una nota o un link' : 'Aggiungi una foto'} aria-label={entry ? 'Salva' : 'Aggiungi una foto'} disabled={busy} onClick={() => (entry ? add() : pickPhoto())}>{entry ? <Plus /> : <Camera />}</button><input ref={fileInput} type="file" accept="image/*" hidden aria-hidden="true" onChange={onPhotoChosen} /></div><div className="search"><Search size={21} /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca nell'archivio..." /></div><div className="chips">{chips.map((c, k) => <React.Fragment key={c.key}>{k > 0 && chips[k - 1].collection !== c.collection && c.collection && <span className="chipSep" aria-hidden="true" />}{k > 0 && !chips[k - 1].source && c.source && <span className="chipSep" aria-hidden="true" />}<button className={'chip ' + (filter === c.key ? 'active' : '') + (c.collection ? ' collection' : '')} aria-label={c.aria} aria-pressed={filter === c.key} onClick={() => setFilter(c.key)}>{c.label}{c.n ? <span className="chipN" aria-hidden="true">{c.n}</span> : null}</button></React.Fragment>)}<button className="chip" aria-label="Nuova raccolta" onClick={() => setShowAddCollection(true)}><Plus size={15} /></button></div>{activeCollection && <div className="collectionTools"><button className="textlink" onClick={() => setCollectionDialog({ id: activeCollection.id, name: activeCollection.name })}><Pencil size={13} /> Rinomina</button><button className="textlink danger" onClick={deleteCollection}><Trash2 size={13} /> Elimina raccolta</button></div>}<div className="sectionRow"><div className="sectionLabel">{activeCollection ? activeCollection.name : 'La tua raccolta'}</div><div className="viewToggle" role="group" aria-label="Ordina"><button className={view === 'recent' ? 'on' : ''} aria-pressed={view === 'recent'} onClick={() => chooseView('recent')}>Recenti</button><button className={view === 'date' ? 'on' : ''} aria-pressed={view === 'date'} onClick={() => chooseView('date')}>Per data</button></div></div>{view === 'date' ? byMonth.map(g => <section key={g.key} className="monthGroup"><h3 className="monthLabel">{g.label}</h3><div className="cards">{g.items.map(renderCard)}</div></section>) : <DndContext sensors={dragSensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}><SortableContext items={sorted.map(i => i.id)} strategy={rectSortingStrategy}><div className="cards">{sorted.map(i => <Sortable key={i.id} id={i.id}>{d => renderCard(i, d)}</Sortable>)}</div></SortableContext></DndContext>}{view === 'recent' && sorted.length > 1 && <p className="hint dragHint">Tieni premuta una scoperta e trascinala per cambiare l'ordine.</p>}{loaded && !filtered.length && <div className="empty">Il tuo mondo comincia da una scoperta. Salva qualcosa che vale la pena ricordare.</div>}</main>}
 
     {screen === 'circle' && <main className="circlePage">
       {!social && signInHint}
