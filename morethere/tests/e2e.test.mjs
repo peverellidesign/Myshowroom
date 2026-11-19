@@ -147,7 +147,7 @@ test('link preview: real page title and cover image, stored as a private photo',
   let again;
   for (let k = 0; k < 40 && !again; k++) {
     const { data } = await admin.from('items').select('id, note').like('url', '%trattoria-bis%');
-    again = data?.find(r => /Perché ti interessa: Un indirizzo di cucina lombarda a Milano/.test(r.note));
+    again = data?.find(r => /Perché ti interessa: Ti stai avvicinando al buon cibo e ai ristoranti\. Un indirizzo di cucina lombarda a Milano/.test(r.note));
     if (!again) await page.waitForTimeout(500);
   }
   assert.ok(again, 'the second link has its judgment');

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { explainWhy } from './lib/why.js';
 import { judge } from './lib/judge.js';
+import { interestReason } from './lib/interests.js';
 import { watermark } from './lib/watermark.js';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable';
@@ -326,9 +327,12 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
       const ctx = res.topic ? await api.context(res.topic).catch(() => null) : null;
       if (ctx?.text) d.context = `${ctx.text} (Wikipedia)`;
       const before = res.related.flatMap(o => [o.title, ...(o.note || '').split('\n').filter(l => l.startsWith('• ')).map(l => l.slice(2))]);
-      const verdict = judge({ subject: res.topic, sector: ctx?.sector || '', kind: d.kind, title: item.title, points: d.points, before, follows: res.count, interest: res.interest });
+      // First why it is yours ("Ti interessa perché segui spesso i temi economici"),
+      // then the judgment on the subject, if the facts allow one.
+      const reason = interestReason({ text: [item.title, ...d.points].join(' '), kind: d.kind, sector: ctx?.sector || '', items, profile, selfId: item.id });
+      const verdict = judge({ subject: res.topic, sector: ctx?.sector || '', kind: d.kind, title: item.title, points: d.points, before, follows: res.count, interest: res.interest, withYou: !reason });
       const dup = res.duplicate ? `L'avevi già salvato il ${fmtDate(res.duplicate.created)}. ` : '';
-      d.why = verdict ? `${dup}${verdict}` : `${dup}${d.base || d.why}`;
+      d.why = `${dup}${[reason, verdict].filter(Boolean).join(' ') || d.base || d.why}`;
       const byline = (item.note || '').split('\n').filter(l => /^— /.test(l)).join('\n');
       // Asked again: the new summary replaces the old one, what you wrote stays.
       const yours = (item.note || '').split('\n').filter(l => !/^— |^• |^Perché ti interessa|^Contesto:/.test(l)).join('\n').trim();

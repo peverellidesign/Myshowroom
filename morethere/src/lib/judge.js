@@ -15,7 +15,7 @@ const UP = [
   [/(ricavi|fatturato|utile|vendite)[^.]{0,60}(\+\s?\d|aumento|crescit|raddopp)|(\+\s?\d+[,.]?\d*\s?%)/, 'conti in forte crescita'],
   [/\bipo\b|quotazion|debutto in borsa/, 'un debutto in Borsa'],
   [/accordo|partnership|acquisizion|investimento da/, 'nuovi accordi'],
-  [/premi[oa]t|vince|vittoria|conquista/, 'un successo'],
+  [/premi[oa]t|\bpremia\b|riconosciment|vince|vittoria|conquista/, 'un riconoscimento'],
   [/lancia|presenta|nuovo modello|novità/, 'una novità importante'],
 ];
 const DOWN = [
@@ -56,7 +56,7 @@ function about(text, subject, title = '') {
  * @param interest  an interest of yours it belongs to ("tecnologia"), or ''
  * @returns a judgment, or '' when there is nothing sound to say
  */
-export function judge({ subject = '', sector = '', kind = '', title = '', points = [], before = [], follows = 0, interest = '' }) {
+export function judge({ subject = '', sector = '', kind = '', title = '', points = [], before = [], follows = 0, interest = '', withYou = true }) {
   const now = about([title, ...points].join('. '), subject, title);
   const then = about(before.join('. '), subject, title);
   const S = subject || 'Il tema';
@@ -98,5 +98,5 @@ export function judge({ subject = '', sector = '', kind = '', title = '', points
   else if (down.length) judgment = `Per ${S} è un momento delicato: ${list2(down.slice(0, 2))}.`;
   else if (up.length) judgment = `${S} è in una fase favorevole: ${list2(up.slice(0, 2))}.`;
   if (!judgment) return '';
-  return [judgment, forYou].filter(Boolean).join(' ');
+  return [judgment, withYou ? forYou : ''].filter(Boolean).join(' ');
 }
