@@ -147,7 +147,7 @@ export function keySentences(text, { max = 3, skip = [] } = {}) {
     chosen.push(c);
     if (chosen.length === max) break;
   }
-  return chosen.sort((a, b) => a.i - b.i).map(c => (c.s.length > 200 ? `${c.s.slice(0, 197).replace(/\s+\S*$/, '')}…` : c.s));
+  return chosen.sort((a, b) => a.i - b.i).map(c => c.s);
 }
 
 // ---- 2b. what the author marked as important --------------------------------------
@@ -176,14 +176,14 @@ export function articleBody(html) {
   return bestScore >= 300 ? best : '';
 }
 
-const firstSentence = t => (t.match(/^(.{30,}?[.!?…])(\s|$)/)?.[1] || t).slice(0, 220);
+const firstSentence = t => t.match(/^(.{30,}?[.!?])(\s|$)/)?.[1] || t;
 const sentenceAround = (text, piece) => {
   const at = text.indexOf(piece); if (at < 0) return '';
   const from = Math.max(0, ...['. ', '! ', '? '].map(p => text.lastIndexOf(p, at)).filter(i => i >= 0).map(i => i + 2));
   const stop = text.slice(at + piece.length).search(/[.!?…](\s|$)/);
   return text.slice(from, stop < 0 ? text.length : at + piece.length + stop + 1).trim();
 };
-const tidy = s => (s.length > 220 ? `${s.slice(0, 217).replace(/\s+\S*$/, '')}…` : s);
+const tidy = s => s;
 
 export function markedPoints(html, { skip = [] } = {}) {
   const found = []; // { text, weight, pos }
@@ -263,22 +263,29 @@ export function captionFacts(text) {
 // ---- 3. compact points ------------------------------------------------------------
 // A point fits in about a line and a half: drop asides in brackets, then cut at a
 // clause boundary (comma, semicolon, dash) rather than mid-sentence; never mid-word.
-export function compact(s, max = 150) {
+// A point is always a complete sentence: never cut mid-way, never "…".
+// Too long? Keep its first clause only where that clause is complete on its
+// own (before "; ", ", e ", ", ma ", ", mentre "…); otherwise give it up ('').
+const CLAUSE_END = /;\s|,\s(?:e|ed|ma|mentre|però|perché|anche se|poiché|dato che|così|quindi|inoltre|and|but|while|as)\s/gi;
+export function compact(s, max = 250) {
   let t = s.replace(/\s+/g, ' ').replace(/\s+([,.;:!?])/g, '$1').trim();
   t = t.replace(/\s*[-–—|]\s*(Notizie|News|Ansa\.it|Il Post|Corriere|la Repubblica)[^.]*$/i, '');
-  // Text the site itself cut ("aiuti mil…"): drop the broken word, keep the ellipsis.
-  let cut = false;
-  if (/…$/.test(t)) { t = t.slice(0, -1).replace(/\s+\S*$/, ''); cut = true; }
-  if (t.length > max) t = t.replace(/\s*\([^)]{3,80}\)/g, '');
+  if (/(…|\.\.\.|\[&hellip;\]|\[…\])\s*$/.test(t)) return ''; // the site cut it: not a whole sentence
+  if (t.length > max) t = t.replace(/\s*\([^)]{3,80}\)/g, '').replace(/\s+([,.;:!?])/g, '$1');
   if (t.length > max) {
-    const head = t.slice(0, max);
-    const at = Math.max(head.lastIndexOf(', '), head.lastIndexOf('; '), head.lastIndexOf(' – '), head.lastIndexOf(' - '));
-    // A clause boundary late enough to keep the meaning; otherwise a word boundary.
-    if (at >= 95) { t = head.slice(0, at); cut = true; } else { t = head.replace(/\s+\S*$/, ''); cut = true; }
+    let at = -1;
+    for (const m of t.matchAll(CLAUSE_END)) if (m.index >= 60 && m.index <= max) at = m.index;
+    if (at < 0) return '';
+    t = t.slice(0, at);
   }
   t = t.replace(/[\s,;:.]+$/, '');
-  if (cut) t = t.replace(/\s+(che|e|ed|o|di|da|del|della|dei|delle|con|per|a|al|alla|in|su|il|la|lo|i|gli|le|un|una|the|and|of|to|a)$/i, '') + '…';
-  return t ? t[0].toUpperCase() + t.slice(1) : t;
+  if (words(t).length < 2) return '';
+  // Quotes or brackets left open mean the sentence was split in the wrong place.
+  const opened = (a, b) => (t.split(a).length - 1) !== (t.split(b).length - 1);
+  if (opened('«', '»') || opened('(', ')') || opened('“', '”') || (t.split('"').length - 1) % 2) return '';
+  // "Etichetta: Frase" reads better as "Etichetta: frase".
+  t = t.replace(/^([^:]{3,60}): (\p{Lu})(?=[\p{Ll}\s])/u, (m, a, b) => `${a}: ${b.toLowerCase()}`);
+  return t[0].toUpperCase() + t.slice(1);
 }
 
 // The editor's own summary (description) is usually the best mini-summary of
@@ -289,7 +296,7 @@ export function summarySentences(description, title = '') {
   const tw = new Set(words(title));
   return d.split(/(?<=[.!?;])\s+(?=[A-ZÀ-ÝÈÉ0-9«"“'])/)
     .map(x => x.trim())
-    .filter(x => words(x).length >= 2 && x.length >= 10 && !NOISE.test(x) && !/^—\s/.test(x))
+    .filter(x => words(x).length >= 2 && x.length >= 10 && !NOISE.test(x) && !/^—\s/.test(x) && !/(…|\.\.\.)$/.test(x))
     .filter(x => { const ws = words(x); return ws.filter(w => tw.has(w)).length / Math.max(1, ws.length) < 0.75; })
     .filter(x => !/^\p{Extended_Pictographic}/u.test(x) || words(x).length >= 4);
 }
@@ -355,11 +362,11 @@ export function makeDigest({ html = '', title = '', description = '', interests 
   const story = []; const fixed = new Set(hardFacts.length ? [] : editor.map(e => compact(e)));
   for (const c of candidates) {
     const t = compact(c);
-    if (t.length < 8 || repeats(title, t)) continue;
+    if (!t || t.length < 8 || repeats(title, t)) continue;
     // Same thing said twice: keep the richer wording.
     const twin = story.findIndex(o => overlap(o, t) > 0.6);
     // (The editor's own summary stays: it is written to be short.)
-    if (twin >= 0) { if (!fixed.has(story[twin]) && !/…$/.test(t) && t.length > story[twin].length * 1.5 && words(t).length > words(story[twin]).length + 3) story[twin] = t; continue; }
+    if (twin >= 0) { if (!fixed.has(story[twin]) && t.length > story[twin].length * 1.5 && words(t).length > words(story[twin]).length + 3) story[twin] = t; continue; }
     story.push(t);
   }
   const room = hardFacts.length ? Math.max(1, 4 - hardFacts.length) : 3;

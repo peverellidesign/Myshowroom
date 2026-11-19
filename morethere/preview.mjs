@@ -67,7 +67,7 @@ function fetchOnce(url, kind = 'html') {
       lookup: (_h, o, cb) => (o?.all ? cb(null, [{ address: target.address, family: target.family }]) : cb(null, target.address, target.family)),
       headers: {
         'User-Agent': 'Mozilla/5.0 (compatible; morethere-preview/1.0; +link preview)',
-        Accept: kind === 'image' ? 'image/avif,image/webp,image/png,image/jpeg,image/gif;q=0.9' : kind === 'json' ? 'application/json' : 'text/html,application/xhtml+xml',
+        Accept: kind === 'image' ? 'image/avif,image/webp,image/png,image/jpeg,image/gif;q=0.9' : kind === 'json' ? 'application/json' : 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8', // the standard browser list: some sites (Euronews) refuse a narrower one
         'Accept-Language': 'it,en;q=0.8',
       },
     }, res => {

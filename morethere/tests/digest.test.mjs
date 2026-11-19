@@ -90,3 +90,14 @@ test('Wikipedia-style: the bold term opens the definition', () => {
   const p = markedPoints(html, { skip: ['Bistecca alla fiorentina - Wikipedia'] });
   assert.equal(p[0], 'La bistecca alla fiorentina è un taglio di carne di vitellone o di scottona, di razza Chianina, cotto sulla brace.');
 });
+
+import { compact } from '../digest.mjs';
+test('points are whole sentences: no cuts, no ellipsis, no open quotes', () => {
+  assert.equal(compact('L’Ue vara un prestito da 45 miliardi per Kiev, 25 in aiuti mil…'), '', 'cut by the site: left out');
+  assert.equal(compact('Il governo ha previsto una riduzione di 4.925 posti per i docenti, e di 2.049 posti per il personale ATA, cioè i funzionari tecnici e amministrativi delle scuole, con un risparmio stimato di molte centinaia di milioni di euro nei prossimi tre anni scolastici a venire'),
+    'Il governo ha previsto una riduzione di 4.925 posti per i docenti', 'shortened only where a clause ends');
+  assert.equal(compact('Così definisce il taglio della bistecca: « Bistecca alla fiorentina'), '', 'open quote: split in the wrong place');
+  assert.equal(compact('La spesa per i farmaci: Nel 2025 è cresciuta del 4 per cento.'), 'La spesa per i farmaci: nel 2025 è cresciuta del 4 per cento');
+  const long = 'Una frase lunghissima senza alcuna pausa naturale che continua a parlare di argomenti diversi uno dopo l’altro senza mai fermarsi né usare congiunzioni utili a trovare un punto di taglio sensato per chi la legge in fretta sul telefono durante la giornata lavorativa';
+  assert.equal(compact(long), '', 'no clean place to shorten it: left out rather than cut');
+});
