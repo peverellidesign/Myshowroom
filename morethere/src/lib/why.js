@@ -1,3 +1,4 @@
+import { themesTouched } from './interests.js';
 // "Perché ti interessa", argued from what morethere knows about you — no AI.
 //
 // Runs on the device, on your own data: what you save and when, how you file
@@ -157,4 +158,33 @@ export function explainWhy({ item, points = [], kind = '', base = '', fallback =
   if (!topic) topic = pretty([...namesIn(item.title)].sort((a, b) => b.length - a.length)[0] || '');
   const why = chosen.length ? [...chosen, base].filter(Boolean).join(' ') : (fallback || base);
   return { text: why, topic, previous, since, count: followed, related, interest: interestLabel, duplicate };
+}
+
+/**
+ * Your other discoveries about the same thing, best first: shared names (people,
+ * brands, places) weigh most, then shared topic words. Copies of the same link,
+ * and loose matches, are left out.
+ */
+export function relatedItems(item, items, max = 3) {
+  const norm = u => String(u || '').replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase();
+  const text = `${item.title} ${item.note || ''}`;
+  const names = new Set([...namesIn(text)].map(stem));
+  const terms = termsIn(text);
+  const seen = new Set([norm(item.url) || item.id]);
+  const mine = themesTouched(text);
+  return items
+    .filter(o => o.id !== item.id)
+    .map(o => {
+      const theirs = termsIn(`${o.title} ${o.note || ''}`);
+      const shared = [...theirs].filter(t => terms.has(t));
+      const score = shared.filter(t => names.has(t)).length * 2 + shared.filter(t => !names.has(t)).length;
+      // Same name, different worlds (Como the town, Como the club): needs much more in common.
+      const sameTheme = themesTouched(`${o.title} ${o.note || ''}`).some(t => mine.includes(t));
+      return { o, score: sameTheme ? score : score - 3 };
+    })
+    .filter(x => x.score >= 2)
+    .sort((a, b) => b.score - a.score || b.o.created - a.o.created)
+    .filter(x => { const k = norm(x.o.url) || x.o.id; if (seen.has(k)) return false; seen.add(k); return true; })
+    .slice(0, max)
+    .map(x => x.o);
 }

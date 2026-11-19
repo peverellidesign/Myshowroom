@@ -151,6 +151,12 @@ test('link preview: real page title and cover image, stored as a private photo',
     if (!again) await page.waitForTimeout(500);
   }
   assert.ok(again, 'the second link has its judgment');
+  // "Collegati": the other discovery about the same place, one tap away.
+  await page.reload();
+  await page.locator('.item', { hasText: 'Trattoria da Mario' }).first().locator('.itemtitle').click();
+  await page.locator('.related .relatedRow', { hasText: 'Trattoria da Mario — Milano' }).waitFor();
+  await shot(page, '03c-collegati');
+  await close(page);
   await admin.from('items').delete().eq('id', again.id);
   await page.reload();
   await page.locator('.item', { hasText: 'Trattoria da Mario' }).first().locator('.itemtitle').click();

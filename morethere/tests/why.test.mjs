@@ -66,3 +66,16 @@ test('the same link saved again, and interests worked out from what you save', (
   const why = buildWhy({ item: { id: 'd3', title: 'Una poltrona in velluto di Cassina' }, kind: 'buy', base: "Da tenere d'occhio se ti interessa.", me: me({ items: design, profile: null }) });
   assert.equal(why, "Salvi spesso cose di design e arredamento: questa è la terza. Da tenere d'occhio se ti interessa.");
 });
+
+import { relatedItems } from '../src/lib/why.js';
+test('Collegati: same subject first, not the same name in another world, no copies', () => {
+  const all = [
+    { id: 'n1', title: 'Nvidia supera 100 miliardi di ricavi', note: 'Fatturato in aumento', created: 1, url: 'https://a.it/1' },
+    { id: 'n2', title: 'Ipo di Anthropic mentre Nvidia segna ribassi', note: 'Prezzo da 83 dollari per azione', created: 2, url: 'https://b.it/2' },
+    { id: 'n3', title: 'Ipo di Anthropic mentre Nvidia segna ribassi', note: '', created: 3, url: 'https://b.it/2?ref=x' },
+    { id: 'c1', title: 'Como-Cagliari, probabili formazioni', note: 'Serie A allo stadio Sinigaglia', created: 4 },
+    { id: 'c2', title: 'Regione premia 32 attività storiche di Como', note: 'Il marchio a negozi e botteghe', created: 5 },
+  ];
+  assert.deepEqual(relatedItems(all[0], all).map(o => o.id), ['n3']);
+  assert.deepEqual(relatedItems(all[4], all).map(o => o.id), [], 'the club is not the town');
+});

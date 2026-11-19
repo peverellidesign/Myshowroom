@@ -70,3 +70,8 @@ export function interestReason({ text, kind = '', sector = '', items = [], profi
   if (n >= 1) return `Ti stai avvicinando ${theme.to}.`;
   return '';
 }
+
+/** Every theme a text mentions at all (for comparing two discoveries). */
+export function themesTouched(text, opts = {}) {
+  return scores(text, opts).filter(x => x.s >= 1).map(x => x.th.id);
+}
