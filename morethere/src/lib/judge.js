@@ -24,7 +24,7 @@ const DOWN = [
   [/indag|inchiesta|sec indaga|procura|accusa|sotto inchiesta/, "un'indagine in corso"],
   [/tagli|licenzia|esuberi/, 'tagli al personale'],
   [/crisi|difficolt|allarme|rischio/, 'segnali di difficoltà'],
-  [/limita|vieta|bando|stretta|sanzion|dazi/, 'nuove restrizioni'],
+  [/limita|vieta|bando|stretta (su|sul|sull|sulle|sugli|contro)|sanzion|dazi/, 'nuove restrizioni'],
   [/condannat|processo|tribunale/, 'una vicenda giudiziaria'],
   [/infortun|stop|fermo ai box|slitta/, 'uno stop forzato'],
 ];

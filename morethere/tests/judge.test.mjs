@@ -25,3 +25,7 @@ test('places, products, events and recipes are judged on their data', () => {
 test('nothing sound to say: no judgment', () => {
   assert.equal(judge({ subject: 'Meteo', kind: 'read', title: 'Previsioni per il fine settimana', points: ['Sole al nord, nuvole al centro'] }), '');
 });
+
+test('words that only look like signals do not count', () => {
+  assert.equal(judge({ subject: 'Trump', kind: 'read', title: 'Trump in Cina, abbraccio con Xi e stretta di mano con Putin.', points: ['Domani il vertice tra i presidenti di Usa, Russia e Repubblica Popolare Cinese'] }), '', 'a handshake is not a restriction');
+});
