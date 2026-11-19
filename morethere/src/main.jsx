@@ -15,7 +15,7 @@ if (import.meta.env.PROD && 'serviceWorker' in navigator) {
 // unless something is being typed.
 if (import.meta.env.PROD) {
   const mine = [...document.scripts].map(s => s.src).find(s => /\/assets\/index-[^/]+\.js$/.test(s)) || '';
-  let lastCheck = Date.now();
+  let lastCheck = 0;
   const typing = () => { const el = document.activeElement; return el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) && el.value; };
   const check = async () => {
     if (!mine || Date.now() - lastCheck < 60_000) return;
@@ -31,5 +31,7 @@ if (import.meta.env.PROD) {
   };
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(); });
   window.addEventListener('focus', check);
+  window.addEventListener('pageshow', check);
+  setTimeout(check, 2000); // right after opening, too
   setInterval(() => { if (document.visibilityState === 'visible') check(); }, 30 * 60_000);
 }
