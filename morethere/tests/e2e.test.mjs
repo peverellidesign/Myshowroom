@@ -33,7 +33,7 @@ let pageServer; let pageUrl;
 const shot = async (page, name) => {
   if (!SHOTS) return;
   mkdirSync(SHOTS, { recursive: true });
-  await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true });
+  await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: !/sheet/.test(name) });
 };
 const toast = (page, text) => page.locator('.toast', { hasText: text }).waitFor({ timeout: 10000 });
 const close = page => page.getByRole('button', { name: 'CHIUDI' }).click();
@@ -67,6 +67,8 @@ before(async () => {
   browser = await playwright.chromium.launch();
   for (const n of Object.keys(people)) {
     ctx[n] = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, permissions: ['clipboard-read', 'clipboard-write'] });
+    // Trasferisci a AI opens Claude or ChatGPT in a new window: record where, offline.
+    await ctx[n].addInitScript(() => { window.open = u => { window.__opened = String(u); return {}; }; });
     people[n].page = await ctx[n].newPage();
     people[n].page.on('pageerror', e => console.error(`[${n}] pageerror`, e.message));
   }
@@ -102,7 +104,9 @@ test('on-device prototype data is imported only after consent', async () => {
   await page.getByRole('button', { name: 'Importa' }).click();
   await toast(page, '2 scoperte importate');
   await page.locator('.item', { hasText: 'Kyoto inspiration' }).waitFor();
-  assert.ok(await page.getByRole('button', { name: 'Design', exact: true }).isVisible(), 'custom collection imported');
+  await page.getByRole('button', { name: 'Filtri' }).click();
+  assert.ok(await page.getByRole('dialog', { name: 'Filtri' }).getByRole('button', { name: 'Design', exact: true }).isVisible(), 'custom collection imported');
+  await page.getByRole('dialog', { name: 'Filtri' }).getByRole('button', { name: 'Chiudi' }).click();
   assert.equal(await page.evaluate(() => localStorage.getItem('mt_items')), null, 'device copy removed');
 });
 
@@ -215,26 +219,31 @@ test('edit an item, rename and delete a collection', async () => {
   await toast(page, 'Modifiche salvate');
   await page.getByRole('heading', { name: 'Idea segreta (rivista)' }).waitFor();
   await close(page);
-  await page.getByRole('button', { name: 'Design', exact: true }).click();
+  await page.getByRole('button', { name: 'Filtri' }).click();
+  await page.getByRole('dialog', { name: 'Filtri' }).getByRole('button', { name: 'Design', exact: true }).click();
   await page.getByRole('button', { name: 'Rinomina' }).click();
   await page.getByLabel('Nuovo nome').fill('Design e casa');
   await page.getByLabel('Rinomina raccolta').getByRole('button', { name: 'Salva' }).click();
   await toast(page, 'Raccolta rinominata');
-  await page.getByRole('button', { name: 'Design e casa', exact: true }).waitFor();
+  await page.locator('.sectionLabel', { hasText: 'Design e casa' }).waitFor();
   page.once('dialog', d => d.accept());
   await page.getByRole('button', { name: 'Elimina raccolta' }).click();
   await toast(page, 'Raccolta eliminata');
-  await page.getByRole('button', { name: 'Design e casa', exact: true }).waitFor({ state: 'detached' });
+  await page.locator('.sectionLabel', { hasText: 'Design e casa' }).waitFor({ state: 'detached' });
 });
 
 test('drag and drop: your own order, kept on every device', async () => {
   const { page } = people.alice;
   // Dynamic filters: themes and sources worked out from the discoveries themselves.
-  await page.getByRole('button', { name: 'Tema: Cibo' }).waitFor();
-  await page.getByRole('button', { name: 'Fonte: Note' }).click();
+  await page.getByRole('button', { name: 'Filtri' }).click();
+  await page.getByRole('dialog', { name: 'Filtri' }).getByRole('button', { name: 'Tema: Cibo' }).waitFor();
+  await shot(page, '05b-filter-sheet');
+  await page.getByRole('dialog', { name: 'Filtri' }).getByRole('button', { name: 'Fonte: Note' }).click();
+  await page.getByRole('button', { name: /Togli il filtro Note/ }).waitFor();
   assert.ok(await page.locator('.cards .item', { hasText: 'Idea segreta' }).count() >= 1, 'notes filter shows notes');
   assert.equal(await page.locator('.cards .item', { hasText: 'Trattoria da Mario' }).count(), 0, 'and not links');
-  await page.getByRole('button', { name: 'Tema: Cibo' }).click();
+  await page.getByRole('button', { name: 'Filtri' }).click();
+  await page.getByRole('dialog', { name: 'Filtri' }).getByRole('button', { name: 'Tema: Cibo' }).click();
   await page.locator('.cards .item', { hasText: 'Trattoria da Mario' }).first().waitFor();
   await shot(page, '05c-filters');
   await page.getByRole('button', { name: 'Tutti', exact: true }).click();
@@ -363,8 +372,11 @@ test('More of me: the person sees exactly the chosen collection', async () => {
   await bob.getByText('+ Save Kyoto inspiration').click();
   await toast(bob, 'Salvato nel tuo archivio');
 
-  await bob.getByRole('button', { name: 'Use with AI' }).click();
-  await toast(bob, 'Contesto copiato');
+  await bob.getByRole('button', { name: 'Trasferisci a AI' }).click();
+  await shot(bob, '07b-ai-sheet');
+  await bob.getByRole('dialog', { name: 'Trasferisci a AI' }).getByRole('button', { name: /ChatGPT/ }).click();
+  await toast(bob, 'Apro ChatGPT');
+  assert.match(await bob.evaluate(() => window.__opened), /^https:\/\/chatgpt\.com\/\?q=.*Kyoto/);
   const ctxText = await bob.evaluate(() => navigator.clipboard.readText());
   assert.match(ctxText, /MORETHERE — SHARED CONTEXT/);
   assert.match(ctxText, /Kyoto inspiration/);
@@ -588,8 +600,10 @@ test('More of us: as many shared spaces as you like, started from a person', asy
   await alice.getByRole('dialog').getByRole('button', { name: 'Chiudi' }).click();
 
   // AI export respects Bob's consent.
-  await alice.getByRole('button', { name: 'Use with AI' }).click();
-  await toast(alice, 'Contesto copiato');
+  await alice.getByRole('button', { name: 'Trasferisci a AI' }).click();
+  await alice.getByRole('dialog', { name: 'Trasferisci a AI' }).getByRole('button', { name: /Claude/ }).click();
+  await toast(alice, 'Apro Claude');
+  assert.match(await alice.evaluate(() => window.__opened), /^https:\/\/claude\.ai\/new\?q=/);
   let text = await alice.evaluate(() => navigator.clipboard.readText());
   assert.match(text, /Kyoto inspiration/);
   assert.doesNotMatch(text, /From: Bob/);
@@ -598,7 +612,8 @@ test('More of us: as many shared spaces as you like, started from a person', asy
   await alice.getByRole('tab', { name: /Persone/ }).click();
   await alice.getByText('Partecipa · AI consentita').waitFor({ timeout: 10000 });
   await shot(alice, '10d-space-people');
-  await alice.getByRole('button', { name: 'Use with AI' }).click();
+  await alice.getByRole('button', { name: 'Trasferisci a AI' }).click();
+  await alice.getByRole('dialog', { name: 'Trasferisci a AI' }).getByRole('button', { name: /Claude/ }).click();
   await alice.waitForTimeout(300);
   text = await alice.evaluate(() => navigator.clipboard.readText());
   assert.match(text, /From: Bob/);
@@ -655,11 +670,11 @@ test('share to morethere from another app, and from morethere to other apps', as
   assert.equal(await card.locator('.preview img').getAttribute('src').catch(() => original), original, 'the archive photo is unchanged');
 });
 
-test('Use with AI: copy only a trip, with the question already written', async () => {
+test('Trasferisci a AI: only a trip, with the question already written', async () => {
   const alice = people.alice.page;
   await alice.goto(APP);
   await alice.getByRole('button', { name: 'Il mio profilo' }).click();
-  await alice.getByRole('button', { name: /Use with AI/ }).click();
+  await alice.getByRole('button', { name: /Trasferisci a AI/ }).click();
   await alice.getByRole('heading', { name: "Su cosa vuoi chiedere all'AI?" }).waitFor();
   await alice.getByRole('radio', { name: /Un luogo o un tema/ }).click();
   await alice.getByLabel('Luogo o tema').fill('kyoto');
@@ -670,8 +685,10 @@ test('Use with AI: copy only a trip, with the question already written', async (
   await rows.last().click(); // leave one out
   await alice.getByRole('button', { name: 'Organizzami un itinerario' }).click();
   await shot(alice, '11c-ai');
-  await alice.getByRole('button', { name: new RegExp(`Copia per l'AI · ${found.length - 1}`) }).click();
-  await toast(alice, 'Contesto copiato');
+  // Claude was chosen once before: now it opens straight away, with the text in the message.
+  await alice.getByRole('button', { name: new RegExp(`Trasferisci a Claude · ${found.length - 1}`) }).click();
+  await toast(alice, 'Apro Claude');
+  assert.match(decodeURIComponent((await alice.evaluate(() => window.__opened)).split('?q=')[1]), /Organizzami un itinerario/);
   const text = await alice.evaluate(() => navigator.clipboard.readText());
   assert.match(text, /Scope: everything about "kyoto"/);
   assert.match(text, /My request: Organizzami un itinerario/);

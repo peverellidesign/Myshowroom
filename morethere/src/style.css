@@ -466,3 +466,43 @@ h1.first{margin-top:4px}
 .chipSep{flex:0 0 1px;align-self:stretch;background:#e5e5e5;margin:6px 4px}
 .chip.collection{border-style:dashed}
 .chip.collection.active{border-style:solid}
+/* ---- Phone-first: sheets rise from the bottom, where the thumb is ---- */
+@media (max-width: 600px) {
+  .overlay:has(> .modal.sheet) { place-items: end center; padding: 0; }
+  .modal.sheet { max-width: none; border-radius: 24px 24px 0 0; max-height: 88vh; overflow-y: auto; padding-bottom: calc(22px + env(safe-area-inset-bottom)); animation: sheetUp .22s cubic-bezier(.2,.8,.2,1); }
+}
+@keyframes sheetUp { from { transform: translateY(60px) } to { transform: none } }
+@media (prefers-reduced-motion: reduce) { .modal.sheet { animation: none } }
+.sheetGrab { width: 38px; height: 5px; border-radius: 3px; background: #ddd; justify-self: center; margin: -10px 0 2px; }
+.sheetHead { display: flex; align-items: center; justify-content: space-between; }
+.sheetHead h2 { margin: 0; }
+.sheetHead .close { padding: 8px; margin: -8px; }
+
+/* Filters: a short row, everything else in the sheet, the active one always visible */
+.chips.quick { flex-wrap: nowrap; }
+.filtersBtn { gap: 6px; margin-left: auto; }
+.filterGroup { display: grid; gap: 8px; }
+.filterGroupHead { font-size: 12px; letter-spacing: 1.3px; color: #858585; font-weight: 500; text-transform: uppercase; }
+.filterWrap { display: flex; flex-wrap: wrap; gap: 8px; }
+.activeFilter { margin: -8px 0 14px; }
+.activePill { display: inline-flex; align-items: center; gap: 6px; border: 0; border-radius: 999px; background: #252525; color: #fff; padding: 8px 12px 8px 14px; font-size: 13px; font-weight: 500; min-height: 36px; }
+
+/* Thumb-sized targets (44px) on cards and in the detail */
+.itemactions { gap: 2px; margin: 14px -10px -8px; }
+.itemactions button { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 12px; }
+.itemactions button:active { background: #f2f2f0; }
+.detailtools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 10px 0 12px; }
+.detailtools .textlink { min-height: 46px; justify-content: center; border: 1px solid #e5e5e5; border-radius: 14px; padding: 10px 12px; color: #252525; background: #fff; }
+.detailtools .textlink.danger { grid-column: 1 / -1; color: #9a3b3b; border-color: #f0dede; margin: 0; }
+.textlink.inlineLink { display: inline; padding: 0; font-size: inherit; text-decoration: underline; }
+
+/* Trasferisci a AI */
+.aiDests { display: grid; gap: 10px; }
+.aiDest { display: flex; align-items: center; gap: 14px; min-height: 60px; border: 1px solid #e5e5e5; border-radius: 18px; padding: 10px 16px; background: #fff; text-align: left; font-size: 16px; }
+.aiDest strong { flex: 1; }
+.aiDest.on { border-color: #252525; }
+.aiLogo { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; color: #fff; font-weight: 700; }
+.aiLogo.claude { background: #c96442; }
+.aiLogo.chatgpt { background: #10a37f; }
+.aiSheet .textlink { justify-self: center; display: inline-flex; gap: 6px; align-items: center; }
+.textlink.deleteItem { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 48px; margin-top: 18px; }
