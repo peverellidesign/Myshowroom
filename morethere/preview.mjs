@@ -424,7 +424,14 @@ export async function topicContext(topic) {
     if (j?.type === 'standard' && j.extract) {
       const clean = j.extract.replace(/\s*\[[^\]]*\]/g, '').replace(/\s*\([^)]*\)/g, '').replace(/\s+([,.;:])/g, '$1').replace(/\s+/g, ' ').trim();
       const first = clean.match(/^(.{20,}?[.!?])(\s|$)/)?.[1] || '';
-      if (first && first.length <= 260) value = { topic: j.title || topic, text: first, source: 'Wikipedia', url: j.content_urls?.mobile?.page || j.content_urls?.desktop?.page || '' };
+      // The field it works in ("attiva nel settore dei semiconduttori") and its short description.
+      const sector = clean.match(/(?:attiv[aoei]|operante|specializzat[aoei]|leader|che opera)\s+(?:principalmente\s+)?(?:nel|nei|nell'|nella|negli|nelle)\s+(?:settore|campo|mercato|ambito)\s+(?:dei|delle|della|del|degli|dell')\s*([^,.;]{3,50})/i)?.[1]
+        || clean.match(/(?:settore|campo|ambito)\s+(?:dei|delle|della|del|degli|dell')\s*([^,.;]{3,50})/i)?.[1] || '';
+      // Without a stated sector, the description often says it: "azienda … di intelligenza artificiale".
+      const desc = (j.description || '').trim();
+      const field = sector.replace(/\s+(con sede|con|che|e con)\b.*$/i, '').trim()
+        || (/^(club|squadra|società sportiva)/i.test(desc) ? 'sport' : (desc.match(/^(?:azienda|società|impresa|gruppo|marchio|startup|casa)[^,]*?\bdi\s+([^,;]{3,50})$/i)?.[1] || ''));
+      if (first && first.length <= 260) value = { topic: j.title || topic, text: first, description: desc.slice(0, 80), sector: field, source: 'Wikipedia', url: j.content_urls?.mobile?.page || j.content_urls?.desktop?.page || '' };
     }
   } catch { /* no context */ }
   if (contextCache.size > 1000) contextCache.clear();

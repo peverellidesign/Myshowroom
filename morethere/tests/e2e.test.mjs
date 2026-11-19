@@ -137,9 +137,9 @@ test('link preview: real page title and cover image, stored as a private photo',
   await page.locator('.notebody', { hasText: '• Cucina: Lombarda' }).waitFor({ timeout: 15000 });
   await page.locator('.notebody', { hasText: '• Indirizzo: Via Solferino 12, Milano' }).waitFor();
   await page.locator('.notebody', { hasText: '• Dal 1962 la Trattoria da Mario serve a Milano' }).waitFor();
-  await page.getByText('Un posto da provare.').waitFor();
+  await page.getByText('Un indirizzo di cucina lombarda a Milano: da provare la prossima volta che ci passi.').waitFor();
   await close(page);
-  // Personal "why": a second link about the same place points to the first one you saved.
+  // A second link about the same place gets its own judgment too.
   await page.getByPlaceholder('Incolla un link o scrivi...').fill(`${pageUrl}-bis`);
   await page.getByPlaceholder('Incolla un link o scrivi...').press('Enter');
   await toast(page, 'Salvato nella tua raccolta');
@@ -147,10 +147,10 @@ test('link preview: real page title and cover image, stored as a private photo',
   let again;
   for (let k = 0; k < 40 && !again; k++) {
     const { data } = await admin.from('items').select('id, note').like('url', '%trattoria-bis%');
-    again = data?.find(r => /Si collega a «Trattoria da Mario — Milano», che hai salvato il/.test(r.note));
+    again = data?.find(r => /Perché ti interessa: Un indirizzo di cucina lombarda a Milano/.test(r.note));
     if (!again) await page.waitForTimeout(500);
   }
-  assert.ok(again, 'the second link points to the first one');
+  assert.ok(again, 'the second link has its judgment');
   await admin.from('items').delete().eq('id', again.id);
   await page.reload();
   await page.locator('.item', { hasText: 'Trattoria da Mario' }).first().locator('.itemtitle').click();

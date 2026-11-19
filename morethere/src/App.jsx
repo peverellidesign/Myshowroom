@@ -5,6 +5,7 @@ import {
   ShieldCheck, Download, LogOut, Share, Compass, MapPin, Inbox, UserRoundCheck, ImagePlus, Pencil, UserRound, ArrowRight,
 } from 'lucide-react';
 import { explainWhy } from './lib/why.js';
+import { judge } from './lib/judge.js';
 import { watermark } from './lib/watermark.js';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable';
@@ -318,19 +319,16 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
       const d = await api.digest({ url, title: item.title, description: (item.note || '').split('\n').filter(l => !/^— |^• |^Perché ti interessa|^Contesto:/.test(l)).join('\n'), interests: collections });
       if (!d?.points?.length) { if (!fresh) toast('Non riesco a riassumere questa pagina.'); return false; }
       // "Perché ti interessa", argued from what morethere knows about you (on this device).
+      // "Perché ti interessa" is a judgment: which way the facts point, here and in what you
+      // saved on the subject, in the light of its field (from Wikipedia) and your interests.
       const res = explainWhy({ item, points: d.points, kind: d.kind, base: d.base, fallback: d.why,
         me: { items, profile, asks: asks.mine, spaces: worlds, received: thoughts.received } });
-      d.why = res.text;
-      // What changed since the last thing you saved on this subject, from its own key points.
-      const before = (res.previous?.note || '').split('\n').filter(l => l.startsWith('• ')).map(l => l.slice(2));
-      const fact = before.find(l => /\d/.test(l)) || before[0];
-      if (fact && !d.points.includes(fact)) {
-        const history = `L'ultima volta, il ${fmtDate(res.previous.created)}, avevi salvato: «${fact}».`;
-        d.why = d.why.replace(/ \(l'ultima il [^)]+\)/, ''); // said by the history line
-        d.why = d.base && d.why.endsWith(d.base) ? `${d.why.slice(0, -d.base.length)}${history} ${d.base}` : `${d.why} ${history}`;
-      }
-      // Background on the subject from Wikipedia, so the why has context.
-      if (res.topic) { const c = await api.context(res.topic).catch(() => null); if (c?.text) d.context = `${c.text} (Wikipedia)`; }
+      const ctx = res.topic ? await api.context(res.topic).catch(() => null) : null;
+      if (ctx?.text) d.context = `${ctx.text} (Wikipedia)`;
+      const before = res.related.flatMap(o => [o.title, ...(o.note || '').split('\n').filter(l => l.startsWith('• ')).map(l => l.slice(2))]);
+      const verdict = judge({ subject: res.topic, sector: ctx?.sector || '', kind: d.kind, title: item.title, points: d.points, before, follows: res.count, interest: res.interest });
+      const dup = res.duplicate ? `L'avevi già salvato il ${fmtDate(res.duplicate.created)}. ` : '';
+      d.why = verdict ? `${dup}${verdict}` : `${dup}${d.base || d.why}`;
       const byline = (item.note || '').split('\n').filter(l => /^— /.test(l)).join('\n');
       // Asked again: the new summary replaces the old one, what you wrote stays.
       const yours = (item.note || '').split('\n').filter(l => !/^— |^• |^Perché ti interessa|^Contesto:/.test(l)).join('\n').trim();

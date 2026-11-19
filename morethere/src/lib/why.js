@@ -51,7 +51,7 @@ export function buildWhy(args) { return explainWhy(args).text; }
 
 /** Like buildWhy, plus the main subject (for background) and what you saved on it before. */
 export function explainWhy({ item, points = [], kind = '', base = '', fallback = '', me = {} }) {
-  let topic = ''; let previous = null; let since = null; let followed = 0;
+  let topic = ''; let previous = null; let since = null; let followed = 0; let related = []; let interestLabel = ''; let duplicate = null;
   const { items = [], profile = null, asks = [], spaces = [], received = [], now = Date.now() } = me;
   const text = [item.title, ...points].join(' ');
   const names = namesIn(text);
@@ -65,6 +65,7 @@ export function explainWhy({ item, points = [], kind = '', base = '', fallback =
   const norm = u => String(u || '').replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase();
   // (Only earlier copies: the first one you saved is the original.)
   const twin = item.url && others.filter(o => o.url && norm(o.url) === norm(item.url) && (!item.created || o.created < item.created)).sort((a, b) => a.created - b.created)[0];
+  duplicate = twin || null;
   if (twin) signals.push({ score: 15, text: `L'avevi già salvato il ${fmtDay(twin.created)}.` });
 
   // 1. A subject you keep coming back to: the name (or topic) most of your saves share.
@@ -81,7 +82,7 @@ export function explainWhy({ item, points = [], kind = '', base = '', fallback =
     // Show the word as written in the title, not its folded stem.
     const label = pretty([...names].find(n => stem(n) === term) || (fold(text).match(new RegExp(`\\b${term}[a-z]*`)) || [term])[0]);
     const latest = list.reduce((a, b) => (b.created > a.created ? b : a));
-    topic = label; previous = latest; since = list.reduce((a, b) => (b.created < a.created ? b : a)).created; followed = list.length + 1;
+    topic = label; previous = latest; related = list; since = list.reduce((a, b) => (b.created < a.created ? b : a)).created; followed = list.length + 1;
     const count = list.length + 1;
     signals.push(count >= 3
       ? { score: 6 + count, text: `È la ${nth(count)} cosa che salvi su ${label}: è un tema che segui (l'ultima il ${fmtDay(latest.created)}).` }
@@ -107,7 +108,7 @@ export function explainWhy({ item, points = [], kind = '', base = '', fallback =
     const key = fold(interest);
     const family = FAMILIES.find(f => f.names.includes(key));
     const hit = family ? (family.kinds.includes(kind) || family.words.some(w => body.includes(w))) : body.includes(key);
-    if (hit) { signals.push({ score: 5, text: `Rientra in ${interest}, uno degli interessi che hai scritto nel profilo.` }); break; }
+    if (hit) { interestLabel = interest.toLowerCase(); signals.push({ score: 5, text: `Rientra in ${interest}, uno degli interessi che hai scritto nel profilo.` }); break; }
   }
 
   // 3b. What you save most often, even with an empty profile.
@@ -116,7 +117,7 @@ export function explainWhy({ item, points = [], kind = '', base = '', fallback =
     for (const f of FAMILIES) {
       if (!kindOf(f)({ title: text, kind })) continue;
       const count = others.filter(kindOf(f)).length;
-      if (count >= 2) { signals.push({ score: 4 + Math.min(count, 5), text: `Salvi spesso cose di ${f.label}: questa è la ${nth(count + 1)}.` }); break; }
+      if (count >= 2) { interestLabel = interestLabel || f.label; signals.push({ score: 4 + Math.min(count, 5), text: `Salvi spesso cose di ${f.label}: questa è la ${nth(count + 1)}.` }); break; }
     }
   }
 
@@ -155,5 +156,5 @@ export function explainWhy({ item, points = [], kind = '', base = '', fallback =
   // Without a subject you follow, the first proper name of the title is the subject.
   if (!topic) topic = pretty([...namesIn(item.title)].sort((a, b) => b.length - a.length)[0] || '');
   const why = chosen.length ? [...chosen, base].filter(Boolean).join(' ') : (fallback || base);
-  return { text: why, topic, previous, since, count: followed };
+  return { text: why, topic, previous, since, count: followed, related, interest: interestLabel, duplicate };
 }
