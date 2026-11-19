@@ -685,8 +685,13 @@ test('Trasferisci a AI: only a trip, with the question already written', async (
   await rows.last().click(); // leave one out
   await alice.getByRole('button', { name: 'Organizzami un itinerario' }).click();
   await shot(alice, '11c-ai');
-  // Claude was chosen once before: now it opens straight away, with the text in the message.
-  await alice.getByRole('button', { name: new RegExp(`Trasferisci a Claude · ${found.length - 1}`) }).click();
+  // Every time you choose between Claude and ChatGPT, on their official sites.
+  await alice.getByRole('button', { name: new RegExp(`Trasferisci a AI · ${found.length - 1}`) }).click();
+  const sheet = alice.getByRole('dialog', { name: 'Trasferisci a AI' });
+  await sheet.getByText('claude.ai · sito ufficiale Anthropic').waitFor();
+  await sheet.getByText('chatgpt.com · sito ufficiale OpenAI').waitFor();
+  await shot(alice, '11d-ai-sheet');
+  await sheet.getByRole('button', { name: /Claude/ }).click();
   await toast(alice, 'Apro Claude');
   assert.match(new URL(await alice.evaluate(() => window.__opened)).searchParams.get('q'), /My request: Organizzami un itinerario/);
   const text = await alice.evaluate(() => navigator.clipboard.readText());
