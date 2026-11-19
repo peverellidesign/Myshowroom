@@ -59,13 +59,14 @@ export function buildWhy({ item, points = [], kind = '', base = '', fallback = '
 
   // 0. Already in your collection: the same link saved before.
   const norm = u => String(u || '').replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase();
-  const twin = item.url && others.filter(o => o.url && norm(o.url) === norm(item.url)).sort((a, b) => a.created - b.created)[0];
+  // (Only earlier copies: the first one you saved is the original.)
+  const twin = item.url && others.filter(o => o.url && norm(o.url) === norm(item.url) && (!item.created || o.created < item.created)).sort((a, b) => a.created - b.created)[0];
   if (twin) signals.push({ score: 15, text: `L'avevi già salvato il ${fmtDay(twin.created)}.` });
 
   // 1. A subject you keep coming back to: the name (or topic) most of your saves share.
   const seen = new Map();
   for (const o of others) {
-    if (twin && norm(o.url) === norm(item.url)) continue; // copies of the same link do not count
+    if (item.url && o.url && norm(o.url) === norm(item.url)) continue; // copies of the same link do not count
     const theirs = termsIn(`${o.title} ${o.note || ''}`);
     for (const t of terms) if (theirs.has(t)) { const list = seen.get(t) || []; list.push(o); seen.set(t, list); }
   }
