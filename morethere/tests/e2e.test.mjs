@@ -147,7 +147,7 @@ test('link preview: real page title and cover image, stored as a private photo',
   let again;
   for (let k = 0; k < 40 && !again; k++) {
     const { data } = await admin.from('items').select('id, note').like('url', '%di-nuovo%');
-    again = data?.find(r => /Collegato a «Trattoria da Mario — Milano», che hai salvato il/.test(r.note));
+    again = data?.find(r => /Si collega a «Trattoria da Mario — Milano», che hai salvato il/.test(r.note));
     if (!again) await page.waitForTimeout(500);
   }
   assert.ok(again, 'the second link points to the first one');

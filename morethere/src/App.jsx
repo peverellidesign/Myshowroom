@@ -4,6 +4,7 @@ import {
   FolderHeart, Send, Check, Bookmark, PenLine, X, Link2, UserRoundPlus, ChevronRight,
   ShieldCheck, Download, LogOut, Share, Compass, MapPin, Inbox, UserRoundCheck, ImagePlus, Pencil, UserRound, ArrowRight,
 } from 'lucide-react';
+import { buildWhy } from './lib/why.js';
 import { watermark } from './lib/watermark.js';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable';
@@ -309,23 +310,6 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   // On a fresh save it replaces the page's own description; on request it is
   // added above what you wrote.
   const digestText = d => [...d.points.map(p => `• ${p}`), d.why ? `\nPerché ti interessa: ${d.why}` : ''].filter(Boolean).join('\n');
-  // "Perché ti interessa", made personal on this device: the discovery you saved
-  // earlier that shares the most names (people, brands, places) with this one.
-  const NAMES_SKIP = new Set('il lo la le gli un una per con che come dove quando perché ecco oggi ieri domani anche ma non the and for with from this that what how why who new nuovo nuova nuovi italia italian italiano ceo presidente post facebook instagram video foto pagine notizie news'.split(' '));
-  const namesIn = text => new Set((String(text).match(/\b[\p{Lu}][\p{L}\p{N}'’.-]{2,}/gu) || []).map(w => w.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[’'.-]+$/, '')).filter(w => w.length >= 4 && !NAMES_SKIP.has(w)));
-  const relatedTo = (item, points) => {
-    const mine = namesIn([item.title, ...points].join(' '));
-    if (!mine.size) return null;
-    let best = null; let score = 0;
-    for (const other of items) {
-      if (other.id === item.id) continue;
-      const shared = [...namesIn(`${other.title} ${other.note || ''}`)].filter(n => mine.has(n));
-      const sc = shared.length + shared.filter(n => n.length >= 6).length * 0.5;
-      if (sc > score) { score = sc; best = other; }
-    }
-    return score >= 1.5 ? best : null;
-  };
-  const shortTitle = t => (t.length > 60 ? `${t.slice(0, 57).replace(/\s+\S*$/, '')}…` : t);
   const summarize = async (item, { fresh = false } = {}) => {
     const url = safeUrl(item.url || '');
     if (!url || digesting === item.id) return false;
@@ -333,8 +317,9 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     try {
       const d = await api.digest({ url, title: item.title, description: (item.note || '').split('\n').filter(l => !/^— |^• |^Perché ti interessa/.test(l)).join('\n'), interests: collections });
       if (!d?.points?.length) { if (!fresh) toast('Non riesco a riassumere questa pagina.'); return false; }
-      const rel = relatedTo(item, d.points);
-      if (rel) d.why = `Collegato a «${shortTitle(rel.title)}», che hai salvato il ${fmtDate(rel.created)}. ${d.why}`;
+      // "Perché ti interessa", argued from what morethere knows about you (on this device).
+      d.why = buildWhy({ item, points: d.points, kind: d.kind, base: d.base, fallback: d.why,
+        me: { items, profile, asks: asks.mine, spaces: worlds, received: thoughts.received } });
       const byline = (item.note || '').split('\n').filter(l => /^— /.test(l)).join('\n');
       const note = fresh ? [digestText(d), byline].filter(Boolean).join('\n\n') : [digestText(d), item.note].filter(Boolean).join('\n\n');
       await api.updateItem(item.id, { note: note.slice(0, 10000) });

@@ -366,7 +366,11 @@ export function makeDigest({ html = '', title = '', description = '', interests 
   let points = [...story.slice(0, room), ...hardFacts].slice(0, 4);
   if (points.length < 2) points = [...points, ...byline].slice(0, 3);
   const when = hardFacts.find(f => f.startsWith('Quando: '))?.slice(8);
-  return points.length ? { points, why: whyItMatters({ kind, title, points, interests, when, section: sectionOf(nodes, html) }), kind } : null;
+  const section = sectionOf(nodes, html);
+  // why: the server's own sentence (collections by name, kind of content);
+  // base: just the "what to do with it", for the app to build a personal why around.
+  const base = kind === 'event' && when ? `Segnati la data: ${when}.` : kind === 'read' && section ? `Da leggere: ${section}.` : WHY[kind] ?? WHY[''];
+  return points.length ? { points, why: whyItMatters({ kind, title, points, interests, when, section }), base, kind, when: when || '' } : null;
 }
 
 const json = (res, status, body) => {
