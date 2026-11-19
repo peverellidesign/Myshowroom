@@ -325,7 +325,8 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
       const before = (res.previous?.note || '').split('\n').filter(l => l.startsWith('• ')).map(l => l.slice(2));
       const fact = before.find(l => /\d/.test(l)) || before[0];
       if (fact && !d.points.includes(fact)) {
-        const history = `Il ${fmtDate(res.previous.created)} avevi salvato: «${fact}».`;
+        const history = `L'ultima volta, il ${fmtDate(res.previous.created)}, avevi salvato: «${fact}».`;
+        d.why = d.why.replace(/ \(l'ultima il [^)]+\)/, ''); // said by the history line
         d.why = d.base && d.why.endsWith(d.base) ? `${d.why.slice(0, -d.base.length)}${history} ${d.base}` : `${d.why} ${history}`;
       }
       // Background on the subject from Wikipedia, so the why has context.
