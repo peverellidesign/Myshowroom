@@ -16,6 +16,7 @@ const UP = [
   [/\bipo\b|quotazion|debutto in borsa/, 'un debutto in Borsa'],
   [/accordo|partnership|acquisizion|investimento da/, 'nuovi accordi'],
   [/premi[oa]t|\bpremia\b|riconosciment|vince|vittoria|conquista/, 'un riconoscimento'],
+  [/imbattut|mai perso|serie positiva|striscia positiva/, 'una serie positiva'],
   [/lancia|presenta|nuovo modello|novità/, 'una novità importante'],
 ];
 const DOWN = [
@@ -36,9 +37,11 @@ const fact = (points, label) => points.find(p => p.startsWith(label))?.slice(lab
 // Only the parts of the text about the subject count: "IPO da record di Anthropic,
 // mentre Nvidia segna ribassi" says nothing good about Nvidia.
 const CLAUSES = /[.;!?]\s+|,?\s+(?:mentre|invece|ma|però|tuttavia|whereas|while)\s+/i;
-function about(text, subject, title = '') {
+function about(text, subject, title = '', strict = false) {
   const key = fold(subject).split(/\s+/)[0];
-  if (!key || key.length < 3) return fold(text);
+  if (!key || key.length < 3) return strict ? '' : fold(text);
+  // Earlier articles: only their sentences that name the subject.
+  if (strict) return String(text).split(CLAUSES).map(fold).filter(p => p.includes(key)).join(' . ');
   // Other subjects named in the title ("Anthropic" in "IPO di Anthropic mentre Nvidia…"):
   // a clause about one of them, and not about ours, is left out.
   const rivals = (String(title).match(/\b\p{Lu}[\p{L}\p{N}]{2,}/gu) || []).map(fold).filter(n => n !== key && n.length >= 4 && !/^(il|lo|la|le|gli|un|una|per|con|come|dopo|ecco|oggi)$/.test(n));
@@ -58,7 +61,7 @@ function about(text, subject, title = '') {
  */
 export function judge({ subject = '', sector = '', kind = '', title = '', points = [], before = [], follows = 0, interest = '', withYou = true }) {
   const now = about([title, ...points].join('. '), subject, title);
-  const then = about(before.join('. '), subject, title);
+  const then = about(before.join('. '), subject, title, true);
   const S = subject || 'Il tema';
   const field = sector || interest;
   // Why it matters to you, said once and plainly.
@@ -88,13 +91,15 @@ export function judge({ subject = '', sector = '', kind = '', title = '', points
     return `Una ricetta${time ? ` da ${time}` : ''}: ${/\d+\s?min/.test(time) && !/h/.test(time) ? 'alla portata di una sera qualunque' : 'da tenere per quando hai tempo'}.`;
   }
 
-  // News and stories: which way the facts point, now and before.
+  // News and stories: which way the facts point, now and before. Only for a named
+  // subject (a company, a person, a team): "the topic is doing well" says nothing.
+  if (!subject) return '';
   const up = unique(found(now, UP)); const down = unique(found(now, DOWN));
   const upBefore = unique(found(then, UP)); const downBefore = unique(found(then, DOWN));
   let judgment = '';
   if (up.length && down.length) judgment = `${S} vive una fase contrastata: ${list2(up.slice(0, 2))}, ma anche ${list2(down.slice(0, 2))}.`;
   else if (down.length && upBefore.length) judgment = `Il quadro su ${S} sta cambiando: dopo ${list2(upBefore.slice(0, 1))}, ora ${list2(down.slice(0, 2))}.`;
-  else if (up.length && downBefore.length) judgment = `${S} sta reagendo: dopo ${list2(downBefore.slice(0, 1))}, arrivano ${list2(up.slice(0, 2))}.`;
+  else if (up.length && downBefore.length) judgment = `${S} sta reagendo: dopo ${list2(downBefore.slice(0, 1))}, ${up.length > 1 ? 'arrivano' : 'arriva'} ${list2(up.slice(0, 2))}.`;
   else if (down.length) judgment = `Per ${S} è un momento delicato: ${list2(down.slice(0, 2))}.`;
   else if (up.length) judgment = `${S} è in una fase favorevole: ${list2(up.slice(0, 2))}.`;
   if (!judgment) return '';

@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { explainWhy } from './lib/why.js';
 import { judge } from './lib/judge.js';
-import { interestReason } from './lib/interests.js';
+import { interestReason, themesOf } from './lib/interests.js';
 import { watermark } from './lib/watermark.js';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable';
@@ -326,11 +326,16 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
         me: { items, profile, asks: asks.mine, spaces: worlds, received: thoughts.received } });
       const ctx = res.topic ? await api.context(res.topic).catch(() => null) : null;
       if (ctx?.text) d.context = `${ctx.text} (Wikipedia)`;
-      const before = res.related.flatMap(o => [o.title, ...(o.note || '').split('\n').filter(l => l.startsWith('• ')).map(l => l.slice(2))]);
+      // Earlier saves on the subject, but only of the same kind of theme (Como the club is not Como the town).
+      const mineThemes = themesOf([item.title, ...d.points].join(' '), { kind: d.kind, sector: ctx?.sector || '' });
+      const before = res.related.filter(o => themesOf(`${o.title} ${o.note || ''}`).some(t => mineThemes.includes(t)))
+        .flatMap(o => [o.title, ...(o.note || '').split('\n').filter(l => l.startsWith('• ')).map(l => l.slice(2))]);
       // First why it is yours ("Ti interessa perché segui spesso i temi economici"),
       // then the judgment on the subject, if the facts allow one.
       const reason = interestReason({ text: [item.title, ...d.points].join(' '), kind: d.kind, sector: ctx?.sector || '', items, profile, selfId: item.id });
-      const verdict = judge({ subject: res.topic, sector: ctx?.sector || '', kind: d.kind, title: item.title, points: d.points, before, follows: res.count, interest: res.interest, withYou: !reason });
+      // Places (a town, a region) do not have "good or bad moments": no judgment on them.
+      const isPlace = /^(comune|citt|capoluogo|frazione|regione|provincia|stato|paese|nazione|capitale|isola|lago|fiume|monte)/i.test(ctx?.description || '');
+      const verdict = judge({ subject: isPlace ? '' : res.topic, sector: ctx?.sector || '', kind: d.kind, title: item.title, points: d.points, before, follows: res.count, interest: res.interest, withYou: !reason });
       const dup = res.duplicate ? `L'avevi già salvato il ${fmtDate(res.duplicate.created)}. ` : '';
       d.why = `${dup}${[reason, verdict].filter(Boolean).join(' ') || d.base || d.why}`;
       const byline = (item.note || '').split('\n').filter(l => /^— /.test(l)).join('\n');
