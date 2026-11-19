@@ -688,7 +688,7 @@ test('Trasferisci a AI: only a trip, with the question already written', async (
   // Claude was chosen once before: now it opens straight away, with the text in the message.
   await alice.getByRole('button', { name: new RegExp(`Trasferisci a Claude · ${found.length - 1}`) }).click();
   await toast(alice, 'Apro Claude');
-  assert.match(decodeURIComponent((await alice.evaluate(() => window.__opened)).split('?q=')[1]), /Organizzami un itinerario/);
+  assert.match(new URL(await alice.evaluate(() => window.__opened)).searchParams.get('q'), /My request: Organizzami un itinerario/);
   const text = await alice.evaluate(() => navigator.clipboard.readText());
   assert.match(text, /Scope: everything about "kyoto"/);
   assert.match(text, /My request: Organizzami un itinerario/);

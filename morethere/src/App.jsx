@@ -31,7 +31,7 @@ const MoreOfMeIcon = ({ size = 22 }) => <UserRoundPlus size={size} strokeWidth={
 const MoreForYouIcon = ({ size = 22 }) => <Send size={size} strokeWidth={1.5} />;
 const AskIcon = ({ size = 22 }) => <Compass size={size} strokeWidth={1.5} />;
 const MoreOfUsIcon = ({ size = 22 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><circle cx="9" cy="12" r="6.25" /><circle cx="15" cy="12" r="6.25" /></svg>;
-import { buildAIContext, fromExportRows } from './lib/ai.js';
+import { buildAIContext, fromExportRows, textForLink, encodeForLink } from './lib/ai.js';
 import { friendlyError, photoTakenDate } from './lib/api.js';
 import { readLegacy, clearLegacy } from './lib/local.js';
 
@@ -566,9 +566,9 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     setAiDest(dest); setAiPending(null);
     let copied = true;
     try { navigator.clipboard.writeText(text).catch(() => {}); } catch { copied = false; }
-    const q = encodeURIComponent(text);
-    const fits = q.length <= 7000;
-    const url = fits ? `${d.url}?${d.q}=${q}` : d.url;
+    const short = textForLink(text);
+    const fits = !!short;
+    const url = fits ? `${d.url}?${d.q}=${encodeForLink(short)}` : d.url;
     const win = window.open(url, '_blank', 'noopener');
     if (!win && !copied) { setExportText(text); setScreen('export'); return; }
     toast(fits ? `Apro ${d.name} con le tue scoperte già scritte: premi invio.` : `Copiato. In ${d.name} tieni premuto nel messaggio e scegli Incolla.`);

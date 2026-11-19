@@ -31,3 +31,32 @@ export function fromExportRows(rows) {
     collection: r.collection, from: r.added_by_name,
   }));
 }
+
+// A link can carry about 14,000 characters (Claude and ChatGPT sit behind proxies
+// that refuse longer addresses). To make a whole archive fit, the text for the link
+// drops empty fields, morethere's own lines and tracking parameters, and shortens
+// long notes; the clipboard still holds everything.
+export const LINK_LIMIT = 14000;
+export const encodeForLink = t => encodeURIComponent(t).replace(/%20/g, '+');
+export function compactForLink(text, noteMax = 280) {
+  const out = [];
+  for (const raw of String(text).split('\n')) {
+    let l = raw.trim() ? raw : '';
+    if (/^(Collection|URL|Note): —$/.test(l)) continue;
+    if (/^(Perché ti interessa:|Contesto:|— )/.test(l.trim())) continue;
+    l = l.replace(/^URL: (\S+?)[?#]\S*$/, 'URL: $1').replace(/^•\s*/, '- ').replace(/^Category: /, 'Type: ');
+    if (l.length > noteMax) l = l.slice(0, l.lastIndexOf(' ', noteMax) > 0 ? l.lastIndexOf(' ', noteMax) : noteMax) + ' […]';
+    if (!l && !out[out.length - 1]) continue;
+    out.push(l);
+  }
+  return out.join('\n');
+}
+/** The longest version of `text` that fits in a link, or '' when even the shortest does not. */
+export function textForLink(text) {
+  // Last resort: titles and links only (plus the request), the full notes stay in the clipboard.
+  const bare = String(text).split('\n').filter(l => !l.trim() || /^(\d+\. |URL: |MORETHERE|Use these|Scope: |Shared with|My request: )/.test(l)).join('\n').replace(/^URL: —$/gm, '');
+  for (const t of [text, compactForLink(text, 280), compactForLink(text, 120), compactForLink(text, 60), compactForLink(bare, 200)]) {
+    if (encodeForLink(t).length <= LINK_LIMIT) return t;
+  }
+  return '';
+}
