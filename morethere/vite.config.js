@@ -6,9 +6,10 @@ function previewApi() {
   return {
     name: 'morethere-preview-api',
     async configureServer(server) {
-      const { handlePreview, handlePreviewImage, handleWhere } = await import('./preview.mjs');
+      const { handlePreview, handlePreviewImage, handleWhere, handleContext } = await import('./preview.mjs');
       // Connect strips the mount path; the handler only reads the query string.
       server.middlewares.use('/api/where', (req, res) => handleWhere(req, res));
+      server.middlewares.use('/api/context', (req, res) => handleContext(req, res));
       const { handleDigest, handleDigestStatus } = await import('./digest.mjs');
       server.middlewares.use('/api/digest', (req, res) => (req.method === 'POST' ? handleDigest(req, res) : handleDigestStatus(req, res)));
       server.middlewares.use('/api/preview-image', (req, res) => handlePreviewImage(req, res));

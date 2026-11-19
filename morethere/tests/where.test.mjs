@@ -36,3 +36,12 @@ test('only signed-in people can ask, and bad positions are refused', async () =>
   assert.equal((await call('/api/where?lat=43.77&lon=11.25')).status, 401);
   assert.equal((await call('/api/where?lat=43.77&lon=11.25', 'Bearer not-a-real-token')).status, 401);
 });
+
+test('context on a subject: only for signed-in people, only plain names', async () => {
+  const { handleContext } = await import('../preview.mjs');
+  const call = (url, auth) => new Promise(resolve => {
+    const res = { writeHead(status) { this.status = status; }, end(body) { resolve({ status: this.status, body: JSON.parse(body) }); } };
+    handleContext({ url, headers: auth ? { authorization: auth } : {} }, res);
+  });
+  assert.equal((await call('/api/context?topic=Nvidia')).status, 401);
+});

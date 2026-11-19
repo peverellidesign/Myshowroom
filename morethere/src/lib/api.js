@@ -277,6 +277,14 @@ export function createRemoteApi(user) {
       if (!res.ok) return null;
       return res.json();
     },
+    // Background on a subject: the opening of its Wikipedia article (only the name is sent).
+    async context(topic) {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+      if (!token || !topic) return null;
+      const res = await fetch(`/api/context?topic=${encodeURIComponent(topic)}`, { headers: { Authorization: `Bearer ${token}` } });
+      return res.ok ? res.json() : null;
+    },
     async linkPreview(url) {
       const { data } = await supabase.auth.getSession();
       const token = data.session?.access_token;

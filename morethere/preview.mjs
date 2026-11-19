@@ -408,3 +408,39 @@ export function htmlText(html, max = 20000) {
     .slice(0, max);
 }
 export { decode as decodeEntities, meta as metaContent };
+
+// ---- "Contesto": GET /api/context?topic=Nvidia -> { topic, text, source, url } ----
+// The opening sentence of the Italian Wikipedia article about a subject, as
+// background for "Perché ti interessa". Only the subject's name leaves our
+// server (to Wikipedia); answers are cached for a day.
+const contextCache = new Map();
+export async function topicContext(topic) {
+  const key = topic.toLowerCase();
+  const hit = contextCache.get(key);
+  if (hit && hit.exp > Date.now()) return hit.value;
+  let value = null;
+  try {
+    const j = await getJson(`https://it.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(topic.replace(/\s+/g, '_'))}`);
+    if (j?.type === 'standard' && j.extract) {
+      const clean = j.extract.replace(/\s*\[[^\]]*\]/g, '').replace(/\s*\([^)]*\)/g, '').replace(/\s+([,.;:])/g, '$1').replace(/\s+/g, ' ').trim();
+      const first = clean.match(/^(.{20,}?[.!?])(\s|$)/)?.[1] || '';
+      if (first && first.length <= 260) value = { topic: j.title || topic, text: first, source: 'Wikipedia', url: j.content_urls?.mobile?.page || j.content_urls?.desktop?.page || '' };
+    }
+  } catch { /* no context */ }
+  if (contextCache.size > 1000) contextCache.clear();
+  contextCache.set(key, { value, exp: Date.now() + 86_400_000 });
+  return value;
+}
+export async function handleContext(req, res) {
+  try {
+    const userId = await userFromRequest(req);
+    if (!userId) return json(res, 401, { error: 'unauthorized' });
+    if (rateLimited(userId)) return json(res, 429, { error: 'rate_limited' });
+    const topic = (new URL(req.url, 'http://x').searchParams.get('topic') || '').trim();
+    if (!/^[\p{L}\p{N}][\p{L}\p{N} .'’&-]{1,58}$/u.test(topic)) return json(res, 400, { error: 'bad_topic' });
+    const value = await topicContext(topic);
+    return value ? json(res, 200, value) : json(res, 404, { error: 'no_context' });
+  } catch {
+    return json(res, 502, { error: 'unavailable' });
+  }
+}

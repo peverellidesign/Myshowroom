@@ -47,7 +47,11 @@ const FAMILIES = [
  * @param fallback  the server's own why, used when nothing personal applies
  * @param me        { items, collections, profile, asks, spaces, received, now }
  */
-export function buildWhy({ item, points = [], kind = '', base = '', fallback = '', me = {} }) {
+export function buildWhy(args) { return explainWhy(args).text; }
+
+/** Like buildWhy, plus the main subject (for background) and what you saved on it before. */
+export function explainWhy({ item, points = [], kind = '', base = '', fallback = '', me = {} }) {
+  let topic = ''; let previous = null; let since = null; let followed = 0;
   const { items = [], profile = null, asks = [], spaces = [], received = [], now = Date.now() } = me;
   const text = [item.title, ...points].join(' ');
   const names = namesIn(text);
@@ -77,6 +81,7 @@ export function buildWhy({ item, points = [], kind = '', base = '', fallback = '
     // Show the word as written in the title, not its folded stem.
     const label = pretty([...names].find(n => stem(n) === term) || (fold(text).match(new RegExp(`\\b${term}[a-z]*`)) || [term])[0]);
     const latest = list.reduce((a, b) => (b.created > a.created ? b : a));
+    topic = label; previous = latest; since = list.reduce((a, b) => (b.created < a.created ? b : a)).created; followed = list.length + 1;
     const count = list.length + 1;
     signals.push(count >= 3
       ? { score: 6 + count, text: `È la ${nth(count)} cosa che salvi su ${label}: è un tema che segui (l'ultima il ${fmtDay(latest.created)}).` }
@@ -147,6 +152,8 @@ export function buildWhy({ item, points = [], kind = '', base = '', fallback = '
   }
 
   const chosen = signals.sort((a, b) => b.score - a.score).slice(0, 2).map(s => s.text);
-  if (!chosen.length) return fallback || base;
-  return [...chosen, base].filter(Boolean).join(' ');
+  // Without a subject you follow, the first proper name of the title is the subject.
+  if (!topic) topic = pretty([...namesIn(item.title)].sort((a, b) => b.length - a.length)[0] || '');
+  const why = chosen.length ? [...chosen, base].filter(Boolean).join(' ') : (fallback || base);
+  return { text: why, topic, previous, since, count: followed };
 }

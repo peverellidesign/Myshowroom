@@ -4,7 +4,7 @@ import {
   FolderHeart, Send, Check, Bookmark, PenLine, X, Link2, UserRoundPlus, ChevronRight,
   ShieldCheck, Download, LogOut, Share, Compass, MapPin, Inbox, UserRoundCheck, ImagePlus, Pencil, UserRound, ArrowRight,
 } from 'lucide-react';
-import { buildWhy } from './lib/why.js';
+import { explainWhy } from './lib/why.js';
 import { watermark } from './lib/watermark.js';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from '@dnd-kit/sortable';
@@ -309,19 +309,31 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   // "In breve": a few key facts and why it may matter, at the top of the note.
   // On a fresh save it replaces the page's own description; on request it is
   // added above what you wrote.
-  const digestText = d => [...d.points.map(p => `• ${p}`), d.why ? `\nPerché ti interessa: ${d.why}` : ''].filter(Boolean).join('\n');
+  const digestText = d => [...d.points.map(p => `• ${p}`), d.why ? `\nPerché ti interessa: ${d.why}` : '', d.context ? `Contesto: ${d.context}` : ''].filter(Boolean).join('\n');
   const summarize = async (item, { fresh = false } = {}) => {
     const url = safeUrl(item.url || '');
     if (!url || digesting === item.id) return false;
     setDigesting(item.id);
     try {
-      const d = await api.digest({ url, title: item.title, description: (item.note || '').split('\n').filter(l => !/^— |^• |^Perché ti interessa/.test(l)).join('\n'), interests: collections });
+      const d = await api.digest({ url, title: item.title, description: (item.note || '').split('\n').filter(l => !/^— |^• |^Perché ti interessa|^Contesto:/.test(l)).join('\n'), interests: collections });
       if (!d?.points?.length) { if (!fresh) toast('Non riesco a riassumere questa pagina.'); return false; }
       // "Perché ti interessa", argued from what morethere knows about you (on this device).
-      d.why = buildWhy({ item, points: d.points, kind: d.kind, base: d.base, fallback: d.why,
+      const res = explainWhy({ item, points: d.points, kind: d.kind, base: d.base, fallback: d.why,
         me: { items, profile, asks: asks.mine, spaces: worlds, received: thoughts.received } });
+      d.why = res.text;
+      // What changed since the last thing you saved on this subject, from its own key points.
+      const before = (res.previous?.note || '').split('\n').filter(l => l.startsWith('• ')).map(l => l.slice(2));
+      const fact = before.find(l => /\d/.test(l)) || before[0];
+      if (fact && !d.points.includes(fact)) {
+        const history = `Il ${fmtDate(res.previous.created)} avevi salvato: «${fact}».`;
+        d.why = d.base && d.why.endsWith(d.base) ? `${d.why.slice(0, -d.base.length)}${history} ${d.base}` : `${d.why} ${history}`;
+      }
+      // Background on the subject from Wikipedia, so the why has context.
+      if (res.topic) { const c = await api.context(res.topic).catch(() => null); if (c?.text) d.context = `${c.text} (Wikipedia)`; }
       const byline = (item.note || '').split('\n').filter(l => /^— /.test(l)).join('\n');
-      const note = fresh ? [digestText(d), byline].filter(Boolean).join('\n\n') : [digestText(d), item.note].filter(Boolean).join('\n\n');
+      // Asked again: the new summary replaces the old one, what you wrote stays.
+      const yours = (item.note || '').split('\n').filter(l => !/^— |^• |^Perché ti interessa|^Contesto:/.test(l)).join('\n').trim();
+      const note = fresh ? [digestText(d), byline].filter(Boolean).join('\n\n') : [digestText(d), yours, byline].filter(Boolean).join('\n\n');
       await api.updateItem(item.id, { note: note.slice(0, 10000) });
       setItems(arr => arr.map(i => (i.id === item.id ? { ...i, note } : i)));
       setSelected(sel => (sel?.id === item.id ? { ...sel, note } : sel));
@@ -895,7 +907,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     {screen === 'detail' && selected && <main><div className="eyebrow">{selected.category}{selected.memory_date && !edit ? <> · {fmtMemory(selected.memory_date)}</> : null}</div>
       {photoUrls[selected.image_path] && <Photo className="hero" url={photoUrls[selected.image_path]} alt={selected.title} />}
       {edit ? <div className="panel"><label htmlFor="e-title">TITOLO</label><input id="e-title" maxLength={300} autoFocus={!!edit.fresh} onFocus={e => edit.fresh && e.target.select()} value={edit.title} onChange={e => setEdit({ ...edit, title: e.target.value })} /><label htmlFor="e-url">LINK</label><input id="e-url" inputMode="url" autoCapitalize="none" placeholder="https://…" value={edit.url} onChange={e => setEdit({ ...edit, url: e.target.value })} /><label htmlFor="e-note">NOTA</label><textarea id="e-note" rows="5" maxLength={10000} placeholder={edit.fresh ? 'Dove eravate, con chi, cosa ricordi…' : ''} value={edit.note} onChange={e => setEdit({ ...edit, note: e.target.value })} /><label htmlFor="e-date">DATA DEL RICORDO</label><div className="dateRow"><input id="e-date" type="date" className={edit.memory_date ? '' : 'empty'} aria-describedby="e-date-hint" min="1800-01-01" max="2200-12-31" value={edit.memory_date || ''} onChange={e => setEdit({ ...edit, memory_date: e.target.value })} />{edit.memory_date ? <button type="button" className="textlink" onClick={() => setEdit({ ...edit, memory_date: '' })}>Togli</button> : <button type="button" className="textlink" onClick={() => setEdit({ ...edit, memory_date: todayIso() })}>Oggi</button>}</div><button className="pill dark wide" disabled={busy} onClick={saveEdit}><Check size={18} /> Salva</button><button className="pill outline wide" onClick={() => setEdit(null)}>Annulla</button></div>
-        : <><h1>{selected.title}</h1>{safeUrl(selected.url || '') && <a className="outlink" href={selected.url} target="_blank" rel="noopener noreferrer">Apri la fonte <ExternalLink size={17} /></a>}{digesting === selected.id && <p className="digestWait"><Sparkles size={14} className="inline" /> Sto scrivendo i punti salienti…</p>}{selected.note && <p className="notebody">{selected.note.split(/(Perché ti interessa:)/).map((part, k) => (part === 'Perché ti interessa:' ? <strong key={k}>{part}</strong> : part))}</p>}
+        : <><h1>{selected.title}</h1>{safeUrl(selected.url || '') && <a className="outlink" href={selected.url} target="_blank" rel="noopener noreferrer">Apri la fonte <ExternalLink size={17} /></a>}{digesting === selected.id && <p className="digestWait"><Sparkles size={14} className="inline" /> Sto scrivendo i punti salienti…</p>}{selected.note && <p className="notebody">{selected.note.split(/(Perché ti interessa:|Contesto:)/).map((part, k) => (part === 'Perché ti interessa:' || part === 'Contesto:' ? <strong key={k}>{part}</strong> : part))}</p>}
           <div className="detailtools"><button className="textlink" onClick={() => setEdit({ title: selected.title, url: selected.url || '', note: selected.note || '', memory_date: selected.memory_date || '' })}><Pencil size={14} /> Modifica</button><button className="textlink" disabled={busy} onClick={() => pickPhoto(selected.id)}><ImagePlus size={14} /> {selected.image_path ? 'Cambia foto' : 'Aggiungi foto'}</button>{social && safeUrl(selected.url || '') && !selected.image_path && <button className="textlink" disabled={busy} onClick={async () => { setBusy(true); const ok = await enrichLink(selected); setBusy(false); toast(ok ? 'Anteprima aggiornata' : 'Questa pagina non offre un\'anteprima'); if (ok) refreshArchive(); }}><Link2 size={14} /> Aggiorna anteprima</button>}{safeUrl(selected.url || '') && <button className="textlink" disabled={digesting === selected.id} onClick={() => summarize(selected)}><Sparkles size={14} /> {digesting === selected.id ? 'Riassumo…' : 'In breve'}</button>}<button className="textlink danger" onClick={async () => { if (!window.confirm(`Eliminare "${selected.title}"?`)) return; await removeItem(selected); goBack(); }}><Trash2 size={14} /> Elimina</button></div></>}
       <div className="panel"><label htmlFor="col">RACCOLTA</label><select id="col" value={selected.collection || ''} onChange={async e => { const v = e.target.value; const id = collectionId(v); setItems(arr => arr.map(i => i.id === selected.id ? { ...i, collection: v, collection_id: id } : i)); setSelected({ ...selected, collection: v, collection_id: id }); try { await api.updateItem(selected.id, { collection_id: id, collection: v }); } catch (err) { toast(friendlyError(err)); refreshArchive(); } }}>{!selected.collection && <option value="">—</option>}{collections.map(c => <option key={c}>{c}</option>)}</select></div><div className="stack"><button className="feature mfyFeature" onClick={() => share(selected)}><span className="ixi" aria-hidden="true"><MoreForYouIcon /></span><span><strong>More for you.</strong><small>Apri questo ricordo a un amico, con una dedica</small></span><ChevronRight /></button><button className="feature" onClick={() => exportAI([selected])}><Sparkles /><span><strong>Use with AI</strong><small>Copia il contesto</small></span><ChevronRight /></button></div></main>}
 
