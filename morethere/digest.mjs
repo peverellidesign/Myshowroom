@@ -271,6 +271,7 @@ export function compact(s, max = 250) {
   let t = s.replace(/\s+/g, ' ').replace(/\s+([,.;:!?])/g, '$1').trim();
   t = t.replace(/\s*[-–—|]\s*(Notizie|News|Ansa\.it|Il Post|Corriere|la Repubblica)[^.]*$/i, '');
   if (/(…|\.\.\.|\[&hellip;\]|\[…\])\s*$/.test(t)) return ''; // the site cut it: not a whole sentence
+  t = t.replace(/^[—–-]\s+/, ''); // a dash opening a quote or a paragraph
   if (t.length > max) t = t.replace(/\s*\([^)]{3,80}\)/g, '').replace(/\s+([,.;:!?])/g, '$1');
   if (t.length > max) {
     let at = -1;
