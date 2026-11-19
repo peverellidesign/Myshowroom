@@ -9,8 +9,13 @@ const STOP = new Set(('il lo la i gli le un uno una di a da in con su per tra fr
 const fold = s => String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const wordsOf = s => (fold(s).match(/[a-z0-9]{3,}/g) || []).filter(w => !STOP.has(w));
 // Proper names: capitalised words (people, brands, places), the strongest clue.
-export const namesIn = text => new Set((String(text || '').match(/\b\p{Lu}[\p{L}\p{N}'’.-]{2,}/gu) || [])
-  .map(w => fold(w).replace(/[’'.-]+$/, '')).filter(w => w.length >= 4 && !STOP.has(w)));
+// A title in capitals ("SPEED RECORD ALERT") is shouting, not names: its all-caps words are skipped.
+export const namesIn = text => {
+  const found = String(text || '').match(/\b\p{Lu}[\p{L}\p{N}'’.-]{2,}/gu) || [];
+  const shouting = found.filter(w => w === w.toUpperCase() && /\p{L}{3}/u.test(w)).length >= 3;
+  return new Set(found.filter(w => !(shouting && w === w.toUpperCase()))
+    .map(w => fold(w).replace(/[’'.-]+$/, '')).filter(w => w.length >= 4 && !STOP.has(w)));
+};
 // Topic words: names plus longer content words, singular and plural folded together.
 const stem = w => (w.length > 6 ? w.slice(0, -1) : w);
 export const termsIn = text => new Set([...namesIn(text), ...wordsOf(text).filter(w => w.length >= 6)].map(stem));
@@ -23,15 +28,15 @@ const pretty = w => w.replace(/^\p{L}/u, c => c.toUpperCase());
 
 // Families of interests, so "Food" in a profile recognises a trattoria.
 const FAMILIES = [
-  { names: ['food', 'cibo', 'cucina', 'ristoranti', 'gastronomia', 'mangiare', 'vino', 'wine'], kinds: ['eat', 'cook'], words: ['ristorant', 'trattoria', 'osteria', 'cucina', 'ricett', 'chef', 'pizza', 'gelat', 'vino', 'cantina', 'piatto', 'menu', 'food', 'restaurant', 'recipe'] },
-  { names: ['travel', 'viaggi', 'viaggio', 'viaggiare', 'trip', 'turismo'], kinds: ['stay', 'visit'], words: ['viaggi', 'hotel', 'volo', 'voli', 'spiaggia', 'isola', 'museo', 'itinerari', 'weekend', 'travel', 'trip', 'resort', 'b&b'] },
-  { names: ['architecture', 'architettura', 'design', 'interior', 'interni', 'arredamento', 'casa'], kinds: [], words: ['architett', 'design', 'mobili', 'arred', 'interni', 'lampad', 'furniture', 'mid-century', 'midcentury', 'progett', 'edifici', 'villa'] },
-  { names: ['tech', 'tecnologia', 'technology', 'ai', 'innovazione', 'startup'], kinds: [], words: ['tecnolog', 'nvidia', 'apple', 'google', 'microsoft', 'chip', 'software', 'startup', 'intelligenza artificiale', 'smartphone', 'tech'] },
-  { names: ['finance', 'finanza', 'economia', 'business', 'investimenti', 'borsa'], kinds: [], words: ['borsa', 'fatturat', 'utile', 'ricavi', 'mercat', 'azion', 'investiment', 'banca', 'banche', 'economi', 'finanz'] },
-  { names: ['arte', 'art', 'mostre', 'cultura', 'musei'], kinds: ['visit'], words: ['mostra', 'museo', 'artista', 'galleria', 'opera', 'pittura', 'scultura', 'arte'] },
-  { names: ['sport', 'fitness', 'running', 'calcio', 'bici'], kinds: [], words: ['sport', 'partita', 'record', 'atleta', 'allenament', 'corsa', 'skateboard', 'calcio', 'tennis', 'bici'] },
-  { names: ['moda', 'fashion', 'style', 'stile'], kinds: ['shop', 'buy'], words: ['moda', 'fashion', 'collezione', 'stilista', 'abito', 'scarpe', 'mocassin', 'brand'] },
-  { names: ['music', 'musica', 'concerti'], kinds: ['event'], words: ['concerto', 'album', 'canzone', 'musica', 'band', 'cantante', 'tour'] },
+  { label: 'cibo e ristoranti', names: ['food', 'cibo', 'cucina', 'ristoranti', 'gastronomia', 'mangiare', 'vino', 'wine'], kinds: ['eat', 'cook'], words: ['ristorant', 'trattoria', 'osteria', 'cucina', 'ricett', 'chef', 'pizza', 'gelat', 'vino', 'cantina', 'piatto', 'menu', 'food', 'restaurant', 'recipe'] },
+  { label: 'viaggi e posti', names: ['travel', 'viaggi', 'viaggio', 'viaggiare', 'trip', 'turismo'], kinds: ['stay', 'visit'], words: ['viaggi', 'hotel', 'relais', 'villa', 'lago', 'gstaad', 'volo', 'voli', 'spiaggia', 'isola', 'museo', 'itinerari', 'weekend', 'travel', 'trip', 'resort', 'b&b'] },
+  { label: 'design e arredamento', names: ['architecture', 'architettura', 'design', 'interior', 'interni', 'arredamento', 'casa'], kinds: [], words: ['architett', 'design', 'mobili', 'divan', 'poltron', 'flexform', 'cassina', 'biancheria', 'arred', 'interni', 'lampad', 'furniture', 'mid-century', 'midcentury', 'progett', 'edifici', 'villa'] },
+  { label: 'tecnologia', names: ['tech', 'tecnologia', 'technology', 'ai', 'innovazione', 'startup'], kinds: [], words: ['tecnolog', 'nvidia', 'apple', 'google', 'microsoft', 'zuckerberg', 'anthropic', 'openai', 'silicon valley', 'jensen huang', 'chip', 'software', 'startup', 'intelligenza artificiale', 'smartphone', 'tech'] },
+  { label: 'economia e finanza', names: ['finance', 'finanza', 'economia', 'business', 'investimenti', 'borsa'], kinds: [], words: ['borsa', 'fatturat', 'utile', 'ricavi', 'mercat', 'azion', 'investiment', 'banca', 'banche', 'economi', 'finanz'] },
+  { label: 'arte e mostre', names: ['arte', 'art', 'mostre', 'cultura', 'musei'], kinds: ['visit'], words: ['mostra', 'museo', 'artista', 'galleria', 'opera', 'pittura', 'scultura', 'arte'] },
+  { label: 'sport', names: ['sport', 'fitness', 'running', 'calcio', 'bici'], kinds: [], words: ['sport', 'partita', 'serie a', 'fantacalcio', 'attaccante', 'skate', 'surf', 'campionat', 'atleta', 'allenament', 'corsa', 'skateboard', 'calcio', 'tennis', 'bici'] },
+  { label: 'moda', names: ['moda', 'fashion', 'style', 'stile'], kinds: ['shop', 'buy'], words: ['moda', 'fashion', 'collezione', 'stilista', 'abito', 'scarpe', 'mocassin', 'brand'] },
+  { label: 'musica', names: ['music', 'musica', 'concerti'], kinds: ['event'], words: ['concerto', 'album', 'canzone', 'musica', 'band', 'cantante', 'tour'] },
 ];
 
 /**
@@ -49,10 +54,18 @@ export function buildWhy({ item, points = [], kind = '', base = '', fallback = '
   const terms = termsIn(text);
   const others = items.filter(i => i.id !== item.id);
   const signals = []; // { score, text }
+  const body = fold(text);
+  const kindOf = f => (o => f.kinds.includes(o.kind) || f.words.some(w => fold(`${o.title} ${o.note || ''}`).includes(w)));
+
+  // 0. Already in your collection: the same link saved before.
+  const norm = u => String(u || '').replace(/[?#].*$/, '').replace(/\/$/, '').toLowerCase();
+  const twin = item.url && others.filter(o => o.url && norm(o.url) === norm(item.url)).sort((a, b) => a.created - b.created)[0];
+  if (twin) signals.push({ score: 15, text: `L'avevi già salvato il ${fmtDay(twin.created)}.` });
 
   // 1. A subject you keep coming back to: the name (or topic) most of your saves share.
   const seen = new Map();
   for (const o of others) {
+    if (twin && norm(o.url) === norm(item.url)) continue; // copies of the same link do not count
     const theirs = termsIn(`${o.title} ${o.note || ''}`);
     for (const t of terms) if (theirs.has(t)) { const list = seen.get(t) || []; list.push(o); seen.set(t, list); }
   }
@@ -60,7 +73,8 @@ export function buildWhy({ item, points = [], kind = '', base = '', fallback = '
   const best = (byName.length ? byName : [...seen.entries()]).sort((a, b) => b[1].length - a[1].length)[0];
   if (best && best[1].length >= 1 && (byName.length || best[1].length >= 2)) {
     const [term, list] = best;
-    const label = pretty([...names].find(n => stem(n) === term) || term);
+    // Show the word as written in the title, not its folded stem.
+    const label = pretty([...names].find(n => stem(n) === term) || (fold(text).match(new RegExp(`\\b${term}[a-z]*`)) || [term])[0]);
     const latest = list.reduce((a, b) => (b.created > a.created ? b : a));
     const count = list.length + 1;
     signals.push(count >= 3
@@ -83,12 +97,21 @@ export function buildWhy({ item, points = [], kind = '', base = '', fallback = '
 
   // 3. The interests you wrote in your profile ("Travel · Food · Architecture").
   const declared = (profile?.subtitle || '').split(/[·,|/•]+/).map(s => s.trim()).filter(Boolean);
-  const body = fold(text);
   for (const interest of declared) {
     const key = fold(interest);
     const family = FAMILIES.find(f => f.names.includes(key));
     const hit = family ? (family.kinds.includes(kind) || family.words.some(w => body.includes(w))) : body.includes(key);
     if (hit) { signals.push({ score: 5, text: `Rientra in ${interest}, uno degli interessi che hai scritto nel profilo.` }); break; }
+  }
+
+  // 3b. What you save most often, even with an empty profile.
+  // (Skipped when a subject you follow already says it, or the profile does.)
+  if (!signals.some(s => s.text.startsWith('Rientra in') || s.text.startsWith('È la '))) {
+    for (const f of FAMILIES) {
+      if (!kindOf(f)({ title: text, kind })) continue;
+      const count = others.filter(kindOf(f)).length;
+      if (count >= 2) { signals.push({ score: 4 + Math.min(count, 5), text: `Salvi spesso cose di ${f.label}: questa è la ${nth(count + 1)}.` }); break; }
+    }
   }
 
   // 4. Advice you asked your friends for: this may be the answer.

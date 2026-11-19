@@ -140,13 +140,13 @@ test('link preview: real page title and cover image, stored as a private photo',
   await page.getByText('Un posto da provare.').waitFor();
   await close(page);
   // Personal "why": a second link about the same place points to the first one you saved.
-  await page.getByPlaceholder('Incolla un link o scrivi...').fill(`${pageUrl}?di-nuovo`);
+  await page.getByPlaceholder('Incolla un link o scrivi...').fill(`${pageUrl}-bis`);
   await page.getByPlaceholder('Incolla un link o scrivi...').press('Enter');
   await toast(page, 'Salvato nella tua raccolta');
   // Read the saved note (the server keeps it), then remove the extra copy.
   let again;
   for (let k = 0; k < 40 && !again; k++) {
-    const { data } = await admin.from('items').select('id, note').like('url', '%di-nuovo%');
+    const { data } = await admin.from('items').select('id, note').like('url', '%trattoria-bis%');
     again = data?.find(r => /Si collega a «Trattoria da Mario — Milano», che hai salvato il/.test(r.note));
     if (!again) await page.waitForTimeout(500);
   }

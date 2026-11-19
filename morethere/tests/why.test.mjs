@@ -46,6 +46,23 @@ test('nothing personal applies: the server sentence stays', () => {
 });
 
 test('the collection that already holds similar discoveries', () => {
-  const why = buildWhy({ item: { id: 'n', title: 'Il nuovo chip di Apple sfida Nvidia' }, kind: 'read', base: 'Da leggere con calma.', me: me({ profile: null }) });
+  const tech = [
+    { id: 't1', title: 'Processori e semiconduttori nel 2026', created: day(8), collection: 'Tech' },
+    { id: 't2', title: 'La crisi dei semiconduttori in Europa', created: day(9), collection: 'Tech' },
+  ];
+  const why = buildWhy({ item: { id: 'n', title: 'I semiconduttori tornano a crescere' }, kind: 'read', base: 'Da leggere con calma.', me: me({ items: tech, profile: null }) });
+  assert.match(why, /È la terza cosa che salvi su Semiconduttori/);
   assert.match(why, /Starebbe bene in «Tech», dove hai già 2 scoperte simili\./);
+});
+
+test('the same link saved again, and interests worked out from what you save', () => {
+  const saved = [{ id: 'x1', title: 'Trump in Cina', url: 'https://www.lastampa.it/esteri/diretta/?ref=A', created: day(18), collection: 'Idee' }];
+  const again = buildWhy({ item: { id: 'x2', title: 'Trump in Cina, abbraccio con Xi', url: 'https://www.lastampa.it/esteri/diretta/?ref=B' }, kind: 'read', base: 'Da leggere con calma.', me: me({ items: saved, profile: null }) });
+  assert.equal(again, "L'avevi già salvato il 18 nov. Da leggere con calma.");
+  const design = [
+    { id: 'd1', title: 'QUINCY', note: 'Il divano Quincy abbandona le linee ortogonali', created: day(9), collection: 'Idee' },
+    { id: 'd2', title: 'Lampada Arco', note: 'Design mid-century', created: day(4), collection: 'Idee' },
+  ];
+  const why = buildWhy({ item: { id: 'd3', title: 'Una poltrona in velluto di Cassina' }, kind: 'buy', base: "Da tenere d'occhio se ti interessa.", me: me({ items: design, profile: null }) });
+  assert.equal(why, "Salvi spesso cose di design e arredamento: questa è la terza. Da tenere d'occhio se ti interessa.");
 });
