@@ -36,7 +36,11 @@ const shot = async (page, name) => {
   await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: !/sheet/.test(name) });
 };
 const toast = (page, text) => page.locator('.toast', { hasText: text }).waitFor({ timeout: 10000 });
-const close = page => page.getByRole('button', { name: 'CHIUDI' }).click();
+const close = async page => {
+  const exit = page.getByRole('button', { name: 'Chiudi procedura', exact: true });
+  if (await exit.isVisible()) await exit.click();
+  await page.getByRole('button', { name: 'Le mie scoperte' }).click();
+};
 // The word "world" must not appear anywhere in the interface.
 const noWorld = async page => assert.doesNotMatch(await page.locator('body').innerText(), /world/i, 'no "world" on screen');
 
@@ -47,7 +51,7 @@ async function signUp(page, p) {
   await page.getByLabel('EMAIL').fill(p.email);
   await page.getByLabel('PASSWORD').fill(p.password);
   await page.getByRole('button', { name: 'Crea account' }).click();
-  await page.getByText('NUOVO INGRESSO').waitFor();
+  await page.getByLabel('Nuovo ingresso: incolla un link o scrivi').waitFor();
 }
 
 before(async () => {
@@ -421,7 +425,7 @@ test('More for you arrives in real time', async () => {
   await alice.getByRole('heading', { name: 'Fatto.' }).waitFor();
   await alice.getByText('Resta nella tua raccolta').waitFor();
   // Bob has not reloaded: the badge comes from realtime sync.
-  await bob.locator('.round .badge').waitFor({ timeout: 10000 });
+  await bob.locator('.tab .badge').waitFor({ timeout: 10000 });
   await bob.getByRole('button', { name: /Apri Your Circle/ }).click();
   await bob.getByText('Ricordi aperti per te').waitFor();
   await bob.getByText('Ci andiamo insieme?').waitFor();
@@ -464,7 +468,7 @@ test('Chiedi consigli: Bob goes to Florence, Alice answers with her places', asy
   await alice.getByPlaceholder('Incolla un link o scrivi...').fill('Gelateria dei Neri, Firenze');
   await alice.getByRole('button', { name: 'Salva', exact: true }).click();
   await alice.locator('.item', { hasText: 'Gelateria dei Neri' }).waitFor();
-  await alice.locator('.round .badge').waitFor({ timeout: 10000 });
+  await alice.locator('.tab .badge').waitFor({ timeout: 10000 });
   await alice.getByRole('button', { name: /Apri Your Circle/ }).click();
   await alice.getByText('Ti chiedono un consiglio').waitFor();
   await alice.getByText('Firenze, a maggio').waitFor();
@@ -537,7 +541,7 @@ test('More of us: as many shared spaces as you like, started from a person', asy
   await alice.getByRole('button', { name: 'Cambia copertina' }).waitFor();
   await shot(alice, '10e-space-cover');
   await noWorld(alice);
-  // The back arrow goes back one step at a time: space → More of us → Bob → Circle → home.
+  // The back arrow goes back one step at a time: space → More of us → Bob → Circle; then the tab bar goes home.
   const backArrow = alice.getByRole('button', { name: /^Indietro/ });
   await backArrow.click();
   await alice.getByRole('button', { name: /Nuovo spazio/ }).waitFor();
@@ -545,8 +549,9 @@ test('More of us: as many shared spaces as you like, started from a person', asy
   await alice.getByRole('heading', { name: 'Bob' }).waitFor();
   await backArrow.click();
   await alice.getByRole('heading', { name: 'I tuoi amici' }).waitFor();
-  await backArrow.click();
-  await alice.getByText('NUOVO INGRESSO').waitFor();
+  assert.equal(await backArrow.count(), 0, 'Circle is a section: no back arrow');
+  await alice.getByRole('button', { name: 'Le mie scoperte' }).click();
+  await alice.getByLabel('Nuovo ingresso: incolla un link o scrivi').waitFor();
 
   // A second space with the same person.
   await alice.goto(APP);
@@ -673,8 +678,7 @@ test('share to morethere from another app, and from morethere to other apps', as
 test('Trasferisci a AI: only a trip, with the question already written', async () => {
   const alice = people.alice.page;
   await alice.goto(APP);
-  await alice.getByRole('button', { name: 'Il mio profilo' }).click();
-  await alice.getByRole('button', { name: /Trasferisci a AI/ }).click();
+  await alice.getByRole('button', { name: 'AI: trasferisci le tue scoperte' }).click();
   await alice.getByRole('heading', { name: "Su cosa vuoi chiedere all'AI?" }).waitFor();
   await alice.getByRole('radio', { name: /Un luogo o un tema/ }).click();
   await alice.getByLabel('Luogo o tema').fill('kyoto');
@@ -735,9 +739,9 @@ test('profile: edit, export data, sign out', async () => {
   await alice.getByRole('button', { name: 'Salva' }).click();
   await toast(alice, 'Profilo aggiornato');
   await shot(alice, '11-profile');
-  // Back from the profile returns home, where the header shows her photo.
-  await alice.getByRole('button', { name: /^Indietro/ }).click();
-  await alice.locator('.round.me img.faceImg').waitFor();
+  // Her photo is on the Profilo tab.
+  await alice.getByRole('button', { name: 'Le mie scoperte' }).click();
+  await alice.locator('.tabFace img.faceImg').waitFor();
   await shot(alice, '11c-home-with-profile');
   await alice.getByRole('button', { name: 'Il mio profilo' }).click();
   const [download] = await Promise.all([

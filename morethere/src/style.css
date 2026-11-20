@@ -508,3 +508,90 @@ h1.first{margin-top:4px}
 .textlink.deleteItem { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; min-height: 48px; margin-top: 18px; }
 .aiDestText { flex: 1; display: grid; gap: 2px; }
 .aiDestText small { font-size: 12px; color: #888; font-weight: 400; }
+
+/* =====================================================================
+   App shell for iPhone: system font, compact blurred header, tab bar,
+   safe areas, touch feedback. (Overrides the earlier web layout.)
+   ===================================================================== */
+:root{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display","Helvetica Neue",Roboto,Arial,sans-serif;font-feature-settings:"kern"}
+html{-webkit-tap-highlight-color:transparent;scroll-padding-top:80px}
+button,a,label,[role=button]{touch-action:manipulation}
+button{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+@media(max-width:749px){html,body{background:#fff}}
+.app{display:flex;flex-direction:column;min-height:100vh;min-height:100dvh}
+.app>main{flex:1 0 auto}
+main{padding:20px 20px 32px}
+@supports(padding:env(safe-area-inset-top)){main{padding-bottom:32px}.app.inFlow>main{padding-bottom:max(32px,calc(env(safe-area-inset-bottom) + 16px))}}
+
+/* Header: large title on the four sections, back chevron everywhere else */
+header,header.rootHead,header.pushHead{height:auto;align-items:flex-end;gap:12px;padding:calc(env(safe-area-inset-top) + 10px) 20px 10px;background:rgba(255,255,255,.88);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-bottom:.5px solid #e2e2e2}
+header.rootHead{padding-top:calc(env(safe-area-inset-top) + 18px);padding-bottom:12px}
+.headTitle{min-width:0;flex:1}
+.headTitle h1.brand{margin:0;font-size:30px;line-height:1.1;letter-spacing:-.7px;font-weight:700;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.headTitle .subtitle{margin-top:3px;font-size:13px;color:#8a8a8a}
+.backBtn{display:flex;align-items:center;gap:0;border:0;background:none;padding:0 8px 0 0;margin-left:-9px;min-height:44px;min-width:0;max-width:100%;font-size:17px;font-weight:600;letter-spacing:-.3px;color:#252525}
+.backBtn svg{flex-shrink:0}
+.backBtn .brandText{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Tab bar: always under the thumb */
+.tabbar{position:sticky;bottom:0;z-index:6;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:rgba(255,255,255,.9);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);border-top:.5px solid #dcdcdc;padding:4px 8px calc(4px + env(safe-area-inset-bottom))}
+.tab{border:0;background:none;display:grid;justify-items:center;align-content:center;gap:2px;min-height:52px;padding:4px 0;color:#9c9c9c;font-size:10.5px;font-weight:600;letter-spacing:.1px}
+.tab.on{color:#1d1d1d}
+.tabIcon{position:relative;display:grid;place-items:center;height:28px;width:28px}
+.tabIcon .badge{top:-5px;right:-11px;min-width:18px;height:18px;font-size:10.5px}
+.tabFace{width:26px;height:26px;border-radius:50%;overflow:hidden;display:grid;place-items:center;background:#ecebe8;color:#252525;font-size:12px;font-weight:700}
+.tab.on .tabFace{box-shadow:0 0 0 1.5px #fff,0 0 0 3px #1d1d1d}
+.tabFace .faceImg{width:100%;height:100%;object-fit:cover}
+.app.typing .tabbar{display:none}
+.toast{bottom:calc(76px + env(safe-area-inset-bottom))}
+.app.inFlow .toast,.app.typing .toast{bottom:calc(16px + env(safe-area-inset-bottom))}
+.app:has(.wizNav) .toast{bottom:calc(96px + env(safe-area-inset-bottom))}
+
+/* Touch feedback, like a native control */
+@media(hover:none){
+  button:not(:disabled):active,a:active{opacity:.55;transition:opacity 0s}
+  button,a{transition:opacity .2s}
+  .tab:active{opacity:.5}
+}
+
+/* Home: less chrome above your discoveries */
+.entry{margin:0 0 12px}
+.entry input{padding:14px 14px;border-radius:14px}
+.square{min-width:52px;border-radius:14px}
+.search{padding:12px 16px;gap:10px;border-radius:14px}
+.chips{padding:12px 0 14px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.chips::-webkit-scrollbar{display:none}
+.chip{padding:10px 15px;min-height:40px}
+.sectionRow{margin-top:2px}
+.cards{gap:12px}
+.item{border-radius:18px;box-shadow:0 1px 2px #0000000a,0 4px 14px #00000008}
+.preview{height:150px}
+
+/* Lists and buttons: 44pt minimum, clear hierarchy */
+.pill{min-height:46px}
+.feature{min-height:64px;border-radius:16px}
+.person{min-height:60px}
+.textlink{min-height:44px;display:inline-flex;align-items:center;gap:6px}
+.close{min-width:44px;min-height:44px;display:grid;place-items:center}
+
+/* Sheets: rounded, grab handle, safe area */
+.overlay{-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);background:#0006}
+
+@media(min-width:750px){
+  .app{overflow:clip}
+  .tabbar{border-radius:0 0 30px 30px}
+  header{padding-left:28px;padding-right:28px}
+  main{padding-left:28px;padding-right:28px}
+}
+@media(max-width:380px){
+  header,header.rootHead,header.pushHead{padding-left:16px;padding-right:16px}
+  main{padding-left:16px;padding-right:16px}
+  .headTitle h1.brand{font-size:27px}
+}
+.headClose{flex:0 0 auto;margin-left:auto;width:44px;height:44px;margin-right:-10px;border:0;border-radius:50%;background:none;display:grid;place-items:center;color:#252525}
+/* Cards without a photo: the site's name, or the first words of the note */
+.preview .phLink{width:auto;height:auto;border:0;background:none;display:grid;justify-items:center;gap:8px;padding:0 12px;color:#8a8a8a}
+.preview .phLink .phIcon{width:44px;height:44px;border-radius:50%;background:#fff;border:1px solid #e5e5e5;display:grid;place-items:center;color:#777}
+.preview .phLink small{font-size:12px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.preview .phNote{width:100%;height:100%;border:0;border-radius:0;background:#faf9f6;display:block;padding:16px 14px;text-align:left;font-size:13px;line-height:1.45;color:#5a5a5a;overflow:hidden;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;white-space:pre-line}
+.app>main{will-change:auto}

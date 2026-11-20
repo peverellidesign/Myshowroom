@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   UsersRound, Camera, Search, ArrowLeft, Plus, KeyRound, ListChecks, Trash2, ExternalLink, Copy,
   FolderHeart, Send, Check, Bookmark, PenLine, X, Link2, UserRoundPlus, ChevronRight,
-  ShieldCheck, Download, LogOut, Share, Compass, MapPin, SlidersHorizontal, MessageSquareShare, UserRoundCheck, ImagePlus, Pencil, UserRound, ArrowRight,
+  ShieldCheck, Download, LogOut, Share, Compass, MapPin, SlidersHorizontal, MessageSquareShare, UserRoundCheck, ImagePlus, Pencil, UserRound, ArrowRight, ChevronLeft, LayoutGrid,
 } from 'lucide-react';
 import { explainWhy, relatedItems, ownWords } from './lib/why.js';
 import { judge } from './lib/judge.js';
@@ -28,6 +28,11 @@ function Sortable({ id, children }) {
 // More of me: a friend steps into your collection. More for you: one memory,
 // sent to one friend (a paper plane). More of us: two worlds overlapping into a shared space.
 const MoreOfMeIcon = ({ size = 22 }) => <UserRoundPlus size={size} strokeWidth={1.5} />;
+const hostOf = u => { try { return new URL(u).hostname.replace(/^(www|m)\./, ''); } catch { return ''; } };
+// The four tabs at the bottom: Your world, your people, your intelligence, you.
+const ROOTS = ['home', 'circle', 'ai', 'profile'];
+// Screens that are a flow of their own (a wizard): the tab bar steps aside.
+const FLOWS = ['thought', 'settings', 'askNew', 'answer', 'export'];
 const MoreForYouIcon = ({ size = 22 }) => <Send size={size} strokeWidth={1.5} />;
 const AskIcon = ({ size = 22 }) => <Compass size={size} strokeWidth={1.5} />;
 const MoreOfUsIcon = ({ size = 22 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><circle cx="9" cy="12" r="6.25" /><circle cx="15" cy="12" r="6.25" /></svg>;
@@ -92,12 +97,22 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   // Going to a screen already in the trail returns to it; `replace` swaps the
   // current screen (after finishing a form, so back does not reopen it).
   const [trail, setTrail] = useState([]);
+  // While typing on a phone the keyboard covers the bottom: the tab bar steps aside.
+  const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    if (!window.matchMedia?.('(pointer: coarse)').matches) return undefined;
+    const field = el => el && (el.tagName === 'TEXTAREA' || (el.tagName === 'INPUT' && !/^(checkbox|radio|file|button|submit|range|color)$/.test(el.type)));
+    const on = e => { if (field(e.target)) setTyping(true); };
+    const off = () => setTimeout(() => setTyping(field(document.activeElement)), 50);
+    document.addEventListener('focusin', on); document.addEventListener('focusout', off);
+    return () => { document.removeEventListener('focusin', on); document.removeEventListener('focusout', off); };
+  }, []);
   const screenRef = useRef('home');
   const setScreen = (next, { replace = false } = {}) => {
     const cur = screenRef.current;
     if (next === cur) return;
     setTrail(t => {
-      if (next === 'home') return [];
+      if (ROOTS.includes(next)) return [];
       const i = t.lastIndexOf(next);
       if (i >= 0) return t.slice(0, i);
       return replace ? t : [...t, cur];
@@ -577,7 +592,6 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   // Every time you choose: Claude or ChatGPT.
   const deliverAI = text => setAiPending(text);
   const exportAI = async (data = items) => deliverAI(buildAIContext(data));
-  const startAI = () => { setAiMode('all'); setAiCols([]); setAiQuery(''); setAiPicked([]); setAiSkip([]); setAiAsk(''); setScreen('ai'); };
   const foldText = x => (x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
   const aiFound = useMemo(() => {
     const words = foldText(aiQuery).split(/[\s,]+/).filter(Boolean);
@@ -776,7 +790,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     await run(() => api.deleteAccount());
   };
 
-  const renderCard = (i, d) => (<article className={'item' + (d?.dragging ? ' dragging' : '')} key={i.id} ref={d?.ref} style={d?.style} {...(d?.props || {})}><button className={'preview' + (photoUrls[i.image_path] ? ' hasphoto' : '')} aria-label={`Apri ${i.title}`} onClick={() => { setSelected(i); setEdit(null); setScreen('detail'); }}>{photoUrls[i.image_path] ? <Photo url={photoUrls[i.image_path]} /> : <span>{i.image_path ? <Camera size={26} /> : i.url ? <Link2 size={26} /> : <PenLine size={26} />}</span>}</button><div className="itembody"><div className="eyebrow">{i.category}{i.memory_date ? <> · {fmtMemory(i.memory_date, true)}</> : null}</div><button className="itemtitle" onClick={() => { setSelected(i); setEdit(null); setScreen('detail'); }}>{i.title}</button><div className="itemactions"><button className="mfy" onClick={() => share(i)} aria-label={`More for you: apri ${i.title} a un amico`}><MoreForYouIcon size={18} /></button><button onClick={() => exportAI([i])} aria-label={`Trasferisci a AI: ${i.title}`}><MessageSquareShare size={19} /></button></div></div></article>);
+  const renderCard = (i, d) => (<article className={'item' + (d?.dragging ? ' dragging' : '')} key={i.id} ref={d?.ref} style={d?.style} {...(d?.props || {})}><button className={'preview' + (photoUrls[i.image_path] ? ' hasphoto' : '')} aria-label={`Apri ${i.title}`} onClick={() => { setSelected(i); setEdit(null); setScreen('detail'); }}>{photoUrls[i.image_path] ? <Photo url={photoUrls[i.image_path]} /> : (i.image_path ? <span><Camera size={26} /></span> : i.url ? <span className="phLink"><span className="phIcon"><Link2 size={20} /></span><small>{hostOf(i.url)}</small></span> : <span className="phNote">{ownWords(i.note).trim() || i.title}</span>)}</button><div className="itembody"><div className="eyebrow">{i.category}{i.memory_date ? <> · {fmtMemory(i.memory_date, true)}</> : null}</div><button className="itemtitle" onClick={() => { setSelected(i); setEdit(null); setScreen('detail'); }}>{i.title}</button><div className="itemactions"><button className="mfy" onClick={() => share(i)} aria-label={`More for you: apri ${i.title} a un amico`}><MoreForYouIcon size={18} /></button><button onClick={() => exportAI([i])} aria-label={`Trasferisci a AI: ${i.title}`}><MessageSquareShare size={19} /></button></div></div></article>);
   const pendingInvites = circle.invitations.filter(i => !i.accepted_at && !i.revoked_at && Date.parse(i.expires_at) > Date.now());
   const initial = p => (nameOf(p)[0] || '?').toUpperCase();
   // A person's face: their profile photo if they have one, else their initial.
@@ -836,11 +850,63 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   const worldSourceIds = new Set((worldData?.items || []).map(i => i.source_item_id));
   const memberIds = new Set((worldData?.members || []).map(m => m.user_id));
 
-  return <div className="app"><header><div><button className="brand" aria-label={screen === 'home' ? 'morethere' : `Indietro · ${title}`} onClick={screen === 'home' ? back : goBack}>{screen === 'home' ? 'morethere' : <><ArrowLeft size={19} /><span className="brandText">{title}</span></>}</button>{screen === 'home' && <div className="subtitle">{loaded ? <>{items.length} {items.length === 1 ? 'scoperta' : 'scoperte'}</> : 'Sincronizzazione…'}</div>}</div>{screen === 'home' ? <div className="headActions"><button className="round" aria-label={attention ? `Apri Your Circle, ${attention} novità` : 'Apri Your Circle'} onClick={() => setScreen('circle')}><UsersRound size={22} />{attention > 0 && <span className="badge">{attention}</span>}</button>{social && <button className="round me" aria-label="Il mio profilo" onClick={openProfile}>{profile ? face(profile) : <UserRound size={22} />}</button>}</div> : <button className="pill dark" onClick={back}>CHIUDI</button>}</header>
+  const isRoot = ROOTS.includes(screen);
+  const tab = isRoot ? screen : [...trail].reverse().find(t => ROOTS.includes(t)) || 'home';
+  // Swipe from the left edge to go back, as in every iPhone app.
+  const swipe = useRef(null);
+  useEffect(() => {
+    if (isRoot) return undefined;
+    const main = () => document.querySelector('.app > main');
+    const start = e => {
+      const t = e.touches[0];
+      if (e.touches.length !== 1 || t.clientX > 28 || document.querySelector('.overlay')) { swipe.current = null; return; }
+      swipe.current = { x: t.clientX, y: t.clientY, dx: 0, on: false };
+    };
+    const move = e => {
+      const s = swipe.current; if (!s) return;
+      const t = e.touches[0]; const dx = t.clientX - s.x; const dy = Math.abs(t.clientY - s.y);
+      if (!s.on && (dy > 14 || dx < 0)) { swipe.current = null; return; }
+      if (dx > 10) { s.on = true; s.dx = dx; const m = main(); if (m) { m.style.transition = 'none'; m.style.transform = `translateX(${Math.min(dx, window.innerWidth) * 0.9}px)`; } }
+    };
+    const end = () => {
+      const s = swipe.current; swipe.current = null;
+      const m = main(); if (!s?.on || !m) return;
+      if (s.dx > 90) { m.style.transform = ''; goBack(); window.scrollTo(0, 0); }
+      else { m.style.transition = 'transform .2s ease'; m.style.transform = ''; }
+    };
+    document.addEventListener('touchstart', start, { passive: true });
+    document.addEventListener('touchmove', move, { passive: true });
+    document.addEventListener('touchend', end); document.addEventListener('touchcancel', end);
+    return () => { document.removeEventListener('touchstart', start); document.removeEventListener('touchmove', move); document.removeEventListener('touchend', end); document.removeEventListener('touchcancel', end); };
+  });
+  // Leaving a guided flow returns to where it started (the discovery, the friend, the section).
+  const leaveFlow = () => {
+    const k = trail.map(t => !FLOWS.includes(t)).lastIndexOf(true);
+    if (k < 0) return back();
+    const to = trail[k];
+    setTrail(trail.slice(0, k)); setEdit(null); screenRef.current = to; setScreenRaw(to);
+  };
+  const goTab = t => {
+    if (t === screen) { window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+    setSelected(null); setFriend(null); setFriendData(null); setWorldData(null); setEdit(null);
+    if (t === 'ai') { setAiMode('all'); setAiCols([]); setAiQuery(''); setAiPicked([]); setAiSkip([]); setAiAsk(''); }
+    if (t === 'profile') setProfileDraft(draftFromProfile(profile));
+    setTrail([]); screenRef.current = t; setScreenRaw(t); window.scrollTo(0, 0);
+  };
+  const tabs = [
+    { id: 'home', label: 'Scoperte', aria: 'Le mie scoperte', icon: <LayoutGrid size={23} strokeWidth={1.6} /> },
+    { id: 'circle', label: 'Circle', aria: attention ? `Apri Your Circle, ${attention} novità` : 'Apri Your Circle', icon: <UsersRound size={23} strokeWidth={1.6} />, badge: attention },
+    { id: 'ai', label: 'AI', aria: 'AI: trasferisci le tue scoperte', icon: <MessageSquareShare size={23} strokeWidth={1.6} /> },
+    ...(social && profile ? [{ id: 'profile', label: 'Profilo', aria: 'Il mio profilo', icon: <span className="tabFace">{face(profile)}</span> }] : []),
+  ];
+
+  return <div className={'app' + (FLOWS.includes(screen) ? ' inFlow' : '') + (typing ? ' typing' : '')}><header className={isRoot ? 'rootHead' : 'pushHead'}>{isRoot
+    ? <div className="headTitle"><h1 className="brand">{screen === 'home' ? 'morethere' : title}</h1>{screen === 'home' && <div className="subtitle">{loaded ? <>{items.length} {items.length === 1 ? 'scoperta' : 'scoperte'}</> : 'Sincronizzazione…'}</div>}</div>
+    : <button className="backBtn" aria-label={`Indietro · ${title}`} onClick={goBack}><ChevronLeft size={26} strokeWidth={1.8} /><span className="brandText">{title}</span></button>}{FLOWS.includes(screen) && <button className="headClose" aria-label="Chiudi procedura" onClick={leaveFlow}><X size={20} /></button>}</header>
 
     {screen === 'home' && <main>
       {legacy && <div className="panel"><strong>Hai {legacy.items.length} {legacy.items.length === 1 ? 'scoperta salvata' : 'scoperte salvate'} su questo dispositivo</strong><small>Vuoi portarle nel tuo account privato? Resteranno visibili solo a te. Dopo l'importazione verranno rimosse da questo dispositivo.</small><div className="choices"><button className="chosen" disabled={busy} onClick={importLegacy}>Importa</button><button onClick={() => setLegacy(null)}>Non ora</button></div></div>}
-      <div className="eyebrow">NUOVO INGRESSO</div><div className="entry"><input value={entry} onChange={e => setEntry(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()} placeholder="Incolla un link o scrivi..." /><button className="square" title={entry ? 'Salva una nota o un link' : 'Aggiungi una foto'} aria-label={entry ? 'Salva' : 'Aggiungi una foto'} disabled={busy} onClick={() => (entry ? add() : pickPhoto())}>{entry ? <Plus /> : <Camera />}</button><input ref={fileInput} type="file" accept="image/*" hidden aria-hidden="true" onChange={onPhotoChosen} /></div><div className="search"><Search size={21} /><input value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca nell'archivio..." /></div><div className="chips quick">{quickChips.map(c => <button key={c.key} className={'chip ' + (filter === c.key ? 'active' : '')} aria-label={c.aria} aria-pressed={filter === c.key} onClick={() => setFilter(c.key)}>{c.label}{c.n ? <span className="chipN" aria-hidden="true">{c.n}</span> : null}</button>)}<button className={'chip filtersBtn' + (activeChip && !quickChips.some(c => c.key === filter) ? ' active' : '')} aria-haspopup="dialog" onClick={() => setShowFilters(true)}><SlidersHorizontal size={15} /> Filtri</button></div>
+      <div className="entry"><input aria-label="Nuovo ingresso: incolla un link o scrivi" enterKeyHint="done" value={entry} onChange={e => setEntry(e.target.value)} onKeyDown={e => e.key === 'Enter' && add()} placeholder="Incolla un link o scrivi..." /><button className="square" title={entry ? 'Salva una nota o un link' : 'Aggiungi una foto'} aria-label={entry ? 'Salva' : 'Aggiungi una foto'} disabled={busy} onClick={() => (entry ? add() : pickPhoto())}>{entry ? <Plus /> : <Camera />}</button><input ref={fileInput} type="file" accept="image/*" hidden aria-hidden="true" onChange={onPhotoChosen} /></div><div className="search"><Search size={19} /><input type="search" enterKeyHint="search" aria-label="Cerca nell'archivio" value={search} onChange={e => setSearch(e.target.value)} placeholder="Cerca nell'archivio..." /></div><div className="chips quick">{quickChips.map(c => <button key={c.key} className={'chip ' + (filter === c.key ? 'active' : '')} aria-label={c.aria} aria-pressed={filter === c.key} onClick={() => setFilter(c.key)}>{c.label}{c.n ? <span className="chipN" aria-hidden="true">{c.n}</span> : null}</button>)}<button className={'chip filtersBtn' + (activeChip && !quickChips.some(c => c.key === filter) ? ' active' : '')} aria-haspopup="dialog" onClick={() => setShowFilters(true)}><SlidersHorizontal size={15} /> Filtri</button></div>
       {activeChip && filter !== 'Tutti' && !quickChips.some(c => c.key === filter) && <div className="activeFilter"><button className="activePill" aria-label={`Togli il filtro ${activeChip.label}`} onClick={() => setFilter('Tutti')}>{activeChip.label}{activeChip.n ? ` · ${activeChip.n}` : ''} <X size={14} /></button></div>}{activeCollection && <div className="collectionTools"><button className="textlink" onClick={() => setCollectionDialog({ id: activeCollection.id, name: activeCollection.name })}><Pencil size={13} /> Rinomina</button><button className="textlink danger" onClick={deleteCollection}><Trash2 size={13} /> Elimina raccolta</button></div>}<div className="sectionRow"><div className="sectionLabel">{activeCollection ? activeCollection.name : 'La tua raccolta'}</div><div className="viewToggle" role="group" aria-label="Ordina"><button className={view === 'recent' ? 'on' : ''} aria-pressed={view === 'recent'} onClick={() => chooseView('recent')}>Recenti</button><button className={view === 'date' ? 'on' : ''} aria-pressed={view === 'date'} onClick={() => chooseView('date')}>Per data</button></div></div>{view === 'date' ? byMonth.map(g => <section key={g.key} className="monthGroup"><h3 className="monthLabel">{g.label}</h3><div className="cards">{g.items.map(renderCard)}</div></section>) : <DndContext sensors={dragSensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}><SortableContext items={sorted.map(i => i.id)} strategy={rectSortingStrategy}><div className="cards">{sorted.map(i => <Sortable key={i.id} id={i.id}>{d => renderCard(i, d)}</Sortable>)}</div></SortableContext></DndContext>}{view === 'recent' && sorted.length > 1 && <p className="hint dragHint">Tieni premuta una scoperta e trascinala per cambiare l'ordine.</p>}{loaded && !filtered.length && <div className="empty">Il tuo mondo comincia da una scoperta. Salva qualcosa che vale la pena ricordare.</div>}</main>}
 
     {screen === 'circle' && <main className="circlePage">
@@ -1065,7 +1131,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
       <p className="hint">La tua foto la vedono solo le persone del tuo Circle e chi condivide uno spazio con te.</p>
       <div className="panel"><label htmlFor="pn">NOME</label><input id="pn" maxLength={60} value={profileDraft.display_name} onChange={e => setProfileDraft({ ...profileDraft, display_name: e.target.value })} /><label htmlFor="ph">NOME UTENTE</label><input id="ph" maxLength={31} autoCapitalize="none" autoCorrect="off" value={profileDraft.handle} onChange={e => setProfileDraft({ ...profileDraft, handle: e.target.value })} /><label htmlFor="ps">DI COSA TI OCCUPI</label><input id="ps" maxLength={120} placeholder="Travel · Food · Architecture" value={profileDraft.subtitle} onChange={e => setProfileDraft({ ...profileDraft, subtitle: e.target.value })} /><button className="pill dark wide" disabled={busy} onClick={saveProfile}><Check size={18} /> Salva</button></div>
       <p className="hint">Il tuo nome e la descrizione sono visibili solo alle persone del tuo Circle e degli spazi condivisi.</p>
-      <div className="stack"><button className="feature" onClick={startAI}><MessageSquareShare /><span><strong>Trasferisci a AI</strong><small>Tutto, un viaggio, i ristoranti… e si apre Claude o ChatGPT</small></span><ChevronRight /></button><button className="feature" disabled={busy} onClick={downloadData}><Download /><span><strong>Esporta i miei dati</strong><small>Scarica tutto in formato JSON</small></span><ChevronRight /></button></div>
+      <div className="stack"><button className="feature" disabled={busy} onClick={downloadData}><Download /><span><strong>Esporta i miei dati</strong><small>Scarica tutto in formato JSON</small></span><ChevronRight /></button></div>
       <button className="pill outline wide" onClick={() => api.signOut()}><LogOut size={18} /> Esci</button>
       <button className="textlink danger" onClick={deleteAccount}>Elimina il mio account</button></main>}
 
@@ -1119,6 +1185,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     {bigFace && <div className="overlay faceView" role="dialog" aria-modal="true" aria-label={`Foto di ${bigFace.name}`} onClick={() => setBigFace(null)} onKeyDown={e => e.key === 'Escape' && setBigFace(null)}><img src={bigFace.url} alt={`Foto di ${bigFace.name}`} /><span className="faceName">{bigFace.name}</span><button className="faceClose" aria-label="Chiudi" autoFocus onClick={() => setBigFace(null)}><X size={20} /></button></div>}
     {invite && <div className="overlay" role="presentation"><div className="modal" role="dialog" aria-modal="true" aria-label="Invito"><UserRoundCheck size={28} />{invite.invalid ? <><h2>Invito non disponibile</h2><p className="muted">Questo link non è valido, è scaduto o è già stato usato. Chiedi un nuovo invito.</p><button className="pill dark wide" onClick={() => { setInvite(null); onInviteHandled?.(); }}>Ok</button></> : <><h2>{invite.inviter_name} ti invita nel suo Circle</h2><p className="muted">Accettando diventerete connessi. Nessuno dei due vedrà nulla dell'altro finché non sceglierete di condividerlo.</p><button className="pill dark wide" disabled={busy} onClick={acceptInvite}>Accetta</button><button className="pill outline wide" onClick={() => { setInvite(null); onInviteHandled?.(); }}>Non ora</button></>}</div></div>}
 
+    {!FLOWS.includes(screen) && <nav className="tabbar" aria-label="Sezioni">{tabs.map(t => <button key={t.id} className={'tab' + (tab === t.id ? ' on' : '')} aria-label={t.aria} aria-current={tab === t.id ? 'page' : undefined} onClick={() => goTab(t.id)}><span className="tabIcon">{t.icon}{t.badge > 0 && <span className="badge">{t.badge}</span>}</span><span className="tabLabel">{t.label}</span></button>)}</nav>}
     {notice && <div className="toast" role="status"><Check size={17} />{notice}</div>}
   </div>;
 }
