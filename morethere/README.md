@@ -14,6 +14,8 @@ Builder.
 
 ## Features
 
+- **Navigation built for iPhone**: a bottom tab bar (Scoperte, Circle, AI, Profilo), large titles on the four sections, a back chevron and edge swipe everywhere else, and guided flows that hide the tab bar and close with ✕.
+
 | Feature | What it does | Enforced on the server by |
 |---|---|---|
 | Account | Email + password sign-up/sign-in, password reset, sign-out, account deletion | Supabase Auth; `delete_my_account()` |
