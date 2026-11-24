@@ -624,6 +624,26 @@ test('More of us: as many shared spaces as you like, started from a person', asy
   assert.match(text, /From: Bob/);
 });
 
+test('from a discovery straight into a shared space', async () => {
+  const alice = people.alice.page;
+  const bob = people.bob.page;
+  await close(alice);
+  await alice.locator('.item', { hasText: 'Idea segreta' }).locator('.itemtitle').click();
+  await alice.getByRole('button', { name: /Aggiungi a uno spazio/ }).click();
+  const sheet = alice.getByRole('dialog', { name: 'Aggiungi a uno spazio' });
+  await sheet.getByRole('button', { name: 'Aggiungi a Japan 2027' }).click();
+  await toast(alice, 'Aggiunto a Japan 2027');
+  await sheet.getByRole('button', { name: 'Già in Japan 2027' }).waitFor();
+  await shot(alice, '10g-to-space-sheet');
+  await sheet.getByRole('button', { name: 'Chiudi' }).click();
+  // Bob sees it in the space.
+  await bob.goto(APP);
+  await bob.getByRole('button', { name: /Apri Your Circle/ }).click();
+  await bob.getByRole('button', { name: /More of us/ }).click();
+  await bob.getByRole('button', { name: /Japan 2027/ }).click();
+  await bob.locator('.item', { hasText: 'Idea segreta' }).first().waitFor({ timeout: 10000 });
+});
+
 test('share to morethere from another app, and from morethere to other apps', async () => {
   const alice = people.alice.page;
   // The phone's share sheet cannot open in a headless browser: record what it would receive.
