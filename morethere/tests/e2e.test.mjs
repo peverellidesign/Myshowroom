@@ -637,8 +637,8 @@ test('from a discovery straight into a shared space', async () => {
   const bob = people.bob.page;
   await close(alice);
   await alice.locator('.item', { hasText: 'Idea segreta' }).locator('.itemtitle').click();
-  await alice.getByRole('button', { name: /Aggiungi a uno spazio/ }).click();
-  const sheet = alice.getByRole('dialog', { name: 'Aggiungi a uno spazio' });
+  await alice.getByRole('button', { name: /More of us\. Invia a uno spazio condiviso/ }).click();
+  const sheet = alice.getByRole('dialog', { name: 'More of us' });
   await sheet.getByRole('button', { name: 'Aggiungi a Japan 2027' }).click();
   await toast(alice, 'Aggiunto a Japan 2027');
   await sheet.getByRole('button', { name: 'Già in Japan 2027' }).waitFor();
