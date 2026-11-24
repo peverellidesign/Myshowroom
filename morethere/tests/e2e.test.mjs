@@ -477,25 +477,33 @@ test('Chiedi consigli: Bob goes to Florence, Alice answers with her places', asy
   await alice.getByRole('button', { name: 'Consiglia' }).click();
   await alice.getByRole('heading', { name: 'Cosa consigli a Bob?' }).waitFor();
   // Her places in Florence come first.
-  await alice.getByText('I tuoi posti a Firenze sono in cima.').waitFor();
+  await alice.locator('.pickLabel', { hasText: 'A Firenze' }).waitFor();
   assert.equal(await alice.locator('.pickTile').first().getAttribute('aria-label'), 'Gelateria dei Neri, Firenze');
   const tiles = alice.locator('.pickTile');
   await tiles.nth(0).click();
   await tiles.nth(1).click();
   const chosen = await Promise.all([0, 1].map(k => tiles.nth(k).getAttribute('aria-label')));
+  // Like a chat: a TikTok she saved elsewhere, and a tip in her own words.
+  const say = alice.getByLabel('Scrivi un consiglio o incolla un link');
+  await say.fill('https://www.tiktok.com/@firenzefood/video/7300000000000000000');
+  await say.press('Enter');
+  await say.fill('Al mercato di Sant\'Ambrogio il lampredotto è il migliore');
+  await alice.getByRole('button', { name: 'Aggiungi questo consiglio' }).click();
+  await alice.locator('.bubble', { hasText: 'TikTok' }).waitFor();
+  await alice.locator('.bubble', { hasText: 'lampredotto' }).waitFor();
   await shot(alice, '09c-answer-pick');
-  await alice.getByRole('button', { name: /Avanti · 2/ }).click();
+  await alice.getByRole('button', { name: /Avanti · 4/ }).click();
   await alice.getByRole('heading', { name: 'Cosa può fare Bob?' }).waitFor();
   await alice.getByRole('button', { name: /Avanti/ }).click();
   await alice.getByLabel('IL TUO MESSAGGIO').fill('Da non perdere!');
-  await alice.getByRole('button', { name: 'Manda 2 consigli' }).click();
+  await alice.getByRole('button', { name: 'Manda 4 consigli' }).click();
   await alice.getByRole('heading', { name: 'Fatto.' }).waitFor();
   await noWorld(alice);
 
   // Bob finds the answers under his request, live.
   await bob.getByRole('button', { name: 'Apri la richiesta' }).click();
   await bob.getByRole('heading', { name: 'Firenze, a maggio' }).waitFor();
-  for (const t of chosen) await bob.locator('.note', { hasText: t }).waitFor({ timeout: 10000 });
+  for (const t of [...chosen, 'lampredotto', 'tiktok']) await bob.locator('.note', { hasText: t }).first().waitFor({ timeout: 10000 });
   await bob.getByText('Da non perdere!').first().waitFor();
   await shot(bob, '09d-answers');
   await bob.locator('.note', { hasText: chosen[0] }).getByRole('button', { name: '+ Salva nel mio archivio' }).click();
@@ -504,7 +512,7 @@ test('Chiedi consigli: Bob goes to Florence, Alice answers with her places', asy
   await bob.goto(APP);
   await bob.getByRole('button', { name: /Apri Your Circle/ }).click();
   await bob.getByText('Le tue richieste').waitFor();
-  await bob.getByRole('button', { name: /Firenze, a maggio/ }).getByText('2 consigli').waitFor();
+  await bob.getByRole('button', { name: /Firenze, a maggio/ }).getByText('4 consigli').waitFor();
   assert.equal(await bob.locator('.note', { hasText: 'Da non perdere!' }).count(), 0);
   await close(bob);
 });

@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   UsersRound, Camera, Search, ArrowLeft, Plus, KeyRound, ListChecks, Trash2, ExternalLink, Copy,
   FolderHeart, Send, Check, Bookmark, PenLine, X, Link2, UserRoundPlus, ChevronRight,
-  ShieldCheck, Download, LogOut, Share, Compass, MapPin, SlidersHorizontal, MessageSquareShare, UserRoundCheck, ImagePlus, Pencil, UserRound, ArrowRight, ChevronLeft, LayoutGrid,
+  ShieldCheck, Download, LogOut, Share, Compass, MapPin, SlidersHorizontal, MessageSquareShare, UserRoundCheck, ImagePlus, Pencil, UserRound, ArrowRight, ChevronLeft, LayoutGrid, ArrowUp,
 } from 'lucide-react';
 import { explainWhy, relatedItems, ownWords } from './lib/why.js';
 import { judge } from './lib/judge.js';
@@ -162,7 +162,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   const [askPlace, setAskPlace] = useState(''); const [hereBusy, setHereBusy] = useState(false);
   const [openAskId, setOpenAskId] = useState(null);
   const [answering, setAnswering] = useState(null);
-  const [ansStep, setAnsStep] = useState(1); const [ansItems, setAnsItems] = useState([]); const [ansSave, setAnsSave] = useState(true);
+  const [ansStep, setAnsStep] = useState(1); const [ansItems, setAnsItems] = useState([]); const [ansNew, setAnsNew] = useState([]); const [ansDraft, setAnsDraft] = useState(''); const [ansSave, setAnsSave] = useState(true);
   const [ansAi, setAnsAi] = useState(false); const [ansMsg, setAnsMsg] = useState(''); const [ansDone, setAnsDone] = useState(0); const [ansSearch, setAnsSearch] = useState('');
   const [renameSpace, setRenameSpace] = useState(null);
   const [showAddCollection, setShowAddCollection] = useState(false);
@@ -688,10 +688,36 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     if (id) { setAskDone(id); refreshAsks(); }
   };
   const openAsk = a => { setOpenAskId(a.id); setScreen('ask'); };
-  const startAnswer = a => { setAnswering(a); setAnsStep(1); setAnsItems([]); setAnsSave(true); setAnsAi(false); setAnsMsg(''); setAnsDone(0); setAnsSearch(''); setScreen('answer'); };
+  const startAnswer = a => { setAnswering(a); setAnsStep(1); setAnsItems([]); setAnsNew([]); setAnsDraft(''); setAnsSave(true); setAnsAi(false); setAnsMsg(''); setAnsDone(0); setAnsSearch(''); setScreen('answer'); };
+  // Tips written or pasted in the chat (a TikTok, an Instagram post, a Maps link, a sentence):
+  // each becomes a discovery of yours, so your friend sees it like the others.
+  const addAnsDraft = () => {
+    const raw = ansDraft.trim(); if (!raw) return;
+    const url = safeUrl(raw);
+    setAnsNew(v => [...v, { key: `${Date.now()}-${v.length}`, url: url || '', text: url ? '' : raw }]);
+    setAnsDraft('');
+  };
   const sendAnswer = async () => {
-    const n = await run(() => api.answerAsk({ askId: answering.id, itemIds: ansItems, message: ansMsg.trim(), allowSave: ansSave, allowAi: ansAi }));
+    const made = [];
+    setBusy(true);
+    try {
+      for (const t of ansNew) {
+        const draft = t.url
+          ? { title: linkLabel(t.url), url: t.url, note: '', category: isVideoLink(t.url) ? 'Video' : 'Pagine', collection: 'Idee', collection_id: collectionId('Idee') }
+          : { title: t.text.slice(0, 70), url: '', note: t.text, category: 'Appunti', collection: 'Idee', collection_id: collectionId('Idee') };
+        const saved = await api.addItem(draft);
+        made.push({ ...draft, id: saved.id, image_path: null });
+      }
+    } catch (err) { setBusy(false); toast(friendlyError(err)); return; }
+    setBusy(false);
+    const n = await run(() => api.answerAsk({ askId: answering.id, itemIds: [...ansItems, ...made.map(m => m.id)], message: ansMsg.trim(), allowSave: ansSave, allowAi: ansAi }));
     if (n) { setAnsDone(n); refreshThoughts(); }
+    if (made.length) {
+      await refreshArchive();
+      // Real titles and covers for the links, in the background: your friend sees them update.
+      for (const m of made.filter(x => x.url)) await enrichLink(m).catch(() => {});
+      refreshArchive();
+    }
   };
   const startMoreOfUs = (memberIds = []) => { setSpaceMembers(memberIds); setWorldName(''); setUsStep(memberIds.length ? 2 : 1); setUsCreating(memberIds.length > 0 || !worlds.length); setScreen('worlds'); };
   const openWorld = (w) => { setSelected(w); setWorldData(null); setSpaceTab('items'); setSpaceFilter('all'); setShowSpaceAdd(false); setSpaceItem(null); setScreen('world'); };
@@ -1049,7 +1075,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
       {ansDone ? doneView({ title: 'Fatto.', text: `${firstName(answering.owner)} ora vede ${ansDone} ${ansDone === 1 ? 'tuo consiglio' : 'tuoi consigli'}. Restano nella tua raccolta: puoi toglierli quando vuoi da Your Circle.`, actions: <button className="pill dark wide" onClick={() => setScreen('circle')}>Torna a Your Circle</button> }) : (() => {
         const q = ansSearch.trim().toLowerCase();
         const pickable = items.filter(i => !q || [i.title, i.note, i.url, i.category, i.collection].join(' ').toLowerCase().includes(q));
-        const who = firstName(answering.owner); const n = ansItems.length;
+        const who = firstName(answering.owner); const n = ansItems.length + ansNew.length;
         // Your places in the city your friend is in come first.
         const fold = x => (x || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
         const at = answering.place ? fold(answering.place) : '';
@@ -1057,7 +1083,13 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
         const here = pickable.filter(isHere); const rest = pickable.filter(i => !isHere(i));
         const tile = i => { const on = ansItems.includes(i.id); return <button key={i.id} type="button" role="checkbox" aria-checked={on} aria-label={i.title} className={'pickTile' + (on ? ' added' : '')} onClick={() => setAnsItems(v => (on ? v.filter(x => x !== i.id) : [...v, i.id]))}><span className="ptImg">{photoUrls[i.image_path] ? <Photo url={photoUrls[i.image_path]} /> : (i.url ? <Link2 size={20} /> : <PenLine size={20} />)}{on && <span className="ptCheck"><Check size={14} /></span>}</span><span className="ptTitle">{i.title}</span></button>; };
         return <>
-          {ansStep === 1 && wizard({ n: 1, total: 3, question: `Cosa consigli a ${who}?`, hint: here.length ? `I tuoi posti a ${answering.place} sono in cima.` : 'Scegli uno o più posti e foto dalla tua raccolta.', canNext: n > 0, onNext: () => setAnsStep(2), nextLabel: n ? `Avanti · ${n}` : 'Avanti', children: <>
+          {ansStep === 1 && wizard({ n: 1, total: 3, question: `Cosa consigli a ${who}?`, hint: 'Scrivi o incolla i consigli qui sotto, oppure scegli dalle tue scoperte.', canNext: n > 0, onNext: () => setAnsStep(2), nextLabel: n ? `Avanti · ${n}` : 'Avanti', children: <>
+            <div className="ansChat">
+              {ansNew.map(t => { const src = t.url ? sourceOf({ url: t.url }) : null; return <div key={t.key} className="bubble"><span className="bubbleBody">{t.url ? <><small>{src?.label || hostOf(t.url)}</small><span className="bubbleLink">{t.url}</span></> : t.text}</span><button className="bubbleX" aria-label="Togli questo consiglio" onClick={() => setAnsNew(v => v.filter(x => x.key !== t.key))}><X size={14} /></button></div>; })}
+              <form className="composer" onSubmit={e => { e.preventDefault(); addAnsDraft(); }}><input aria-label="Scrivi un consiglio o incolla un link" enterKeyHint="send" placeholder="Incolla un TikTok, un post Instagram… o scrivi" value={ansDraft} onChange={e => setAnsDraft(e.target.value)} /><button type="submit" className="composerSend" aria-label="Aggiungi questo consiglio" disabled={!ansDraft.trim()}><ArrowUp size={18} /></button></form>
+              <p className="hint">Link da TikTok, Instagram, Facebook, YouTube, Google Maps o una frase: finiscono anche nella tua raccolta.</p>
+            </div>
+            <div className="pickLabel">Dalle tue scoperte</div>
             <div className="search"><Search size={19} /><input aria-label="Cerca nel tuo archivio" placeholder="Cerca: Firenze, ristorante…" value={ansSearch} onChange={e => setAnsSearch(e.target.value)} /></div>
             {here.length > 0 && <><div className="pickLabel"><MapPin size={13} /> A {answering.place}</div><div className="pickGrid">{here.map(tile)}</div>{rest.length > 0 && <div className="pickLabel">Tutto il resto</div>}</>}
             <div className="pickGrid">{rest.map(tile)}</div>
