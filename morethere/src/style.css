@@ -757,3 +757,11 @@ html,body{height:100%;overflow:hidden}
 .boot img{border-radius:16px}
 .privacyLink{color:#888;font-size:12px;text-decoration:underline}
 .colRailRow{scroll-padding:0 20px}@media(max-width:380px){.colRailRow{scroll-padding:0 16px}}
+/* "Le tue raccolte": one quiet line until you open it */
+.colRail{margin-bottom:8px}
+.colRail.open{margin-bottom:18px}
+.colRailHead{display:flex;align-items:center;gap:8px;width:calc(100% - 40px);margin:0 20px;border:0;background:none;padding:6px 0 10px;min-height:40px;font-size:12px;letter-spacing:1.3px;text-transform:uppercase;color:#858585;font-weight:600;text-align:left}
+.colRailN{letter-spacing:0;font-size:11px;background:#f1f0ee;color:#666;border-radius:999px;padding:1px 7px}
+.colRailChev{margin-left:auto;transition:transform .2s}
+.colRail.open .colRailChev{transform:rotate(90deg)}
+@media(max-width:380px){.colRailHead{width:calc(100% - 32px);margin:0 16px}}
