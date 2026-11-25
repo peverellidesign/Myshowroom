@@ -35,6 +35,8 @@ const shot = async (page, name) => {
   mkdirSync(SHOTS, { recursive: true });
   await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: !/sheet/.test(name) });
 };
+// Switch a toggle on (whatever its default).
+const turnOn = async (page, text) => { const t = page.locator('.toggle', { hasText: text }); if (!(await t.locator('input').isChecked())) await t.click(); };
 const toast = (page, text) => page.locator('.toast', { hasText: text }).waitFor({ timeout: 10000 });
 const close = async page => {
   const exit = page.getByRole('button', { name: 'Chiudi procedura', exact: true });
@@ -348,16 +350,10 @@ test('More of me: the person sees exactly the chosen collection', async () => {
   await alice.getByRole('button', { name: /Avanti/ }).click();
   await alice.getByRole('heading', { name: 'Cosa può vedere Bob?' }).waitFor();
   await alice.getByRole('checkbox', { name: /Viaggi/ }).click();
+  // Two steps: who, then what they see and can do, on the same screen.
+  await turnOn(alice, 'Bob può salvarne una copia');
+  await turnOn(alice, "Può usarle con l'AI");
   await shot(alice, '06a-more-of-me-step2');
-  await alice.getByRole('button', { name: /Avanti/ }).click();
-  await alice.getByRole('heading', { name: 'Cosa può fare Bob?' }).waitFor();
-  await alice.getByRole('radio', { name: /Guardare e salvare/ }).click();
-  await alice.locator('.toggle', { hasText: "Può usarle con l'AI" }).click();
-  await alice.getByRole('button', { name: /Avanti/ }).click();
-  await alice.getByRole('heading', { name: 'Va bene così?' }).waitFor();
-  await alice.locator('.summary').getByText('Viaggi').waitFor();
-  await alice.locator('.summary').getByText('Guardare e salvare').waitFor();
-  await shot(alice, '06b-more-of-me-summary');
   await alice.getByRole('button', { name: 'Aggiungi Bob' }).click();
   await alice.getByRole('heading', { name: 'Fatto.' }).waitFor();
   await shot(alice, '06-share-saved');
@@ -414,11 +410,14 @@ test('More for you arrives in real time', async () => {
   await alice.getByRole('button', { name: 'Bob', exact: true }).click();
   assert.equal(await alice.getByRole('button', { name: 'Bob', exact: true }).getAttribute('aria-pressed'), 'true');
   await alice.getByRole('button', { name: /Avanti/ }).click();
-  // Opening a memory is a permission: Alice decides what Bob can do with it.
-  await alice.getByRole('heading', { name: 'Cosa può fare Bob?' }).waitFor();
-  await alice.getByRole('radio', { name: /Guardare e salvare/ }).click();
-  await alice.getByRole('button', { name: /Avanti/ }).click();
+  // Opening a memory is a permission: Alice decides what Bob can do with it, next to the dedication.
   await alice.getByLabel('LA TUA DEDICA').fill('Ci andiamo insieme?');
+  await turnOn(alice, 'Bob può salvarne una copia');
+  // The chevron at the top goes back one step, and forward again.
+  await alice.getByRole('button', { name: /^Indietro/ }).click();
+  await alice.getByRole('heading', { name: 'A quale amico?' }).waitFor();
+  await alice.getByRole('button', { name: /Avanti/ }).click();
+  await alice.getByLabel('LA TUA DEDICA').waitFor();
   await shot(alice, '08-more-for-you');
   await noWorld(alice);
   await alice.getByRole('button', { name: 'Apri a Bob' }).click();
@@ -493,8 +492,6 @@ test('Chiedi consigli: Bob goes to Florence, Alice answers with her places', asy
   await alice.locator('.bubble', { hasText: 'lampredotto' }).waitFor();
   await shot(alice, '09c-answer-pick');
   await alice.getByRole('button', { name: /Avanti · 4/ }).click();
-  await alice.getByRole('heading', { name: 'Cosa può fare Bob?' }).waitFor();
-  await alice.getByRole('button', { name: /Avanti/ }).click();
   await alice.getByLabel('IL TUO MESSAGGIO').fill('Da non perdere!');
   await alice.getByRole('button', { name: 'Manda 4 consigli' }).click();
   await alice.getByRole('heading', { name: 'Fatto.' }).waitFor();

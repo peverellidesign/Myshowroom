@@ -838,14 +838,17 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
       {add && <button type="button" className="pick add" onClick={() => setShowAddPerson(true)}><span className="av" aria-hidden="true"><Plus size={20} /></span><span className="pn">Aggiungi</span></button>}
     </div>
   );
-  const wizard = ({ n, total, question, hint, children, canNext = true, onNext, nextLabel = 'Avanti', onBack }) => (
+  // The step shown now: the header's back chevron (and the edge swipe) go to the previous step.
+  const wizBack = useRef(null);
+  wizBack.current = null;
+  const wizard = ({ n, total, question, hint, children, canNext = true, onNext, nextLabel = 'Avanti', onBack }) => { wizBack.current = onBack || null; return (
     <div className="wiz">
       <div className="wizTop"><span className="wizCount">{n} di {total}</span><span className="wizBar" aria-hidden="true">{Array.from({ length: total }, (_, k) => <i key={k} className={k < n ? 'on' : ''} />)}</span></div>
       <h2 className="wizQ">{question}</h2>{hint && <p className="wizHint">{hint}</p>}
       <div className="wizBody">{children}</div>
-      <div className="wizNav">{onBack ? <button type="button" className="textlink wizBack" onClick={onBack}><ArrowLeft size={15} /> Indietro</button> : <span />}<button type="button" className="pill dark wizNext" disabled={!canNext || busy} onClick={onNext}>{nextLabel}{nextLabel === 'Avanti' && <ArrowRight size={16} />}</button></div>
+      <div className="wizNav"><button type="button" className="pill dark wizNext" disabled={!canNext || busy} onClick={onNext}>{nextLabel}{/^Avanti/.test(nextLabel) && <ArrowRight size={16} />}</button></div>
     </div>
-  );
+  ); };
   const option = ({ on, title, desc, onClick, multi = false, key }) => <button key={key} type="button" role={multi ? 'checkbox' : 'radio'} aria-checked={on} className={'opt' + (on ? ' on' : '') + (multi ? ' multi' : '')} onClick={onClick}><span className="optMark" aria-hidden="true">{on && (multi ? <Check size={13} /> : <i />)}</span><span className="optText"><strong>{title}</strong>{desc && <small>{desc}</small>}</span></button>;
   const doneView = ({ title, text, actions }) => <div className="wizDone"><span className="doneMark" aria-hidden="true"><Check size={28} /></span><h2>{title}</h2><p className="muted">{text}</p><div className="doneActions">{actions}</div></div>;
   const step = (n, label) => <div className="step"><span className="stepNum">{n}</span><span className="stepLabel">{label}</span></div>;
@@ -903,7 +906,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     const end = () => {
       const s = swipe.current; swipe.current = null;
       const m = main(); if (!s?.on || !m) return;
-      if (s.dx > 90) { m.style.transform = ''; goBack(); window.scrollTo(0, 0); }
+      if (s.dx > 90) { m.style.transform = ''; stepBack(); window.scrollTo(0, 0); }
       else { m.style.transition = 'transform .2s ease'; m.style.transform = ''; }
     };
     document.addEventListener('touchstart', start, { passive: true });
@@ -911,6 +914,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     document.addEventListener('touchend', end); document.addEventListener('touchcancel', end);
     return () => { document.removeEventListener('touchstart', start); document.removeEventListener('touchmove', move); document.removeEventListener('touchend', end); document.removeEventListener('touchcancel', end); };
   });
+  const stepBack = () => (wizBack.current ? wizBack.current() : goBack());
   // Leaving a guided flow returns to where it started (the discovery, the friend, the section).
   const leaveFlow = () => {
     const k = trail.map(t => !FLOWS.includes(t)).lastIndexOf(true);
@@ -934,7 +938,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
 
   return <div className={'app' + (FLOWS.includes(screen) ? ' inFlow' : '') + (typing ? ' typing' : '')}><header className={isRoot ? 'rootHead' : 'pushHead'}>{isRoot
     ? <div className="headTitle"><h1 className="brand">{screen === 'home' ? 'morethere' : title}</h1>{screen === 'home' && <div className="subtitle">{loaded ? <>{items.length} {items.length === 1 ? 'scoperta' : 'scoperte'}</> : 'Sincronizzazione…'}</div>}</div>
-    : <button className="backBtn" aria-label={`Indietro · ${title}`} onClick={goBack}><ChevronLeft size={26} strokeWidth={1.8} /><span className="brandText">{title}</span></button>}{FLOWS.includes(screen) && <button className="headClose" aria-label="Chiudi procedura" onClick={leaveFlow}><X size={20} /></button>}</header>
+    : <button className="backBtn" aria-label={`Indietro · ${title}`} onClick={stepBack}><ChevronLeft size={26} strokeWidth={1.8} /><span className="brandText">{title}</span></button>}{FLOWS.includes(screen) && <button className="headClose" aria-label="Chiudi procedura" onClick={leaveFlow}><X size={20} /></button>}</header>
 
     {screen === 'home' && <main>
       {legacy && <div className="panel"><strong>Hai {legacy.items.length} {legacy.items.length === 1 ? 'scoperta salvata' : 'scoperte salvate'} su questo dispositivo</strong><small>Vuoi portarle nel tuo account privato? Resteranno visibili solo a te. Dopo l'importazione verranno rimosse da questo dispositivo.</small><div className="choices"><button className="chosen" disabled={busy} onClick={importLegacy}>Importa</button><button onClick={() => setLegacy(null)}>Non ora</button></div></div>}
@@ -1083,7 +1087,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
         const here = pickable.filter(isHere); const rest = pickable.filter(i => !isHere(i));
         const tile = i => { const on = ansItems.includes(i.id); return <button key={i.id} type="button" role="checkbox" aria-checked={on} aria-label={i.title} className={'pickTile' + (on ? ' added' : '')} onClick={() => setAnsItems(v => (on ? v.filter(x => x !== i.id) : [...v, i.id]))}><span className="ptImg">{photoUrls[i.image_path] ? <Photo url={photoUrls[i.image_path]} /> : (i.url ? <Link2 size={20} /> : <PenLine size={20} />)}{on && <span className="ptCheck"><Check size={14} /></span>}</span><span className="ptTitle">{i.title}</span></button>; };
         return <>
-          {ansStep === 1 && wizard({ n: 1, total: 3, question: `Cosa consigli a ${who}?`, hint: 'Scrivi o incolla i consigli qui sotto, oppure scegli dalle tue scoperte.', canNext: n > 0, onNext: () => setAnsStep(2), nextLabel: n ? `Avanti · ${n}` : 'Avanti', children: <>
+          {ansStep === 1 && wizard({ n: 1, total: 2, question: `Cosa consigli a ${who}?`, hint: 'Scrivi o incolla i consigli qui sotto, oppure scegli dalle tue scoperte.', canNext: n > 0, onNext: () => setAnsStep(2), nextLabel: n ? `Avanti · ${n}` : 'Avanti', children: <>
             <div className="ansChat">
               {ansNew.map(t => { const src = t.url ? sourceOf({ url: t.url }) : null; return <div key={t.key} className="bubble"><span className="bubbleBody">{t.url ? <><small>{src?.label || hostOf(t.url)}</small><span className="bubbleLink">{t.url}</span></> : t.text}</span><button className="bubbleX" aria-label="Togli questo consiglio" onClick={() => setAnsNew(v => v.filter(x => x.key !== t.key))}><X size={14} /></button></div>; })}
               <form className="composer" onSubmit={e => { e.preventDefault(); addAnsDraft(); }}><input aria-label="Scrivi un consiglio o incolla un link" enterKeyHint="send" placeholder="Incolla un TikTok, un post Instagram… o scrivi" value={ansDraft} onChange={e => setAnsDraft(e.target.value)} /><button type="submit" className="composerSend" aria-label="Aggiungi questo consiglio" disabled={!ansDraft.trim()}><ArrowUp size={18} /></button></form>
@@ -1094,11 +1098,9 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
             {here.length > 0 && <><div className="pickLabel"><MapPin size={13} /> A {answering.place}</div><div className="pickGrid">{here.map(tile)}</div>{rest.length > 0 && <div className="pickLabel">Tutto il resto</div>}</>}
             <div className="pickGrid">{rest.map(tile)}</div>
             {!pickable.length && <div className="empty compact">{items.length ? 'Nessun risultato.' : 'La tua raccolta è vuota: salva prima qualcosa dalla home.'}</div>}</> })}
-          {ansStep === 2 && wizard({ n: 2, total: 3, question: `Cosa può fare ${who}?`, onBack: () => setAnsStep(1), onNext: () => setAnsStep(3), children: <>
-            <div className="opts" role="radiogroup">{option({ on: ansSave, title: 'Guardare e salvare', desc: 'Può tenersi una copia per il suo viaggio.', onClick: () => setAnsSave(true) })}{option({ on: !ansSave, title: 'Solo guardare', desc: 'Li vede nella tua raccolta, sempre aggiornati.', onClick: () => setAnsSave(false) })}</div>
-            <div className="wizToggle"><Toggle checked={ansAi} onChange={setAnsAi} label="Può usarli con l'AI" hint="Per esempio per farsi preparare un itinerario." /></div></> })}
-          {ansStep === 3 && wizard({ n: 3, total: 3, question: 'Vuoi aggiungere due parole?', hint: 'Puoi anche lasciarlo vuoto.', onBack: () => setAnsStep(2), onNext: sendAnswer, nextLabel: `Manda ${n} ${n === 1 ? 'consiglio' : 'consigli'}`, children: <>
-            <textarea aria-label="IL TUO MESSAGGIO" rows="4" maxLength={1000} placeholder="Da non perdere: chiedi del tavolo in giardino." value={ansMsg} onChange={e => setAnsMsg(e.target.value)} /></> })}
+          {ansStep === 2 && wizard({ n: 2, total: 2, question: 'Vuoi aggiungere due parole?', hint: 'Puoi anche lasciarlo vuoto.', onBack: () => setAnsStep(1), onNext: sendAnswer, nextLabel: `Manda ${n} ${n === 1 ? 'consiglio' : 'consigli'}`, children: <>
+            <textarea aria-label="IL TUO MESSAGGIO" rows="4" maxLength={1000} placeholder="Da non perdere: chiedi del tavolo in giardino." value={ansMsg} onChange={e => setAnsMsg(e.target.value)} />
+            <div className="wizSwitches"><Toggle checked={ansSave} onChange={setAnsSave} label={`${who} può salvarne una copia`} hint="Altrimenti li vede nella tua raccolta, sempre aggiornati." /><Toggle checked={ansAi} onChange={setAnsAi} label="Può usarli con l'AI" hint="Per esempio per farsi preparare un itinerario." /></div></> })}
         </>;
       })()}</main>}
 
@@ -1120,7 +1122,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
         if (forDone) return doneView({ title: forDone === 'out' ? 'Condiviso.' : 'Fatto.', text: forDone === 'out' ? `Hai condiviso “${selected?.title || 'il tuo ricordo'}” con un'altra app.` : `${who} ora può vedere “${selected?.title || 'il tuo ricordo'}”. Resta nella tua raccolta: puoi toglierglielo quando vuoi.`, actions: <><button className="pill dark wide" onClick={() => startMoreForYou()}>Apri un altro ricordo</button><button className="pill outline wide" onClick={() => setScreen('circle')}>Torna a Your Circle</button></> });
         const q = forSearch.trim().toLowerCase();
         const pickable = items.filter(i => !q || [i.title, i.note, i.url].join(' ').toLowerCase().includes(q));
-        const total = external ? 3 : 4;
+        const total = 3;
         return <>
           {forStep === 1 && wizard({ n: 1, total, question: 'Quale ricordo vuoi aprire?', hint: 'Scegli un ricordo della tua raccolta.', canNext: !!selected, onNext: () => setForStep(2), children: <>
             <div className="search"><Search size={19} /><input aria-label="Cerca nel tuo archivio" placeholder="Cerca nella tua raccolta..." value={forSearch} onChange={e => setForSearch(e.target.value)} /></div>
@@ -1130,11 +1132,9 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
             {selected && <div className="chosenItem">{photoUrls[selected.image_path] ? <Photo className="rowthumb" url={photoUrls[selected.image_path]} alt="" /> : <span className="chosenIcon">{selected.url ? <Link2 size={18} /> : <PenLine size={18} />}</span>}<span><strong>{selected.title}</strong><small>{selected.url || selected.note}</small></span><button className="textlink" onClick={() => setForStep(1)}>Cambia</button></div>}
             {social && peoplePicker([recipientId], id => (id === '__external' ? shareOut() : setRecipientId(id)), { external: true, add: false })}
             <p className="wizNote">Tocca <strong>Fuori app</strong> per mandarlo con WhatsApp, Instagram, Mail o qualsiasi altra app.</p></> })}
-          {forStep === 3 && !external && wizard({ n: 3, total, question: `Cosa può fare ${who}?`, onBack: () => setForStep(2), onNext: () => setForStep(4), children: <>
-            <div className="opts" role="radiogroup">{option({ on: !thoughtSave, title: 'Solo guardare', desc: 'Lo vede nella tua raccolta, sempre aggiornato.', onClick: () => setThoughtSave(false) })}{option({ on: thoughtSave, title: 'Guardare e salvare', desc: 'Può tenersi una copia.', onClick: () => setThoughtSave(true) })}</div>
-            <div className="wizToggle"><Toggle checked={thoughtAi} onChange={setThoughtAi} label="Può usarlo con l'AI" hint="Per esempio per chiedere consigli a un assistente AI." /></div></> })}
-          {((forStep === 4 && !external) || (forStep === 3 && external)) && wizard({ n: total, total, question: 'Vuoi aggiungere una dedica?', hint: 'Due parole bastano. Puoi anche lasciarla vuota.', onBack: () => setForStep(external ? 2 : 3), onNext: sendThought, nextLabel: external ? 'Condividi con un\'altra app' : `Apri a ${who}`, children: <>
-            <textarea id="msg" aria-label="LA TUA DEDICA" rows="4" maxLength={1000} placeholder="Ho visto questo e ho pensato subito a te..." value={message} onChange={e => setMessage(e.target.value)} /></> })}
+          {forStep === 3 && wizard({ n: 3, total, question: 'Vuoi aggiungere una dedica?', hint: 'Due parole bastano. Puoi anche lasciarla vuota.', onBack: () => setForStep(2), onNext: sendThought, nextLabel: external ? 'Condividi con un\'altra app' : `Apri a ${who}`, children: <>
+            <textarea id="msg" aria-label="LA TUA DEDICA" rows="4" maxLength={1000} placeholder="Ho visto questo e ho pensato subito a te..." value={message} onChange={e => setMessage(e.target.value)} />
+            {!external && <div className="wizSwitches"><Toggle checked={thoughtSave} onChange={setThoughtSave} label={`${who} può salvarne una copia`} hint="Altrimenti lo vede nella tua raccolta, sempre aggiornato." /><Toggle checked={thoughtAi} onChange={setThoughtAi} label="Può usarlo con l'AI" hint="Per esempio per chiedere consigli a un assistente AI." /></div>}</> })}
         </>;
       })()}</main>}
 
@@ -1146,18 +1146,11 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
         const chosenNames = collectionRows.filter(c => shareCollections.includes(c.id)).map(c => c.name);
         if (meDone) return doneView({ title: 'Fatto.', text: `${who} è nella tua raccolta: vede ${shareMode === 'all' ? 'tutto' : chosenNames.join(', ')}. Puoi toglierlo quando vuoi.`, actions: <><button className="pill dark wide" onClick={() => target && openFriend(target)}>Vai alla pagina di {who}</button><button className="pill outline wide" onClick={() => setScreen('circle')}>Torna a Your Circle</button></> });
         return <>
-          {meStep === 1 && wizard({ n: 1, total: 4, question: 'Chi vuoi aggiungere alla tua raccolta?', hint: 'Scegli un amico. Vedrà solo quello che decidi tu.', canNext: !!shareTarget, onNext: () => setMeStep(2), children: <>{peoplePicker([shareTarget], id => pickShareTarget(id))}{!accepted.length && <p className="panelLead">Prima aggiungi un amico: tocca Aggiungi.</p>}{existing && <p className="wizNote">{who} è già nella tua raccolta. Puoi cambiare cosa vede.</p>}</> })}
-          {meStep === 2 && wizard({ n: 2, total: 4, question: `Cosa può vedere ${who}?`, canNext: shareMode === 'all' || shareCollections.length > 0, onBack: () => setMeStep(1), onNext: () => setMeStep(3), children: <>
+          {meStep === 1 && wizard({ n: 1, total: 2, question: 'Chi vuoi aggiungere alla tua raccolta?', hint: 'Scegli un amico. Vedrà solo quello che decidi tu.', canNext: !!shareTarget, onNext: () => setMeStep(2), children: <>{peoplePicker([shareTarget], id => pickShareTarget(id))}{!accepted.length && <p className="panelLead">Prima aggiungi un amico: tocca Aggiungi.</p>}{existing && <p className="wizNote">{who} è già nella tua raccolta. Puoi cambiare cosa vede.</p>}</> })}
+          {meStep === 2 && wizard({ n: 2, total: 2, question: `Cosa può vedere ${who}?`, canNext: shareMode === 'all' || shareCollections.length > 0, onBack: () => setMeStep(1), onNext: saveShare, nextLabel: existing ? 'Salva le modifiche' : `Aggiungi ${who}`, children: <>
             <div className="opts" role="radiogroup">{option({ on: shareMode === 'item', title: 'Solo alcune raccolte', desc: 'Scegli tu quali.', onClick: () => setShareMode('item') })}{option({ on: shareMode === 'all', title: 'Tutto', desc: 'Tutte le tue raccolte, anche quelle nuove.', onClick: () => setShareMode('all') })}</div>
-            {shareMode === 'item' && <><div className="ixCap subCap">QUALI?</div><div className="opts">{collectionRows.map(c => { const n = items.filter(i => i.collection_id === c.id).length; return option({ key: c.id, multi: true, on: shareCollections.includes(c.id), title: c.name, desc: `${n} ${n === 1 ? 'scoperta' : 'scoperte'}`, onClick: () => setShareCollections(v => (v.includes(c.id) ? v.filter(x => x !== c.id) : [...v, c.id])) }); })}</div></>}</> })}
-          {meStep === 3 && wizard({ n: 3, total: 4, question: `Cosa può fare ${who}?`, onBack: () => setMeStep(2), onNext: () => setMeStep(4), children: <>
-            <div className="opts" role="radiogroup">{option({ on: permission === 'view', title: 'Solo guardare', desc: 'Non può salvare niente.', onClick: () => setPermission('view') })}{option({ on: permission === 'save', title: 'Guardare e salvare', desc: 'Può tenersi una copia.', onClick: () => setPermission('save') })}</div>
-            <div className="wizToggle"><Toggle checked={shareAi} onChange={setShareAi} label="Può usarle con l'AI" hint="Per esempio per chiedere consigli a un assistente AI." /></div></> })}
-          {meStep === 4 && wizard({ n: 4, total: 4, question: 'Va bene così?', onBack: () => setMeStep(3), onNext: saveShare, nextLabel: existing ? 'Salva le modifiche' : `Aggiungi ${who}`, children: <dl className="summary">
-            <div><dt>Amico</dt><dd><span className="mav">{face(target)}</span>{who}</dd></div>
-            <div><dt>Vede</dt><dd>{shareMode === 'all' ? 'Tutto' : chosenNames.join(', ')}</dd></div>
-            <div><dt>Può</dt><dd>{permission === 'save' ? 'Guardare e salvare' : 'Solo guardare'}</dd></div>
-            <div><dt>AI</dt><dd>{shareAi ? 'Sì' : 'No'}</dd></div></dl> })}
+            {shareMode === 'item' && <><div className="ixCap subCap">QUALI?</div><div className="opts">{collectionRows.map(c => { const n = items.filter(i => i.collection_id === c.id).length; return option({ key: c.id, multi: true, on: shareCollections.includes(c.id), title: c.name, desc: `${n} ${n === 1 ? 'scoperta' : 'scoperte'}`, onClick: () => setShareCollections(v => (v.includes(c.id) ? v.filter(x => x !== c.id) : [...v, c.id])) }); })}</div></>}
+            <div className="wizSwitches"><Toggle checked={permission === 'save'} onChange={v => setPermission(v ? 'save' : 'view')} label={`${who} può salvarne una copia`} hint="Altrimenti le vede soltanto, sempre aggiornate." /><Toggle checked={shareAi} onChange={setShareAi} label="Può usarle con l'AI" hint="Per esempio per chiedere consigli a un assistente AI." /></div></> })}
           {meStep === 1 && circle.sharesOut.length > 0 && <><div className="blockHead"><h2>Amici nella tua raccolta</h2><span className="count">{circle.sharesOut.length}</span></div><div className="people">{circle.sharesOut.map(sh => { const c = accepted.find(x => x.other.id === sh.grantee_id); return <div key={sh.id} className="person"><div className="avatar">{face(c?.other)}</div><span><strong>{nameOf(c?.other)}</strong><small>{sh.scope === 'all' ? 'Vede tutto' : `Vede ${collectionRows.filter(c => sh.collection_ids.includes(c.id)).map(c => c.name).join(', ')}`} · {sh.can_save ? 'guarda e salva' : 'solo guarda'}</small></span><button className="pill outline small" disabled={busy} onClick={() => revokeShare(sh.grantee_id)}>Togli</button></div>; })}</div></>}
           <p className="hint"><ShieldCheck size={13} className="inline" /> Solo gli amici che aggiungi vedono le tue raccolte. Puoi toglierli quando vuoi.</p></>;
       })()
