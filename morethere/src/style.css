@@ -648,3 +648,26 @@ html,body{overscroll-behavior-y:none}
 .omni .square{min-width:52px;height:52px;display:grid;place-items:center}
 .saveNote{display:flex;align-items:center;gap:8px;width:100%;border:0;background:none;padding:10px 2px;font-size:14px;color:#252525;text-align:left;min-height:44px}
 .omniHint{margin:2px 2px 4px}
+
+/* =====================================================================
+   App frame: the app is exactly as tall as the screen. Only the middle
+   scrolls; header and tab bar are part of the frame, so Safari's
+   collapsing toolbars and the rubber band can never move or uncover them.
+   ===================================================================== */
+html,body{height:100%;overflow:hidden}
+#root{height:100%}
+.app{height:100vh;height:100dvh;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.app>header{position:relative;flex:0 0 auto;top:auto}
+.app>main{flex:1 1 auto;min-height:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+.app:not(.inFlow)>main,.app.typing>main{padding-bottom:28px}
+.tabbar{position:relative;left:auto;right:auto;bottom:auto;margin:0;max-width:none;flex:0 0 auto;transform:none}
+@media(min-width:750px){
+  .app{height:calc(100vh - 70px);height:calc(100dvh - 70px);min-height:0;margin:35px auto}
+  .tabbar{border-radius:0 0 30px 30px}
+}
+/* Tablets and desktops: full height too, the tab bar sits on the bottom edge */
+@media(min-width:750px){
+  .app{height:100vh;height:100dvh;margin:0 auto;border-radius:0}
+  header{border-radius:0}
+  .tabbar{border-radius:0}
+}
