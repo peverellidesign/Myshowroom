@@ -1,0 +1,89 @@
+# Builds the morethere iOS app on a Mac in the cloud and uploads it to App Store Connect
+# (TestFlight). No Mac needed: start it by hand from GitHub → Actions → "morethere iOS" → Run workflow.
+#
+# Repository secrets it needs (GitHub → Settings → Secrets and variables → Actions):
+#   APPLE_TEAM_ID             the 10-character Team ID (developer.apple.com → Membership)
+#   ASC_KEY_ID                App Store Connect API key ID
+#   ASC_ISSUER_ID             App Store Connect API issuer ID
+#   ASC_KEY_P8                the content of the AuthKey_XXXX.p8 file (the whole text)
+# The API key must have the Admin role, so Xcode can create the signing certificate and
+# profile by itself (cloud-managed signing): no certificates to export by hand.
+name: morethere iOS
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Versione mostrata sull App Store (es. 1.0)'
+        required: true
+        default: '1.0'
+
+concurrency:
+  group: morethere-ios
+  cancel-in-progress: false
+
+jobs:
+  testflight:
+    runs-on: macos-15
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: morethere
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: morethere/package-lock.json
+
+      - name: Choose the latest Xcode
+        run: sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)" && xcodebuild -version
+
+      - name: Build the web app and copy it into the iOS project
+        run: |
+          npm ci
+          npm run build
+          npx cap sync ios
+
+      - name: App Store Connect API key
+        env:
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+        run: |
+          mkdir -p "$RUNNER_TEMP/keys"
+          printf '%s' "$ASC_KEY_P8" > "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8"
+
+      - name: Archive (signed automatically)
+        env:
+          TEAM: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$TEAM" CODE_SIGN_STYLE=Automatic \
+            MARKETING_VERSION="$VERSION" CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            archive
+
+      - name: Upload to App Store Connect
+        env:
+          TEAM: ${{ secrets.APPLE_TEAM_ID }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+        run: |
+          /usr/libexec/PlistBuddy -c "Add :teamID string $TEAM" ios/ExportOptions.plist
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -exportOptionsPlist ios/ExportOptions.plist -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey_${ASC_KEY_ID}.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      - name: Remove the key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/keys"

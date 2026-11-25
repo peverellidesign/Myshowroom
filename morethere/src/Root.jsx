@@ -164,7 +164,7 @@ function AuthScreen({ hasInvite, recovery, linkError, onRecovered }) {
           {mode === 'signin' && <><button className="textlink" onClick={() => go('reset')}>Password dimenticata?</button><div className="authOr"><span>Sei nuovo?</span></div><button className="pill outline wide" onClick={() => go('signup')}>Crea un account</button></>}
           {(mode === 'signup' || mode === 'reset') && <button className="textlink" onClick={() => go('signin')}>Hai già un account? Accedi</button>}
         </div>
-        <p className="hint">Il tuo archivio è privato per impostazione predefinita. Nessuno può vederlo finché non scegli tu cosa condividere e con chi. <a href="/privacy.html" target="_blank" rel="noopener">Informativa sulla privacy</a></p>
+        <p className="hint">Il tuo archivio è privato per impostazione predefinita. Nessuno può vederlo finché non scegli tu cosa condividere e con chi. Creando un account accetti le <a href="/support.html#regole" target="_blank" rel="noopener">regole d'uso</a>. <a href="/privacy.html" target="_blank" rel="noopener">Informativa sulla privacy</a></p>
       </main>
     </div>
   );

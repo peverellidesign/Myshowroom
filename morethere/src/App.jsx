@@ -1063,7 +1063,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
         {!friendGroups.length && <div className="empty compact">Nessun elemento condiviso per ora.</div>}
         {friendShare.allow_ai_export && <button className="pill dark wide" disabled={busy} onClick={async () => exportShared(await run(() => api.aiExportShared(friend.id)), 'MORETHERE — SHARED CONTEXT', nameOf(friend))}><MessageSquareShare size={18} /> Trasferisci a AI</button>}
         <p className="hint"><ShieldCheck size={13} className="inline" /> {friendShare.can_save ? 'Lettura e copia' : 'Solo lettura'} · {friendShare.allow_ai_export ? 'Uso con AI consentito' : 'Uso con AI non consentito'}. {nameOf(friend)} può modificare o revocare questo accesso in qualsiasi momento.</p></>}</section>
-      <button className="textlink danger" onClick={async () => { if (!window.confirm(`Rimuovere ${nameOf(friend)} dal tuo Circle? Gli accessi tra voi verranno revocati.`)) return; await run(() => api.removeConnection(friend.id), 'Connessione rimossa'); await refreshCircle(); setScreen('circle', { replace: true }); }}>Rimuovi dal mio Circle</button></main>}
+      <button className="textlink danger" onClick={async () => { if (!window.confirm(`Rimuovere ${nameOf(friend)} dal tuo Circle? Gli accessi tra voi verranno revocati.`)) return; await run(() => api.removeConnection(friend.id), 'Connessione rimossa'); await refreshCircle(); setScreen('circle', { replace: true }); }}>Rimuovi dal mio Circle</button><a className="textlink reportLink" href={`mailto:matteopeverelli97@gmail.com?subject=${encodeURIComponent(`morethere - Segnalazione @${friend.handle}`)}&body=${encodeURIComponent(`Vorrei segnalare l'utente @${friend.handle} (${nameOf(friend)}).\n\nMotivo:\n`)}`}>Segnala {nameOf(friend)}</a></main>}
 
     {screen === 'worlds' && <main>
       {!social && signInHint}
@@ -1255,7 +1255,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
       <p className="hint">Il tuo nome e la descrizione sono visibili solo alle persone del tuo Circle e degli spazi condivisi.</p>
       <div className="stack"><button className="feature" disabled={busy} onClick={downloadData}><Download /><span><strong>Esporta i miei dati</strong><small>Scarica tutto in formato JSON</small></span><ChevronRight /></button></div>
       <button className="pill outline wide" onClick={() => api.signOut()}><LogOut size={18} /> Esci</button>
-      <button className="textlink danger" onClick={deleteAccount}>Elimina il mio account</button><a className="textlink privacyLink" href="/privacy.html" target="_blank" rel="noopener">Informativa sulla privacy</a></main>}
+      <button className="textlink danger" onClick={deleteAccount}>Elimina il mio account</button><div className="legalLinks"><a className="textlink privacyLink" href="/support.html" target="_blank" rel="noopener">Supporto e regole d'uso</a><a className="textlink privacyLink" href="/privacy.html" target="_blank" rel="noopener">Informativa sulla privacy</a></div></main>}
 
     {screen === 'ai' && <main>
       <h2 className="wizQ">Cosa vuoi trasferire?</h2><p className="wizHint">Poi scegli Claude o ChatGPT: lo trovi già scritto nel messaggio.</p>
