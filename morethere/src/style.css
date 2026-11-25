@@ -632,3 +632,8 @@ html,body{overscroll-behavior-y:none}
 .wizNav .wizNext{flex:1;width:100%;min-height:52px;font-size:15px}
 .wizSwitches{display:grid;gap:4px;margin-top:18px;border-top:1px solid #eee;padding-top:10px}
 .wizSwitches{gap:14px}
+/* Card actions always on the same line at the bottom of every card, whatever the title length */
+.cards .item{display:flex;flex-direction:column}
+.cards .item .itembody{flex:1;display:flex;flex-direction:column}
+.cards .item .itemactions{margin-top:auto;padding-top:12px;justify-content:space-between}
+.itemactions .mfy{width:40px;height:40px;margin:2px 0 2px 10px}
