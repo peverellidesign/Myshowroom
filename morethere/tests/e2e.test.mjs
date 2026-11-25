@@ -514,6 +514,8 @@ test('Chiedi consigli: Bob goes to Florence, Alice answers with her places', asy
   await bob.goto(APP);
   await bob.getByRole('button', { name: /Apri Your Circle/ }).click();
   await bob.getByText('Le tue richieste').waitFor();
+  // Closed until opened, but new answers show on the closed line.
+  await bob.getByRole('button', { name: /Le tue richieste/ }).click();
   await bob.getByRole('button', { name: /Firenze, a maggio/ }).getByText('4 consigli').waitFor();
   assert.equal(await bob.locator('.note', { hasText: 'Da non perdere!' }).count(), 0);
   await close(bob);
