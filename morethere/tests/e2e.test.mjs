@@ -53,7 +53,7 @@ async function signUp(page, p) {
   await page.getByLabel('EMAIL').fill(p.email);
   await page.getByLabel('PASSWORD').fill(p.password);
   await page.getByRole('button', { name: 'Crea account' }).click();
-  await page.getByLabel('Nuovo ingresso: incolla un link o scrivi').waitFor();
+  await page.getByLabel('Cerca o incolla un link').waitFor();
 }
 
 before(async () => {
@@ -118,13 +118,13 @@ test('on-device prototype data is imported only after consent', async () => {
 
 test('saving a link and a note works as in the prototype', async () => {
   const { page } = people.alice;
-  await page.getByPlaceholder('Incolla un link o scrivi...').fill('https://www.example.org/ristorante');
-  await page.getByPlaceholder('Incolla un link o scrivi...').press('Enter');
+  await page.getByPlaceholder('Cerca o incolla un link…').fill('https://www.example.org/ristorante');
+  await page.getByPlaceholder('Cerca o incolla un link…').press('Enter');
   await toast(page, 'Salvato nella tua raccolta');
   await page.locator('.item', { hasText: 'example.org' }).waitFor();
-  await page.getByPlaceholder("Cerca nell'archivio...").fill('kyoto');
+  await page.getByPlaceholder('Cerca o incolla un link…').fill('kyoto');
   assert.equal(await page.locator('.item').count(), 1);
-  await page.getByPlaceholder("Cerca nell'archivio...").fill('');
+  await page.getByPlaceholder('Cerca o incolla un link…').fill('');
   await page.reload();
   await page.locator('.item', { hasText: 'example.org' }).waitFor();
   assert.equal(await page.locator('.item').count(), 3, 'persisted on the server');
@@ -133,8 +133,8 @@ test('saving a link and a note works as in the prototype', async () => {
 
 test('link preview: real page title and cover image, stored as a private photo', async () => {
   const { page } = people.alice;
-  await page.getByPlaceholder('Incolla un link o scrivi...').fill(pageUrl);
-  await page.getByPlaceholder('Incolla un link o scrivi...').press('Enter');
+  await page.getByPlaceholder('Cerca o incolla un link…').fill(pageUrl);
+  await page.getByPlaceholder('Cerca o incolla un link…').press('Enter');
   await toast(page, 'Salvato nella tua raccolta');
   const card = page.locator('.item', { hasText: 'Trattoria da Mario — Milano' });
   await card.waitFor({ timeout: 15000 });
@@ -150,8 +150,8 @@ test('link preview: real page title and cover image, stored as a private photo',
   await page.getByText('Un indirizzo di cucina lombarda a Milano: da provare la prossima volta che ci passi.').waitFor();
   await close(page);
   // A second link about the same place gets its own judgment too.
-  await page.getByPlaceholder('Incolla un link o scrivi...').fill(`${pageUrl}-bis`);
-  await page.getByPlaceholder('Incolla un link o scrivi...').press('Enter');
+  await page.getByPlaceholder('Cerca o incolla un link…').fill(`${pageUrl}-bis`);
+  await page.getByPlaceholder('Cerca o incolla un link…').press('Enter');
   await toast(page, 'Salvato nella tua raccolta');
   // Read the saved note (the server keeps it), then remove the extra copy.
   let again;
@@ -464,8 +464,8 @@ test('Chiedi consigli: Bob goes to Florence, Alice answers with her places', asy
 
   // Alice gets the request live and answers with two of her memories.
   await alice.goto(APP);
-  await alice.getByPlaceholder('Incolla un link o scrivi...').fill('Gelateria dei Neri, Firenze');
-  await alice.getByRole('button', { name: 'Salva', exact: true }).click();
+  await alice.getByPlaceholder('Cerca o incolla un link…').fill('Gelateria dei Neri, Firenze');
+  await alice.getByRole('button', { name: 'Salva come nota', exact: true }).click();
   await alice.locator('.item', { hasText: 'Gelateria dei Neri' }).waitFor();
   await alice.locator('.tab .badge').waitFor({ timeout: 10000 });
   await alice.getByRole('button', { name: /Apri Your Circle/ }).click();
@@ -556,7 +556,7 @@ test('More of us: as many shared spaces as you like, started from a person', asy
   await alice.getByRole('heading', { name: 'I tuoi amici' }).waitFor();
   assert.equal(await backArrow.count(), 0, 'Circle is a section: no back arrow');
   await alice.getByRole('button', { name: 'Le mie scoperte' }).click();
-  await alice.getByLabel('Nuovo ingresso: incolla un link o scrivi').waitFor();
+  await alice.getByLabel('Cerca o incolla un link').waitFor();
 
   // A second space with the same person.
   await alice.goto(APP);
