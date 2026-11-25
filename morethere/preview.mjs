@@ -237,6 +237,11 @@ export function tidyPreview(v, pageUrl) {
     if (/^(facebook|instagram|threads|log in|accedi|login)\b/i.test(title) || STATS.test(title)) title = '';
     if (author && /^(facebook|instagram|threads)$/i.test(author)) author = '';
   }
+  // TikTok, YouTube and the like answer bots with their own generic page ("TikTok - Make Your Day"):
+  // that title is not the post's, so the app keeps its own label ("Video su TikTok").
+  if (/(^|\.)(tiktok\.com|youtube\.com|youtu\.be|pinterest\.[a-z.]+|x\.com|twitter\.com|linkedin\.com)$/.test(host)
+    && /^(tiktok( - make your day)?|youtube|pinterest|x|twitter|linkedin|log in|sign up|accedi|iscriviti)\b[^a-z]*$/i.test(title)) title = '';
+  if (/^tiktok - make your day$/i.test(description)) description = '';
   if (title.length > 90) { if (description.length < title.length) description = title; title = shortTitle(title); }
   return { ...v, title, description, site: network || v.site, author: author.slice(0, 80) };
 }

@@ -168,6 +168,9 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   const [forStep, setForStep] = useState(1); const [forDone, setForDone] = useState(false); const [forSearch, setForSearch] = useState('');
   const [usStep, setUsStep] = useState(1); const [usCreating, setUsCreating] = useState(false);
   const [showSpaceAdd, setShowSpaceAdd] = useState(false);
+  // Adding to a shared space from outside your collection: a link, a note or a photo.
+  const [spaceDraft, setSpaceDraft] = useState('');
+  const spacePhoto = useRef();
   const [spaceSearch, setSpaceSearch] = useState('');
   const [spaceFilter, setSpaceFilter] = useState('all'); // 'all' | 'cat:<category>' | 'by:<user id>'
   const [spaceView, setSpaceView] = useState('recent');
@@ -388,6 +391,29 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   };
   // One preview per link at a time (saving a link and the background pass could both ask).
   const enrichingIds = useRef(new Set());
+  // Something new straight into a shared space: it is saved in your collection too (that is
+  // where your discoveries live), with the link's real title and cover, then added to the space.
+  const addOutsideToSpace = async (file = null) => {
+    const raw = spaceDraft.trim();
+    if (!file && !raw) return;
+    const worldId = selected?.id;
+    const ok = await run(async () => {
+      let draft;
+      if (file) {
+        const path = await api.uploadPhoto(file);
+        const taken = (await photoTakenDate(file)) || todayIso();
+        draft = { title: raw.slice(0, 70) || `Foto del ${fmtMemory(taken)}`, url: '', note: '', category: 'Foto', image_path: path, memory_date: taken };
+      } else {
+        const url = safeUrl(raw) || (/^www\.\S+\.\S+$/i.test(raw) ? safeUrl(`https://${raw}`) : null);
+        draft = url ? { title: linkLabel(url), url, note: '', category: isVideoLink(url) ? 'Video' : 'Pagine' }
+          : { title: raw.slice(0, 70), url: '', note: raw, category: 'Appunti' };
+      }
+      const saved = await api.addItem({ ...draft, collection: 'Idee', collection_id: collectionId('Idee') });
+      if (draft.url) await enrichLink({ ...draft, id: saved.id, image_path: null }).catch(() => false);
+      await api.addItemToWorld(worldId, saved.id);
+    }, 'Aggiunto al vostro spazio');
+    if (ok !== undefined) { setSpaceDraft(''); reloadWorld(worldId); refreshWorlds(); refreshArchive(); }
+  };
   const enrichLink = async (item) => {
     const url = safeUrl(item.url || '');
     if (!url || enrichingIds.current.has(item.id)) return false;
@@ -1077,7 +1103,14 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
             {isWorldOwner ? <button className="textlink danger" onClick={async () => { if (!window.confirm('Eliminare questo spazio per tutti?')) return; await run(() => api.deleteWorld(selected.id), 'Spazio eliminato'); await refreshWorlds(); setScreen('worlds', { replace: true }); }}>Elimina questo spazio</button> : <button className="textlink danger" onClick={async () => { if (!window.confirm('Lasciare questo spazio?')) return; await run(() => api.removeWorldMember(selected.id, api.me), 'Hai lasciato lo spazio'); await refreshWorlds(); setScreen('worlds', { replace: true }); }}>Lascia questo spazio</button>}
           </>}
 
-          {showSpaceAdd && <div className="overlay" role="presentation" onClick={() => setShowSpaceAdd(false)}><div className="modal sheet tall" role="dialog" aria-modal="true" aria-label="Aggiungi allo spazio" onClick={e => e.stopPropagation()}><button className="close" aria-label="Chiudi" onClick={() => setShowSpaceAdd(false)}><X /></button><h2>Aggiungi a {worldData.world.name}</h2><div className="search"><Search size={19} /><input aria-label="Cerca nel tuo archivio" placeholder="Cerca nel tuo archivio..." value={spaceSearch} onChange={e => setSpaceSearch(e.target.value)} /></div>
+          {showSpaceAdd && <div className="overlay" role="presentation" onClick={() => setShowSpaceAdd(false)}><div className="modal sheet tall" role="dialog" aria-modal="true" aria-label="Aggiungi allo spazio" onClick={e => e.stopPropagation()}><div className="sheetGrab" aria-hidden="true" /><div className="sheetHead"><h2>Aggiungi a {worldData.world.name}</h2><button className="close" aria-label="Chiudi" onClick={() => setShowSpaceAdd(false)}><X /></button></div>
+            <section className="spaceOutside"><div className="pickLabel">Da fuori</div>
+              <form className="composer" onSubmit={e => { e.preventDefault(); addOutsideToSpace(); }}><input aria-label="Incolla un link o scrivi una nota per lo spazio" enterKeyHint="send" autoCapitalize="sentences" placeholder="Incolla un link (TikTok, Instagram…) o scrivi" value={spaceDraft} onChange={e => setSpaceDraft(e.target.value)} />{spaceDraft.trim() ? <button type="submit" className="composerSend" aria-label="Aggiungi allo spazio" disabled={busy}><ArrowUp size={18} /></button> : <button type="button" className="composerSend light" aria-label="Aggiungi una foto allo spazio" disabled={busy} onClick={() => spacePhoto.current?.click()}><Camera size={18} /></button>}</form>
+              <input ref={spacePhoto} type="file" accept="image/*" hidden aria-hidden="true" onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) addOutsideToSpace(f); }} />
+              <p className="hint">{busy ? 'Aggiungo…' : 'Link da TikTok, Instagram, Facebook, YouTube, Maps o qualsiasi sito, una nota o una foto. Resta anche nella tua raccolta.'}</p>
+            </section>
+            <div className="pickLabel">Dalla tua raccolta</div>
+            <div className="search"><Search size={19} /><input aria-label="Cerca nel tuo archivio" placeholder="Cerca nel tuo archivio..." value={spaceSearch} onChange={e => setSpaceSearch(e.target.value)} /></div>
             <div className="pickGrid">{pickable.map(i => { const added = worldSourceIds.has(i.id); return <button key={i.id} className={'pickTile' + (added ? ' added' : '')} disabled={busy || added} aria-label={`${added ? 'Già aggiunto: ' : 'Aggiungi '}${i.title}`} onClick={async () => { const r = await run(() => api.addItemToWorld(selected.id, i.id), 'Aggiunto al vostro spazio'); if (r !== undefined) { reloadWorld(selected.id); refreshWorlds(); } }}><span className="ptImg">{photoUrls[i.image_path] ? <Photo url={photoUrls[i.image_path]} /> : (i.url ? <Link2 size={20} /> : <PenLine size={20} />)}{added && <span className="ptCheck"><Check size={14} /></span>}</span><span className="ptTitle">{i.title}</span></button>; })}</div>
             {!pickable.length && <div className="empty compact">{items.length ? 'Nessun risultato.' : 'Il tuo archivio è vuoto: salva prima qualcosa dalla home.'}</div>}
             <button className="pill dark wide" onClick={() => setShowSpaceAdd(false)}>Fatto</button></div></div>}

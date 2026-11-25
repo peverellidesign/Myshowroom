@@ -733,3 +733,6 @@ html,body{height:100%;overflow:hidden}
 .cards.friendCols{grid-template-columns:1fr}
 .friendCols .preview{height:170px}
 .friendCols .sharedTitle{font-size:14px}
+/* Add to a shared space from outside your collection */
+.spaceOutside{display:grid;gap:8px;padding-bottom:14px;border-bottom:1px solid #eee}
+.composerSend.light{background:#f1f0ee;color:#252525}

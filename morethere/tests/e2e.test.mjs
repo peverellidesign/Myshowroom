@@ -652,6 +652,27 @@ test('from a discovery straight into a shared space', async () => {
   await bob.getByRole('button', { name: /More of us/ }).click();
   await bob.getByRole('button', { name: /Japan 2027/ }).click();
   await bob.locator('.item', { hasText: 'Idea segreta' }).first().waitFor({ timeout: 10000 });
+
+  // Straight into the space from outside the collection: a TikTok and a note.
+  await alice.getByRole('button', { name: /Apri Your Circle/ }).click();
+  await alice.getByRole('button', { name: /More of us/ }).click();
+  await alice.getByRole('button', { name: /Japan 2027/ }).click();
+  await alice.getByRole('button', { name: 'Aggiungi', exact: true }).click();
+  const add = alice.getByRole('dialog', { name: 'Aggiungi allo spazio' });
+  const field = add.getByLabel('Incolla un link o scrivi una nota per lo spazio');
+  await field.fill('https://www.tiktok.com/@tokyofood/video/7311111111111111111');
+  await field.press('Enter');
+  await toast(alice, 'Aggiunto al vostro spazio');
+  await field.fill('Onsen a Hakone: prenotare con due mesi di anticipo');
+  await add.getByRole('button', { name: 'Aggiungi allo spazio' }).click();
+  await alice.locator('.toast', { hasText: 'Aggiunto al vostro spazio' }).last().waitFor();
+  await shot(alice, '10h-space-add-outside-sheet');
+  await add.getByRole('button', { name: 'Chiudi' }).click();
+  await bob.locator('.item', { hasText: 'Onsen a Hakone' }).first().waitFor({ timeout: 10000 });
+  await bob.locator('.item', { hasText: /TikTok/i }).first().waitFor({ timeout: 10000 });
+  // They are in Alice's own collection too.
+  await close(alice);
+  await alice.locator('.item', { hasText: 'Onsen a Hakone' }).first().waitFor();
 });
 
 test('share to morethere from another app, and from morethere to other apps', async () => {

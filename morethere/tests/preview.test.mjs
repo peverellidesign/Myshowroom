@@ -45,3 +45,10 @@ test('a caption is cut at its first sentence, also when an emoji ends it', () =>
   assert.equal(p.title, 'A fresh look at our latest Italian finds 🇮🇹');
   assert.equal(p.author, 'Raphael’s Midcentury');
 });
+
+test('generic pages of TikTok, YouTube, X are not taken as the post title', () => {
+  assert.equal(tidyPreview({ title: 'TikTok - Make Your Day', description: 'TikTok - Make Your Day' }, 'https://www.tiktok.com/@a/video/1').title, '');
+  assert.equal(tidyPreview({ title: 'YouTube', description: '' }, 'https://www.youtube.com/watch?v=1').title, '');
+  assert.equal(tidyPreview({ title: 'Ricetta carbonara facile', description: '' }, 'https://www.tiktok.com/@a/video/1').title, 'Ricetta carbonara facile');
+  assert.equal(tidyPreview({ title: 'Xbox: le novità', description: '' }, 'https://x.com/xbox').title, 'Xbox: le novità');
+});
