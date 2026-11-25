@@ -112,7 +112,7 @@ function AuthScreen({ hasInvite, recovery, linkError, onRecovered }) {
     }
   };
 
-  const header = <header><div><span className="brand">morethere</span><div className="subtitle">Your world. Your people. Your intelligence.</div></div></header>;
+  const header = <header className="authHead"><div className="headTitle"><span className="brand authBrand"><img src="/icon.svg" alt="" width="30" height="30" />morethere</span><div className="subtitle">Your world. Your people. Your intelligence.</div></div></header>;
 
   if (mode === 'check') return (
     <div className="app">
@@ -149,7 +149,7 @@ function AuthScreen({ hasInvite, recovery, linkError, onRecovered }) {
         <div className="eyebrow">{mode === 'signup' ? 'CREA IL TUO ACCOUNT' : mode === 'signin' ? 'ACCEDI' : 'PASSWORD'}</div>
         <h1>{heading}</h1>
         <p className="muted">{intro}</p>
-        <form className="panel" onSubmit={submit} noValidate>
+        <form className="panel authForm" onSubmit={submit} noValidate>
           {mode === 'signup' && <><label htmlFor="a-name">COME TI CHIAMI?</label><input id="a-name" autoComplete="name" maxLength={60} value={name} onChange={e => setName(e.target.value)} /></>}
           {mode !== 'recover' && <><label htmlFor="a-email">EMAIL</label><input id="a-email" type="email" autoComplete="email" inputMode="email" autoCapitalize="none" required value={email} onChange={e => setEmail(e.target.value)} /></>}
           {mode !== 'reset' && <><label htmlFor="a-pass">{mode === 'recover' ? 'NUOVA PASSWORD' : 'PASSWORD'}</label><input id="a-pass" type="password" autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} minLength={8} required value={password} onChange={e => setPassword(e.target.value)} />{(mode === 'signup' || mode === 'recover') && <small>Almeno 8 caratteri.</small>}</>}
@@ -161,7 +161,7 @@ function AuthScreen({ hasInvite, recovery, linkError, onRecovered }) {
           </button>
         </form>
         <div className="authlinks">
-          {mode === 'signin' && <><button className="textlink" onClick={() => go('signup')}>Non hai un account? Creane uno</button><button className="textlink" onClick={() => go('reset')}>Password dimenticata?</button></>}
+          {mode === 'signin' && <><button className="textlink" onClick={() => go('reset')}>Password dimenticata?</button><div className="authOr"><span>Sei nuovo?</span></div><button className="pill outline wide" onClick={() => go('signup')}>Crea un account</button></>}
           {(mode === 'signup' || mode === 'reset') && <button className="textlink" onClick={() => go('signin')}>Hai già un account? Accedi</button>}
         </div>
         <p className="hint">Il tuo archivio è privato per impostazione predefinita. Nessuno può vederlo finché non scegli tu cosa condividere e con chi.</p>

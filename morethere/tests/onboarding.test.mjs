@@ -101,7 +101,7 @@ test('signing up again with an address that already has an account says so', asy
   // What Supabase answers when email confirmation is on: no session, a user without identities, no email.
   await page.route('**/auth/v1/signup**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ id: '00000000-0000-0000-0000-000000000002', email, identities: [] }) }));
   await page.goto(APP);
-  await page.getByRole('button', { name: 'Non hai un account? Creane uno' }).click();
+  await page.getByRole('button', { name: 'Crea un account' }).click();
   await page.getByLabel('COME TI CHIAMI?').fill('Hugo');
   await page.getByLabel('EMAIL').fill(email);
   await page.getByLabel('PASSWORD').fill('Hugo-pass-1234');

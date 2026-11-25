@@ -33,7 +33,11 @@ let pageServer; let pageUrl;
 const shot = async (page, name) => {
   if (!SHOTS) return;
   mkdirSync(SHOTS, { recursive: true });
-  await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: !/sheet/.test(name) });
+  // The app scrolls inside its frame: for a full-page picture, let the page grow for a moment.
+  const full = !/sheet/.test(name);
+  if (full) await page.addStyleTag({ content: 'html,body,#root,.app{height:auto!important;overflow:visible!important}.app>main{overflow:visible!important}', }).then(h => h.evaluate(n => n.setAttribute('data-shot', '1')));
+  await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: full });
+  if (full) await page.evaluate(() => document.querySelectorAll('style[data-shot]').forEach(n => n.remove()));
 };
 // Switch a toggle on (whatever its default).
 const turnOn = async (page, text) => { const t = page.locator('.toggle', { hasText: text }); if (!(await t.locator('input').isChecked())) await t.click(); };
@@ -48,7 +52,7 @@ const noWorld = async page => assert.doesNotMatch(await page.locator('body').inn
 
 async function signUp(page, p) {
   await page.goto(APP);
-  await page.getByRole('button', { name: 'Non hai un account? Creane uno' }).click();
+  await page.getByRole('button', { name: 'Crea un account' }).click();
   await page.getByLabel('COME TI CHIAMI?').fill(p.name);
   await page.getByLabel('EMAIL').fill(p.email);
   await page.getByLabel('PASSWORD').fill(p.password);
@@ -144,10 +148,11 @@ test('link preview: real page title and cover image, stored as a private photo',
   await shot(page, '03a-link-preview');
   // "In breve": the note becomes key facts and why it matters, worked out without AI.
   await card.locator('.itemtitle').click();
-  await page.locator('.notebody', { hasText: '• Cucina: Lombarda' }).waitFor({ timeout: 15000 });
-  await page.locator('.notebody', { hasText: '• Indirizzo: Via Solferino 12, Milano' }).waitFor();
-  await page.locator('.notebody', { hasText: '• Dal 1962 la Trattoria da Mario serve a Milano' }).waitFor();
-  await page.getByText('Un indirizzo di cucina lombarda a Milano: da provare la prossima volta che ci passi.').waitFor();
+  // Laid out as a list ("In breve") and a card ("Perché ti interessa").
+  await page.locator('.keyPoints li', { hasText: 'Cucina: Lombarda' }).waitFor({ timeout: 15000 });
+  await page.locator('.keyPoints li', { hasText: 'Indirizzo: Via Solferino 12, Milano' }).waitFor();
+  await page.locator('.keyPoints li', { hasText: 'Dal 1962 la Trattoria da Mario serve a Milano' }).waitFor();
+  await page.locator('.whyCard', { hasText: 'Un indirizzo di cucina lombarda a Milano: da provare la prossima volta che ci passi.' }).waitFor();
   await close(page);
   // A second link about the same place gets its own judgment too.
   await page.getByPlaceholder('Cerca o incolla un link…').fill(`${pageUrl}-bis`);
@@ -362,14 +367,14 @@ test('More of me: the person sees exactly the chosen collection', async () => {
   await bob.getByRole('button', { name: /Apri Your Circle/ }).click();
   await bob.getByRole('button', { name: /Alice/ }).click();
   await noWorld(bob);
-  await bob.getByText('+ Save Kyoto inspiration').waitFor();
+  await bob.getByRole('button', { name: 'Salva Kyoto inspiration' }).waitFor();
   // The photo in the shared collection is visible to Bob, through a signed URL.
   await bob.locator('.shared img.thumb').first().waitFor();
   assert.ok(await bob.locator('.shared img.thumb').first().evaluate(img => img.complete && img.naturalWidth > 0), 'shared photo loads');
   assert.equal(await bob.getByText('Idea segreta').count(), 0, 'private item not visible');
   assert.equal(await bob.getByText('example.org').count(), 0, 'item outside the grant not visible');
   await shot(bob, '07-person');
-  await bob.getByText('+ Save Kyoto inspiration').click();
+  await bob.getByRole('button', { name: 'Salva Kyoto inspiration' }).click();
   await toast(bob, 'Salvato nel tuo archivio');
 
   await bob.getByRole('button', { name: 'Trasferisci a AI' }).click();
@@ -704,7 +709,7 @@ test('Trasferisci a AI: only a trip, with the question already written', async (
   const alice = people.alice.page;
   await alice.goto(APP);
   await alice.getByRole('button', { name: 'AI: trasferisci le tue scoperte' }).click();
-  await alice.getByRole('heading', { name: "Su cosa vuoi chiedere all'AI?" }).waitFor();
+  await alice.getByRole('heading', { name: 'Cosa vuoi trasferire?' }).waitFor();
   await alice.getByRole('radio', { name: /Un luogo o un tema/ }).click();
   await alice.getByLabel('Luogo o tema').fill('kyoto');
   const rows = alice.locator('.aiRow');
