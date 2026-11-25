@@ -1,0 +1,14 @@
+{
+  "appId": "app.morethere.ios",
+  "appName": "morethere",
+  "webDir": "dist",
+  "server": {
+    "url": "https://morethere-production.up.railway.app",
+    "cleartext": false
+  },
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#ffffff",
+    "limitsNavigationsToAppBoundDomains": false
+  }
+}

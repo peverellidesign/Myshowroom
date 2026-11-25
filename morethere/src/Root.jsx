@@ -164,7 +164,7 @@ function AuthScreen({ hasInvite, recovery, linkError, onRecovered }) {
           {mode === 'signin' && <><button className="textlink" onClick={() => go('reset')}>Password dimenticata?</button><div className="authOr"><span>Sei nuovo?</span></div><button className="pill outline wide" onClick={() => go('signup')}>Crea un account</button></>}
           {(mode === 'signup' || mode === 'reset') && <button className="textlink" onClick={() => go('signin')}>Hai già un account? Accedi</button>}
         </div>
-        <p className="hint">Il tuo archivio è privato per impostazione predefinita. Nessuno può vederlo finché non scegli tu cosa condividere e con chi.</p>
+        <p className="hint">Il tuo archivio è privato per impostazione predefinita. Nessuno può vederlo finché non scegli tu cosa condividere e con chi. <a href="/privacy.html" target="_blank" rel="noopener">Informativa sulla privacy</a></p>
       </main>
     </div>
   );
@@ -203,7 +203,8 @@ export default function Root() {
   const clearInvite = () => { keep.del(); setInvite(null); };
 
   if (!isConfigured) return <App api={localApi} pendingShare={incoming} onShareHandled={clearIncoming} />;
-  if (session === undefined) return <div className="app"><header><div><span className="brand">morethere</span><div className="subtitle">Sincronizzazione…</div></div></header></div>;
+  // Same picture as the launch screen, so opening the app has no flash.
+  if (session === undefined) return <div className="boot" aria-label="morethere"><div><img src="/icon.svg" alt="" width="72" height="72" />morethere</div></div>;
   if (!session || recovery) return <AuthScreen hasInvite={Boolean(invite)} recovery={recovery} linkError={linkError} onRecovered={() => setRecovery(false)} />;
   return <App key={userId} api={api} pendingInvite={invite} onInviteHandled={clearInvite} pendingShare={incoming} onShareHandled={clearIncoming} />;
 }
