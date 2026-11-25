@@ -133,6 +133,8 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   const screenRef = useRef('home');
   const setScreen = (next, { replace = false } = {}) => {
     const cur = screenRef.current;
+    // A guided flow is never a place to come back to: going on from it replaces it.
+    if (FLOWS.includes(cur) && !FLOWS.includes(next)) replace = true;
     if (next === cur) return;
     setTrail(t => {
       if (ROOTS.includes(next)) return [];
@@ -618,9 +620,11 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   useEffect(() => { if (/^(tema|fonte):/.test(filter) && loaded && !chips.some(c => c.key === filter)) setFilter('Tutti'); }, [filter, chips.length]); // eslint-disable-line react-hooks/exhaustive-deps
   const back = () => { setTrail([]); screenRef.current = 'home'; setScreenRaw('home'); setSelected(null); setFriend(null); setFriendData(null); setWorldData(null); setEdit(null); };
   const goBack = () => {
-    const prev = trail[trail.length - 1];
+    let k = trail.length - 1;
+    while (k >= 0 && FLOWS.includes(trail[k]) && FLOWS.includes(screen) === false) k -= 1;
+    const prev = trail[k];
     if (!prev || prev === 'home') return back();
-    setTrail(t => t.slice(0, -1));
+    setTrail(t => t.slice(0, k));
     setEdit(null);
     if (prev === 'worlds' || prev === 'circle') setWorldData(null);
     screenRef.current = prev;
@@ -728,7 +732,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     for (const id of spaceMembers) await run(() => api.inviteToWorld(w.id, id));
     setWorldName(''); setSpaceMembers([]); setUsCreating(false); await refreshWorlds();
     toast(spaceMembers.length ? 'Lo spazio è pronto: abbiamo mandato gli inviti' : 'Il tuo spazio è pronto');
-    openWorld(w);
+    openWorld(w, { replace: true });
   };
   const startMoreOfMe = (personId = '') => { pickShareTarget(personId); setMeStep(personId ? 2 : 1); setMeDone(false); setScreen('settings'); };
   // ---- Chiedi consigli ----------------------------------------------------------
@@ -779,7 +783,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     }
   };
   const startMoreOfUs = (memberIds = []) => { setSpaceMembers(memberIds); setWorldName(''); setUsStep(memberIds.length ? 2 : 1); setUsCreating(memberIds.length > 0 || (loaded && !worlds.length)); setScreen('worlds'); };
-  const openWorld = (w) => { setSelected(w); setWorldData(null); setSpaceTab('items'); setSpaceFilter('all'); setShowSpaceAdd(false); setSpaceItem(null); setScreen('world'); };
+  const openWorld = (w, opts) => { setSelected(w); setWorldData(null); setSpaceTab('items'); setSpaceFilter('all'); setShowSpaceAdd(false); setSpaceItem(null); setScreen('world', opts); };
   const reloadWorld = useCallback(async (id) => setWorldData(await api.loadWorld(id)), [api]);
   useEffect(() => {
     if (screen !== 'world' || !selected?.id || !social) return;
@@ -948,6 +952,10 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   const memberIds = new Set((worldData?.members || []).map(m => m.user_id));
 
   const isRoot = ROOTS.includes(screen);
+  // The back button says where it goes, as on iPhone.
+  const NAMES = { home: 'Scoperte', circle: 'Circle', ai: 'AI', profile: 'Profilo', friend: firstName(friend) || 'Amico', worlds: 'Spazi', world: 'Spazio', detail: 'Scoperta', ask: 'Consigli' };
+  const prevScreen = [...trail].reverse().find(t => !FLOWS.includes(t)) || 'home';
+  const backLabel = FLOWS.includes(screen) ? 'Indietro' : NAMES[prevScreen] || 'Indietro';
   const tab = isRoot ? screen : [...trail].reverse().find(t => ROOTS.includes(t)) || 'home';
   // Swipe from the left edge to go back, as in every iPhone app.
   const swipe = useRef(null);
@@ -1000,7 +1008,7 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
 
   return <div className={'app' + (FLOWS.includes(screen) ? ' inFlow' : '') + (typing ? ' typing' : '')}><header className={isRoot ? 'rootHead' : 'pushHead'}>{isRoot
     ? <div className="headTitle"><h1 className="brand">{screen === 'home' ? 'morethere' : title}</h1>{screen === 'home' && <div className="subtitle">{loaded ? <>{items.length} {items.length === 1 ? 'scoperta' : 'scoperte'}</> : 'Sincronizzazione…'}</div>}</div>
-    : <button className="backBtn" aria-label={`Indietro · ${title}`} onClick={stepBack}><ChevronLeft size={26} strokeWidth={1.8} /><span className="brandText">{title}</span></button>}{FLOWS.includes(screen) && <button className="headClose" aria-label="Chiudi procedura" onClick={leaveFlow}><X size={20} /></button>}</header>
+    : <><button className="backBtn" aria-label={`Indietro · ${backLabel}`} onClick={stepBack}><ChevronLeft size={26} strokeWidth={1.8} /><span className="backLabel">{backLabel}</span></button><span className="pushTitle" aria-hidden="true">{title}</span></>}{FLOWS.includes(screen) && <button className="headClose" aria-label="Chiudi procedura" onClick={leaveFlow}><X size={20} /></button>}</header>
 
     {screen === 'home' && <main>
       {legacy && <div className="panel"><strong>Hai {legacy.items.length} {legacy.items.length === 1 ? 'scoperta salvata' : 'scoperte salvate'} su questo dispositivo</strong><small>Vuoi portarle nel tuo account privato? Resteranno visibili solo a te. Dopo l'importazione verranno rimosse da questo dispositivo.</small><div className="choices"><button className="chosen" disabled={busy} onClick={importLegacy}>Importa</button><button onClick={() => setLegacy(null)}>Non ora</button></div></div>}
@@ -1053,8 +1061,8 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
         {(() => { const inn = circle.sharesIn.find(x => x.owner_id === friend.id); const out = circle.sharesOut.find(x => x.grantee_id === friend.id); const sp = spacesWith(friend.id).length; const tags = [inn && (inn.scope === 'all' ? 'Ti condivide tutto' : 'Ti condivide alcune raccolte'), out && (out.scope === 'all' ? 'Vede tutto di te' : `Vede ${out.collection_ids.length} ${out.collection_ids.length === 1 ? 'tua raccolta' : 'tue raccolte'}`), sp > 0 && `${sp} ${sp === 1 ? 'spazio' : 'spazi'} insieme`].filter(Boolean); return tags.length > 0 && <div className="relTags">{tags.map(t => <span key={t} className="relTag">{t}</span>)}</div>; })()}</div>
       {(() => { const mine = circle.sharesOut.find(x => x.grantee_id === friend.id); const sp = spacesWith(friend.id); return <>
         <div className="personActions">
-          <button className="actTile" onClick={() => startMoreOfMe(friend.id)}><span className="actIcon" aria-hidden="true"><MoreOfMeIcon /></span><span className="actTitle">More <b>of me.</b></span><span className="actSub">{mine ? (mine.scope === 'all' ? 'Vede tutto · modifica' : `Vede ${mine.collection_ids.length} ${mine.collection_ids.length === 1 ? 'raccolta' : 'raccolte'} · modifica`) : 'Condividi le tue raccolte'}</span></button>
-          <button className="actTile dark" onClick={() => startMoreOfUs([friend.id])}><span className="actIcon" aria-hidden="true"><MoreOfUsIcon /></span><span className="actTitle">More <b>of us.</b></span><span className="actSub">Nuovo spazio insieme</span></button>
+          <button className="actTile" aria-label={`More of me: ${mine ? 'cambia cosa vede' : 'condividi le tue raccolte con'} ${nameOf(friend)}`} onClick={() => startMoreOfMe(friend.id)}><span className="actTop"><span className="actIcon" aria-hidden="true"><MoreOfMeIcon /></span><span className="actEyebrow">More of me</span></span><span className="actTitle">{mine ? 'Cosa vede di te' : 'Condividi le tue raccolte'}</span><span className="actSub">{mine ? (mine.scope === 'all' ? 'Vede tutto · tocca per cambiare' : `Vede ${mine.collection_ids.length} ${mine.collection_ids.length === 1 ? 'raccolta' : 'raccolte'} · tocca per cambiare`) : `Scegli cosa può vedere ${firstName(friend)}`}</span></button>
+          <button className="actTile dark" aria-label={`More of us: crea un nuovo spazio condiviso con ${nameOf(friend)}`} onClick={() => startMoreOfUs([friend.id])}><span className="actTop"><span className="actIcon" aria-hidden="true"><Plus size={20} /></span><span className="actEyebrow">More of us</span></span><span className="actTitle">Nuovo spazio condiviso</span><span className="actSub">Per un viaggio, una cena, un'idea con {firstName(friend)}</span></button>
         </div>
         <section className="block"><div className="blockHead"><h2>I vostri spazi</h2>{sp.length > 0 && <span className="count">{sp.length}</span>}</div>{sp.length ? <div className="stack">{sp.map(spaceRow)}</div> : <div className="empty compact">Nessuno spazio insieme, per ora. Creane uno con <strong>More of us.</strong></div>}</section></>; })()}
       <section className="block"><h2>Cosa condivide con te</h2>

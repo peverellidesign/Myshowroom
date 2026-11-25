@@ -553,12 +553,12 @@ test('More of us: as many shared spaces as you like, started from a person', asy
   await alice.getByRole('button', { name: 'Cambia copertina' }).waitFor();
   await shot(alice, '10e-space-cover');
   await noWorld(alice);
-  // The back arrow goes back one step at a time: space → More of us → Bob → Circle; then the tab bar goes home.
+  // Back goes where you came from, and says so: the space → Bob (the creation step is not
+  // a place to go back to) → Circle; then the tab bar goes home.
   const backArrow = alice.getByRole('button', { name: /^Indietro/ });
-  await backArrow.click();
-  await alice.getByRole('button', { name: /Nuovo spazio/ }).waitFor();
-  await backArrow.click();
+  await alice.getByRole('button', { name: 'Indietro · Bob' }).click();
   await alice.getByRole('heading', { name: 'Bob' }).waitFor();
+  assert.equal(await backArrow.getAttribute('aria-label'), 'Indietro · Circle');
   await backArrow.click();
   await alice.getByRole('heading', { name: 'I tuoi amici' }).waitFor();
   assert.equal(await backArrow.count(), 0, 'Circle is a section: no back arrow');
