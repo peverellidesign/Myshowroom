@@ -326,6 +326,11 @@ test('More of me without anyone yet: add a person right there, by invite link', 
   await alice.getByText('Prima aggiungi un amico: tocca Aggiungi.').waitFor();
   await alice.getByRole('button', { name: 'Aggiungi', exact: true }).click();
   const sheet = alice.getByRole('dialog', { name: 'Aggiungi una persona' });
+  // As in a social network: typing a name lists the people it matches.
+  await sheet.getByPlaceholder('Cerca per nome o @nomeutente').fill('Bo');
+  await sheet.getByRole('button', { name: /^Aggiungi Bob \(@/ }).waitFor();
+  await shot(alice, '04a-find-people-sheet');
+  await sheet.getByPlaceholder('Cerca per nome o @nomeutente').fill('');
   await sheet.getByRole('button', { name: 'Invita con un link' }).click();
   const link = await alice.getByLabel("Link d'invito").inputValue();
   assert.match(link, /#invite=[A-Za-z0-9_-]{40,}/);

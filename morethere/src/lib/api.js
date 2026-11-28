@@ -368,6 +368,12 @@ export function createRemoteApi(user) {
         invitations: must(invites),
       };
     },
+    // People by name or @username (name and username only), with how they relate to you.
+    async searchPeople(query) {
+      const res = await supabase.rpc('search_people', { p_query: query });
+      if (res.error?.code === 'PGRST202') return null; // database without the search migration
+      return must(res);
+    },
     async requestConnection(handle) {
       return must(await supabase.rpc('request_connection', { p_handle: handle }));
     },

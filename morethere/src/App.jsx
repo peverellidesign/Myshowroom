@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { explainWhy, relatedItems, ownWords } from './lib/why.js';
 import { judge } from './lib/judge.js';
+import { play } from './lib/sound.js';
 import { interestReason, themesOf, sourceOf, themeLabel } from './lib/interests.js';
 import { watermark } from './lib/watermark.js';
 import { DndContext, closestCenter, KeyboardSensor, MouseSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
@@ -335,6 +336,19 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
 
   const accepted = circle.connections.filter(c => c.status === 'accepted');
   const incoming = circle.connections.filter(c => c.status === 'pending' && c.incoming);
+  // A sound and a word when it happens live: someone accepted your request, or asks to add you.
+  const [soundOn, setSoundOn] = useState(() => { try { return localStorage.getItem('mt-sound') !== 'off'; } catch { return true; } });
+  const seenConnections = useRef(null);
+  useEffect(() => {
+    const now = new Map(circle.connections.map(c => [c.id, c.status]));
+    const before = seenConnections.current;
+    seenConnections.current = now;
+    if (!before || !loaded) return;
+    const accepted = circle.connections.find(c => c.status === 'accepted' && !c.incoming && before.get(c.id) !== 'accepted');
+    const asked = circle.connections.find(c => c.status === 'pending' && c.incoming && !before.has(c.id));
+    if (accepted) { play('joined'); toast(`${nameOf(accepted.other)} ha accettato: ora siete amici`); }
+    else if (asked) { play('incoming'); toast(`${nameOf(asked.other)} vuole aggiungerti al suo Circle`); }
+  }, [circle.connections]); // eslint-disable-line react-hooks/exhaustive-deps
   const outgoing = circle.connections.filter(c => c.status === 'pending' && !c.incoming);
   const unread = thoughts.received.filter(t => !t.read_at).length;
   const worldInvites = worlds.filter(w => w.myStatus === 'invited');
@@ -828,12 +842,26 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
   };
 
   // ---- circle actions --------------------------------------------------------------
-  const requestConnection = async () => {
-    const h = handleInput.trim(); if (!h) return toast('Scrivi un nome utente');
+  const requestConnection = async (handle = null) => {
+    const h = (handle || handleInput).trim(); if (!h) return toast('Scrivi un nome o un nome utente');
     const r = await run(() => api.requestConnection(h));
-    if (r) { setHandleInput(''); setShowAddPerson(false); toast(r === 'accepted' ? 'Ora siete connessi' : 'Richiesta inviata: la vedrai qui finché non accetta'); await refreshCircle(); }
+    if (r) {
+      play(r === 'accepted' ? 'joined' : 'sent');
+      setHandleInput(''); setPeopleFound(null); setShowAddPerson(false);
+      toast(r === 'accepted' ? 'Ora siete connessi' : 'Richiesta inviata: la vedrai qui finché non accetta');
+      await refreshCircle();
+    }
   };
-  const respond = async (id, yes) => { await run(() => api.respondConnection(id, yes), yes ? 'Ora siete connessi' : 'Richiesta rifiutata'); await refreshCircle(); };
+  // Typing a name shows the people it matches, as in a social network.
+  const [peopleFound, setPeopleFound] = useState(null);
+  useEffect(() => {
+    const q = handleInput.trim().replace(/^@/, '');
+    if (!showAddPerson || q.length < 2) { setPeopleFound(null); return undefined; }
+    let alive = true;
+    const t = setTimeout(async () => { try { const r = await api.searchPeople(q); if (alive) setPeopleFound(r); } catch { if (alive) setPeopleFound(null); } }, 220);
+    return () => { alive = false; clearTimeout(t); };
+  }, [handleInput, showAddPerson, api]);
+  const respond = async (id, yes) => { const r = await run(() => api.respondConnection(id, yes), yes ? 'Ora siete connessi' : 'Richiesta rifiutata'); if (r && yes) play('joined'); await refreshCircle(); };
   const acceptInvite = async () => {
     const r = await run(() => api.acceptInvitation(invite.token), 'Ora siete connessi');
     setInvite(null); onInviteHandled?.();
@@ -1260,7 +1288,8 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
         <div><h1>{profile?.display_name}</h1><p className="muted">@{profile?.handle}</p><div className="avatarLinks"><button className="textlink" disabled={busy} onClick={() => avatarInput.current?.click()}>{profile?.avatar_path ? 'Cambia foto' : 'Aggiungi una foto'}</button>{profile?.avatar_path && <button className="textlink danger" disabled={busy} onClick={removeAvatar}>Togli</button>}</div></div></div>
       <p className="hint">La tua foto la vedono solo le persone del tuo Circle e chi condivide uno spazio con te.</p>
       <div className="panel"><label htmlFor="pn">NOME</label><input id="pn" maxLength={60} value={profileDraft.display_name} onChange={e => setProfileDraft({ ...profileDraft, display_name: e.target.value })} /><label htmlFor="ph">NOME UTENTE</label><input id="ph" maxLength={31} autoCapitalize="none" autoCorrect="off" value={profileDraft.handle} onChange={e => setProfileDraft({ ...profileDraft, handle: e.target.value })} /><label htmlFor="ps">DI COSA TI OCCUPI</label><input id="ps" maxLength={120} placeholder="Travel · Food · Architecture" value={profileDraft.subtitle} onChange={e => setProfileDraft({ ...profileDraft, subtitle: e.target.value })} /><button className="pill dark wide" disabled={busy || !profileDirty} onClick={saveProfile}><Check size={18} /> {profileDirty ? 'Salva' : 'Salvato'}</button></div>
-      <p className="hint">Il tuo nome e la descrizione sono visibili solo alle persone del tuo Circle e degli spazi condivisi.</p>
+      <p className="hint">Nome e nome utente servono agli amici per trovarti quando ti cercano. La descrizione la vedono solo le persone del tuo Circle e degli spazi condivisi.</p>
+      <div className="panel"><Toggle checked={soundOn} onChange={v => { setSoundOn(v); try { localStorage.setItem('mt-sound', v ? 'on' : 'off'); } catch { /* private mode */ } if (v) play('joined'); }} label="Suoni" hint="Quando mandi una richiesta d'amicizia, quando viene accettata o quando qualcuno vuole aggiungerti." /></div>
       <div className="stack"><button className="feature" disabled={busy} onClick={downloadData}><Download /><span><strong>Esporta i miei dati</strong><small>Scarica tutto in formato JSON</small></span><ChevronRight /></button></div>
       <button className="pill outline wide" onClick={() => api.signOut()}><LogOut size={18} /> Esci</button>
       <button className="textlink danger" onClick={deleteAccount}>Elimina il mio account</button><div className="legalLinks"><a className="textlink privacyLink" href="/support.html" target="_blank" rel="noopener">Supporto e regole d'uso</a><a className="textlink privacyLink" href="/privacy.html" target="_blank" rel="noopener">Informativa sulla privacy</a></div></main>}
@@ -1290,7 +1319,12 @@ export default function App({ api, pendingInvite, onInviteHandled, pendingShare,
     {showAddCollection && <div className="overlay" role="presentation" onClick={() => setShowAddCollection(false)}><div className="modal" role="dialog" aria-modal="true" aria-label="Nuova raccolta" onClick={e => e.stopPropagation()}><button className="close" aria-label="Chiudi" onClick={() => setShowAddCollection(false)}><X /></button><h2>Nuova raccolta</h2><input placeholder="Nome della raccolta" maxLength={60} value={newCollection} onChange={e => setNewCollection(e.target.value)} /><button className="pill dark wide" disabled={busy} onClick={async () => { const n = newCollection.trim(); if (n && !collections.some(c => c.toLowerCase() === n.toLowerCase())) { const r = await run(() => api.addCollection(n, collectionRows.length)); if (r) await refreshArchive(); } setNewCollection(''); setShowAddCollection(false); }}>Crea</button></div></div>}
 
     {showAddPerson && social && <div className="overlay" role="presentation" onClick={() => setShowAddPerson(false)}><div className="modal sheet" role="dialog" aria-modal="true" aria-label="Aggiungi una persona" onClick={e => e.stopPropagation()}><button className="close" aria-label="Chiudi" onClick={() => setShowAddPerson(false)}><X /></button><h2>Aggiungi una persona</h2><p className="muted">Entra tra le tue persone quando accetta. Nessuno vede nulla di te finché non lo decidi tu.</p>
-      <label htmlFor="handle">SE È GIÀ SU MORETHERE</label><input id="handle" placeholder="@nomeutente" autoCapitalize="none" autoCorrect="off" value={handleInput} onChange={e => setHandleInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && requestConnection()} /><button className="pill dark wide" disabled={busy} onClick={requestConnection}><UserRoundPlus size={18} /> Invia richiesta</button>
+      <label htmlFor="handle">SE È GIÀ SU MORETHERE</label><div className="search peopleSearch"><Search size={19} /><input id="handle" type="search" enterKeyHint="search" placeholder="Cerca per nome o @nomeutente" autoCapitalize="none" autoCorrect="off" value={handleInput} onChange={e => setHandleInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && peopleFound === null) requestConnection(); }} /></div>
+      {peopleFound && (peopleFound.length ? <div className="peopleFound" role="list">{peopleFound.map(p => <div key={p.id} role="listitem" className="foundRow"><span className="av" aria-hidden="true">{initial(p)}</span><span className="frText"><strong>{p.display_name}</strong><small>@{p.handle}</small></span>
+        {p.relation === 'friend' ? <span className="foundState"><Check size={14} /> Amici</span>
+          : p.relation === 'sent' ? <span className="foundState">In attesa</span>
+          : <button className="pill dark small" disabled={busy} aria-label={`${p.relation === 'received' ? 'Accetta' : 'Aggiungi'} ${p.display_name} (@${p.handle})`} onClick={() => requestConnection(p.handle)}>{p.relation === 'received' ? 'Accetta' : <><UserRoundPlus size={15} /> Aggiungi</>}</button>}
+      </div>)}</div> : <p className="hint">Nessuno con questo nome. Invitalo con un link qui sotto.</p>)}
       <div className="orLine"><span>oppure</span></div>
       <label>SE NON C'È ANCORA</label><button className="pill outline wide" disabled={busy} onClick={copyInvite}><Link2 size={18} /> Invita con un link</button>{inviteLink && <input readOnly aria-label="Link d'invito" value={inviteLink} onFocus={e => e.target.select()} />}<small className="sheetNote">Il link è personale, vale una volta e scade dopo 7 giorni.{profile ? <> Il tuo nome utente è <strong>@{profile.handle}</strong>.</> : null}</small>
       {pendingInvites.map(i => <div key={i.id} className="inviteRow"><span>Invito del {fmtDate(i.created_at)} · scade il {fmtDate(i.expires_at)}</span><button className="textlink" onClick={async () => { await run(() => api.revokeInvitation(i.id), 'Invito revocato'); refreshCircle(); }}>Revoca</button></div>)}</div></div>}

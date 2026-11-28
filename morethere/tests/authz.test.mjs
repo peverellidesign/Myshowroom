@@ -128,6 +128,23 @@ test('connections need the other person to accept', async () => {
   denied(await bob.client.rpc('request_connection', { p_handle: 'nobody_here_' + run }));
 });
 
+test('finding people by name: name and username only, with how they relate to you', async () => {
+  const { alice, bob, dave } = users;
+  denied(await createClient(URL_, ANON, opts).rpc('search_people', { p_query: 'dav' }), 'anonymous visitors cannot search');
+  assert.equal(ok(await alice.client.rpc('search_people', { p_query: 'd' })).length, 0, 'at least two characters');
+  const found = ok(await alice.client.rpc('search_people', { p_query: 'dav' }));
+  const d = found.find(r => r.id === dave.id);
+  assert.ok(d, 'found by the start of the name');
+  assert.deepEqual(Object.keys(d).sort(), ['display_name', 'handle', 'id', 'relation'], 'no email, photo or description');
+  assert.equal(d.relation, 'none');
+  assert.ok(!found.some(r => r.id === alice.id), 'never yourself');
+  assert.equal(ok(await alice.client.rpc('search_people', { p_query: '@' + dave.handle }))[0].id, dave.id, 'by @username, exact match first');
+  // After the request (from the 'connections' test) Bob is a friend of Alice.
+  assert.equal(ok(await alice.client.rpc('search_people', { p_query: 'bob' })).find(r => r.id === bob.id)?.relation, 'friend');
+  assert.equal(ok(await alice.client.rpc('search_people', { p_query: '%' })).length, 0, 'wildcards are plain text');
+  assert.ok(ok(await alice.client.rpc('search_people', { p_query: 'x'.repeat(500) })).length === 0, 'long queries are cut, not refused');
+});
+
 test('grants require a trusted connection and cannot be forged', async () => {
   const { alice, bob, carol } = users;
   denied(await alice.client.from('world_shares').insert({ grantee_id: carol.id, scope: 'all' }));
